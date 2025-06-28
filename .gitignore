@@ -1,5 +1,7 @@
 demo
 
+lv_conf.h
+
 # Prerequisites
 *.d
 
