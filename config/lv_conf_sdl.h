@@ -1,4 +1,4 @@
-/**
+﻿/**
  * @file lv_conf.h
  * Configuration file for v9.3.0
  */
@@ -608,9 +608,9 @@
 #define LV_FONT_MONTSERRAT_28_COMPRESSED    1
 #define LV_FONT_DEJAVU_16_PERSIAN_HEBREW    1
 #define LV_FONT_SIMSUN_14_CJK               0  /**< 1000 most common CJK radicals */
-#define LV_FONT_SIMSUN_16_CJK               1
+#define LV_FONT_SIMSUN_16_CJK               0
 #define LV_FONT_SOURCE_HAN_SANS_SC_14_CJK   0  /**< 1338 most common CJK radicals */
-#define LV_FONT_SOURCE_HAN_SANS_SC_16_CJK   0  /**< 1338 most common CJK radicals */
+#define LV_FONT_SOURCE_HAN_SANS_SC_16_CJK   1  /**< 1338 most common CJK radicals */
 
 /** Pixel perfect monospaced fonts */
 #define LV_FONT_UNSCII_8  1
@@ -968,7 +968,7 @@
 #define LV_USE_VECTOR_GRAPHIC  1
 
 /** Enable ThorVG (vector graphics library) from the src/libs folder */
-#define LV_USE_THORVG_INTERNAL 1 
+#define LV_USE_THORVG_INTERNAL 1
 
 /** Enable ThorVG by assuming that its installed and linked to the project */
 #define LV_USE_THORVG_EXTERNAL 0
@@ -1162,7 +1162,7 @@
  *==================*/
 
 /** Use SDL to open window on PC and handle mouse and keyboard. */
-#define LV_USE_SDL              0
+#define LV_USE_SDL              1
 #if LV_USE_SDL
     #define LV_SDL_INCLUDE_PATH     <SDL2/SDL.h>
     #define LV_SDL_RENDER_MODE      LV_DISPLAY_RENDER_MODE_DIRECT   /**< LV_DISPLAY_RENDER_MODE_DIRECT is recommended for best performance */
@@ -1196,7 +1196,7 @@
 #endif
 
 /** Driver for /dev/fb */
-#define LV_USE_LINUX_FBDEV      1
+#define LV_USE_LINUX_FBDEV      0
 #if LV_USE_LINUX_FBDEV
     #define LV_LINUX_FBDEV_BSD           0
     #define LV_LINUX_FBDEV_RENDER_MODE   LV_DISPLAY_RENDER_MODE_PARTIAL
@@ -1327,10 +1327,10 @@
 #if LV_BUILD_DEMOS
     /** Show some widgets. This might be required to increase `LV_MEM_SIZE`. */
     #define LV_USE_DEMO_WIDGETS 1
-    
+
     /** Demonstrate usage of encoder and keyboard. */
     #define LV_USE_DEMO_KEYPAD_AND_ENCODER 1
-    
+
     /** Benchmark your system */
     #define LV_USE_DEMO_BENCHMARK 1
 
@@ -1342,10 +1342,10 @@
     /** Render test for each primitive.
      *  - Requires at least 480x272 display. */
     #define LV_USE_DEMO_RENDER 1
-    
+
     /** Stress test for LVGL */
     #define LV_USE_DEMO_STRESS 1
-    
+
     /** Music player demo */
     #define LV_USE_DEMO_MUSIC 1
     #if LV_USE_DEMO_MUSIC
@@ -1355,38 +1355,38 @@
         #define LV_DEMO_MUSIC_LARGE     0
         #define LV_DEMO_MUSIC_AUTO_PLAY 0
     #endif
-    
+
     /** Vector graphic demo */
     #define LV_USE_DEMO_VECTOR_GRAPHIC  0
-    
+
     /*---------------------------
      * Demos from lvgl/lv_demos
       ---------------------------*/
-    
+
     /** Flex layout demo */
     #define LV_USE_DEMO_FLEX_LAYOUT     1
-    
+
     /** Smart-phone like multi-language demo */
     #define LV_USE_DEMO_MULTILANG       1
-    
+
     /** Widget transformation demo */
     #define LV_USE_DEMO_TRANSFORM       1
-    
+
     /** Demonstrate scroll settings */
     #define LV_USE_DEMO_SCROLL          1
-    
+
     /*E-bike demo with Lottie animations (if LV_USE_LOTTIE is enabled)*/
     #define LV_USE_DEMO_EBIKE           0
     #if LV_USE_DEMO_EBIKE
         #define LV_DEMO_EBIKE_PORTRAIT  0    /*0: for 480x270..480x320, 1: for 480x800..720x1280*/
     #endif
-    
+
     /** High-resolution demo */
     #define LV_USE_DEMO_HIGH_RES        0
-    
+
     /* Smart watch demo */
     #define LV_USE_DEMO_SMARTWATCH      0
-#endif /* LV_BUILD_DEMOS */ 
+#endif /* LV_BUILD_DEMOS */
 
 /*--END OF LV_CONF_H--*/
 
