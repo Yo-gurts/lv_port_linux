@@ -3,13 +3,13 @@
 
 /************************** 屏幕相关 ******************************************/
 #define FB_DEV_NAME "/dev/fb0"
-#define H_RES 640 /* 水平分辨率 */
-#define V_RES 480 /* 垂直分辨率 */
+#define H_RES 240 /* 水平分辨率 */
+#define V_RES 1020 /* 垂直分辨率 */
 #define DISP_BUF_SIZE (H_RES * V_RES)
 
 /************************** INPUT EVENT 对应的文件路径 ************************/
 #define KEY_EVENT_PATH "/dev/input/event0"
-#define TOUCH_PANEL_EVENT_PATH "/dev/input/event1"
+#define TOUCH_PANEL_EVENT_PATH "/dev/input/event3"
 #define POWER_KEY_EVENT_PATH "/dev/input/event2"
 
 /************************** 按键对应的 KEY CODE ******************************/

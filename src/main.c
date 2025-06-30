@@ -79,7 +79,7 @@ int main(void)
 
     /*Create a Demo*/
     lv_demo_widgets();
-    lv_demo_widgets_start_slideshow();
+    // lv_demo_widgets_start_slideshow();
 
     /*Handle LVGL tasks*/
     while(1) {
