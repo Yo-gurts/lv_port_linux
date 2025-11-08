@@ -23,9 +23,8 @@ static void lv_linux_disp_init(void)
     lv_display_set_resolution(disp, H_RES, V_RES);
 
     // 支持触摸屏 TP evdev
-    lv_indev_t *touch = lv_evdev_create(LV_INDEV_TYPE_POINTER, TOUCH_PANEL_EVENT_PATH);
-    lv_indev_set_display(touch, disp);
-
+    // lv_indev_t *touch = lv_evdev_create(LV_INDEV_TYPE_POINTER, TOUCH_PANEL_EVENT_PATH);
+    // lv_indev_set_display(touch, disp);
 }
 #elif LV_USE_LINUX_DRM
 static void lv_linux_disp_init(void)

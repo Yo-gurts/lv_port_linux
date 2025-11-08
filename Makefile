@@ -4,10 +4,10 @@ BLUE := \033[1;34m
 YELLOW := \033[1;33m
 NC := \033[0m   # No Color
 
-CONFIG ?= SDL
-BUILD_DIR ?= build/x86_64
+CONFIG = FB
+BUILD_DIR ?= build/musl_riscv64
 CMAKE_BUILD_TYPE ?= Debug
-PLATFORM ?= x86_64
+PLATFORM ?= musl_riscv64
 
 TOOLCHAIN_FILE =
 ifeq ($(PLATFORM), musl_arm32)
@@ -16,9 +16,13 @@ ifeq ($(PLATFORM), musl_arm32)
 else ifeq ($(PLATFORM), glibc_arm32)
 	TOOLCHAIN_FILE = toolchains/arm-none-linux-gnueabihf.cmake
 	BUILD_DIR = build/glibc_arm32
+else ifeq ($(PLATFORM), musl_riscv64)
+	TOOLCHAIN_FILE = toolchains/riscv64-unknown-linux-musl.cmake
+	BUILD_DIR = build/musl_riscv64
 else ifeq ($(PLATFORM), x86_64)
 	TOOLCHAIN_FILE = toolchains/x86_64-linux-gnu.cmake
 	BUILD_DIR = build/x86_64
+	CONFIG = SDL
 endif
 
 .PHONY: all clean help
@@ -39,18 +43,18 @@ clean:
 
 help:
 	@echo
-	@echo "$(GREEN)Usage: make [target] [CONFIG=SDL|FB] [PLATFORM=x86_64|musl_arm32|glibc_arm32]$(NC)"
+	@echo "$(GREEN)Usage: make [target] [CONFIG=SDL|FB] [PLATFORM=x86_64|musl_arm32|glibc_arm32|musl_riscv64]$(NC)"
 	@echo
 	@echo "$(BLUE)Targets:$(NC)"
-	@echo "  all        Build the project (default, CONFIG=SDL or CONFIG=FB, PLATFORM=x86_64)"
+	@echo "  all        Build the project (default, CONFIG=FB, PLATFORM=musl_riscv64)"
 	@echo "  clean      Remove build directory"
 	@echo "  help       Show this help message"
 	@echo
 	@echo "$(BLUE)Examples:$(NC)"
-	@echo "  make                $(YELLOW)# Build with SDL for x86_64 (default)$(NC)"
-	@echo "  make CONFIG=FB      $(YELLOW)# Build with framebuffer/evdev support for x86_64$(NC)"
+	@echo "  make                $(YELLOW)# Build with FB for musl_riscv64 (default)$(NC)"
+	@echo "  make PLATFORM=x86_64 $(YELLOW)# Build with SDL for x86_64$(NC)"
 	@echo "  make PLATFORM=musl_arm32 $(YELLOW)# Build for musl_arm32$(NC)"
 	@echo "  make clean          $(YELLOW)# Clean build files$(NC)"
-	@echo "  make CONFIG=FB PLATFORM=glibc_arm32"
-	@echo "  make all CONFIG=FB PLATFORM=glibc_arm32 CMAKE_BUILD_TYPE=Release"
+	@echo "  make PLATFORM=glibc_arm32"
+	@echo "  make all PLATFORM=glibc_arm32 CMAKE_BUILD_TYPE=Release"
 	@echo
