@@ -6,7 +6,7 @@ NC := \033[0m   # No Color
 
 CONFIG = FB
 BUILD_DIR ?= build/musl_riscv64
-CMAKE_BUILD_TYPE ?= Debug
+CMAKE_BUILD_TYPE ?= Release # Release or Debug
 PLATFORM ?= musl_riscv64
 
 TOOLCHAIN_FILE =
