@@ -1,26 +1,28 @@
 #include "lvgl/lvgl.h"
-#include "lvgl/demos/lv_demos.h"
-#include <unistd.h>
 #include <pthread.h>
-#include <time.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
+#include <time.h>
+#include <unistd.h>
 
+#include "config.h"
 #include "core/page_manager.h"
-#include "styles/style_common.h"
-#include "styles/style_fonts.h"
+#include "font_manager.h"
 #include "pages/page_home.h"
+#include "styles/style_common.h"
 
-static const char *getenv_default(const char *name, const char *dflt)
+static const char* getenv_default(const char* name, const char* dflt)
 {
-    return getenv(name) ? : dflt;
+    const char* env = getenv(name);
+    return env ? env : dflt;
 }
 
 #if LV_USE_LINUX_FBDEV
 static void lv_linux_disp_init(void)
 {
-    const char *device = getenv_default("LV_LINUX_FBDEV_DEVICE", "/dev/fb0");
-    lv_display_t * disp = lv_linux_fbdev_create();
+    const char* device = getenv_default("LV_LINUX_FBDEV_DEVICE", FB_DEV_NAME);
+    lv_display_t* disp = lv_linux_fbdev_create();
 
     lv_linux_fbdev_set_file(disp, device);
 }
@@ -35,8 +37,8 @@ static void lv_linux_disp_init(void)
 #elif LV_USE_SDL
 static void lv_linux_disp_init(void)
 {
-    const int width = atoi(getenv("LV_SDL_VIDEO_WIDTH") ? : "800");
-    const int height = atoi(getenv("LV_SDL_VIDEO_HEIGHT") ? : "480");
+    const int width = atoi(getenv_default("LV_SDL_VIDEO_WIDTH", "800"));
+    const int height = atoi(getenv_default("LV_SDL_VIDEO_HEIGHT", "480"));
 
     lv_group_set_default(lv_group_create());
 
@@ -82,12 +84,14 @@ int main(void)
     /*Linux display device init*/
     lv_linux_disp_init();
 
+    /* Initialize fonts */
+    font_manager_init();
+
     /* Initialize styles */
     style_common_init();
-    style_fonts_init();
 
     /* Create page manager */
-    page_manager_t *pm = page_manager_create();
+    page_manager_t* pm = page_manager_create();
     if (!pm) {
         printf("Failed to create page manager\n");
         return -1;

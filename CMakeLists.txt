@@ -61,8 +61,8 @@ set(SOURCES
     src/core/page_manager.c
     src/ui/status_bar.c
     src/styles/style_common.c
-    src/styles/style_fonts.c
     src/pages/page_home.c
+    src/font_manager.c
 )
 
 add_executable(main ${SOURCES})
@@ -75,4 +75,14 @@ target_link_libraries(main lvgl lvgl::examples lvgl::demos lvgl::thorvg m pthrea
 if(CONFIG STREQUAL "SDL")
 	target_link_libraries(main ${SDL2_LIBRARIES} ${SDL2_IMAGE_LIBRARIES})
 endif()
+
+# FreeType library for Chinese font support
+if(CONFIG STREQUAL "SDL")
+    set(FREETYPE_LIB "${CMAKE_CURRENT_SOURCE_DIR}/third_party/freetype/lib/x86_64/libfreetype.a")
+    set(FREETYPE_INCLUDE "${CMAKE_CURRENT_SOURCE_DIR}/third_party/freetype/freetype2")
+    target_include_directories(main PRIVATE ${FREETYPE_INCLUDE})
+    target_include_directories(lvgl PRIVATE ${FREETYPE_INCLUDE})
+    target_link_libraries(main ${FREETYPE_LIB})
+endif()
+
 add_custom_target (run COMMAND ${EXECUTABLE_OUTPUT_PATH}/main DEPENDS main)

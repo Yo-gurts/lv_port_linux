@@ -1,6 +1,7 @@
 #include "pages/page_home.h"
-#include "ui/status_bar.h"
+#include "font_manager.h"
 #include "styles/style_common.h"
+#include "ui/status_bar.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -81,11 +82,10 @@ static void create_icon_button(page_manager_t *pm, lv_obj_t *parent,
     lv_obj_set_style_text_font(icon, &lv_font_montserrat_28, LV_PART_MAIN);
     lv_obj_add_style(icon, &style_common_label_back, LV_PART_MAIN | LV_STATE_DEFAULT);
 
-    /* 文字 */
-    lv_obj_t *label = lv_label_create(container);
+    /* 文字 - 使用中文字体样式 */
+    lv_obj_t* label = lv_label_create(container);
     lv_label_set_text(label, name);
-    lv_obj_set_style_text_font(label, &lv_font_montserrat_14, LV_PART_MAIN);
-    lv_obj_add_style(label, &style_common_label_back, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_add_style(label, &ttf_font_24, LV_PART_MAIN);
 
     if (out_btn) {
         *out_btn = container;
@@ -146,11 +146,11 @@ void page_home_create(page_manager_t *pm, void *user_data)
                        settings_button_cb, &data->settings_button);
     /* 预留2个位置 */
     create_icon_button(pm, data->grid_container, LV_SYMBOL_PLAY, "预览",
-                       LV_ALIGN_TOP_LEFT, 0, 0,
-                       NULL, NULL);
-    create_icon_button(pm, data->grid_container, LV_SYMBOL_REFRESH, "更多",
-                       LV_ALIGN_TOP_LEFT, 0, 0,
-                       NULL, NULL);
+        LV_ALIGN_TOP_LEFT, 0, 0,
+        NULL, NULL);
+    create_icon_button(pm, data->grid_container, LV_SYMBOL_REFRESH, "More",
+        LV_ALIGN_TOP_LEFT, 0, 0,
+        NULL, NULL);
 
     page_set_private_data(pm, "home_page_data", data);
 }
