@@ -12,9 +12,9 @@ struct page_manager_t {
     int history_count;
 };
 
-page_manager_t *page_manager_create(void)
+page_manager_t* page_manager_create(void)
 {
-    page_manager_t *pm = (page_manager_t *)malloc(sizeof(page_manager_t));
+    page_manager_t* pm = (page_manager_t*)malloc(sizeof(page_manager_t));
     if (!pm) {
         return NULL;
     }
@@ -23,7 +23,7 @@ page_manager_t *page_manager_create(void)
     return pm;
 }
 
-void page_manager_destroy(page_manager_t *pm)
+void page_manager_destroy(page_manager_t* pm)
 {
     if (!pm) {
         return;
@@ -38,7 +38,7 @@ void page_manager_destroy(page_manager_t *pm)
     free(pm);
 }
 
-int page_manager_register(page_manager_t *pm, const char *name, page_interface_t *interface, void *user_data)
+int page_manager_register(page_manager_t* pm, const char* name, page_interface_t* interface, void* user_data)
 {
     if (!pm || !name || !interface) {
         return -1;
@@ -48,7 +48,7 @@ int page_manager_register(page_manager_t *pm, const char *name, page_interface_t
         return -1;
     }
 
-    page_t *page = &pm->pages[pm->page_count];
+    page_t* page = &pm->pages[pm->page_count];
     page->name = name;
     page->interface = interface;
     page->private_data = user_data;
@@ -59,7 +59,7 @@ int page_manager_register(page_manager_t *pm, const char *name, page_interface_t
     return 0;
 }
 
-int page_manager_navigate(page_manager_t *pm, const char *page_name)
+int page_manager_navigate(page_manager_t* pm, const char* page_name)
 {
     if (!pm || !page_name) {
         return -1;
@@ -78,7 +78,7 @@ int page_manager_navigate(page_manager_t *pm, const char *page_name)
     }
 
     if (pm->current_page_index >= 0) {
-        page_t *current_page = &pm->pages[pm->current_page_index];
+        page_t* current_page = &pm->pages[pm->current_page_index];
         if (current_page->interface && current_page->interface->hide) {
             current_page->interface->hide(pm, current_page->private_data);
         }
@@ -88,7 +88,7 @@ int page_manager_navigate(page_manager_t *pm, const char *page_name)
         }
     }
 
-    page_t *target_page = &pm->pages[target_index];
+    page_t* target_page = &pm->pages[target_index];
     if (target_page->interface && target_page->interface->create) {
         target_page->interface->create(pm, target_page->private_data);
     }
@@ -102,19 +102,19 @@ int page_manager_navigate(page_manager_t *pm, const char *page_name)
     return 0;
 }
 
-int page_manager_back(page_manager_t *pm)
+int page_manager_back(page_manager_t* pm)
 {
     if (!pm || pm->history_count == 0) {
         return -1;
     }
 
     int prev_index = pm->history[--pm->history_count];
-    const char *prev_name = pm->pages[prev_index].name;
+    const char* prev_name = pm->pages[prev_index].name;
 
     return page_manager_navigate(pm, prev_name);
 }
 
-const char *page_manager_get_current(page_manager_t *pm)
+const char* page_manager_get_current(page_manager_t* pm)
 {
     if (!pm || pm->current_page_index < 0) {
         return NULL;
@@ -123,7 +123,7 @@ const char *page_manager_get_current(page_manager_t *pm)
     return pm->pages[pm->current_page_index].name;
 }
 
-lv_obj_t *page_get_root(page_manager_t *pm)
+lv_obj_t* page_get_root(page_manager_t* pm)
 {
     if (!pm) {
         return NULL;
@@ -132,7 +132,7 @@ lv_obj_t *page_get_root(page_manager_t *pm)
     return lv_screen_active();
 }
 
-void *page_get_private_data(page_manager_t *pm, const char *key)
+void* page_get_private_data(page_manager_t* pm, const char* key)
 {
     if (!pm || !key) {
         return NULL;
@@ -152,7 +152,7 @@ void *page_get_private_data(page_manager_t *pm, const char *key)
     return NULL;
 }
 
-void page_set_private_data(page_manager_t *pm, const char *key, void *data)
+void page_set_private_data(page_manager_t* pm, const char* key, void* data)
 {
     (void)key;
     if (!pm) {

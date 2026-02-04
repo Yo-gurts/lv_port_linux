@@ -4,13 +4,13 @@
 
 #define MAX_ITEMS 10
 
-status_bar_t *status_bar_create(lv_obj_t *parent)
+status_bar_t* status_bar_create(lv_obj_t* parent)
 {
     if (!parent) {
         return NULL;
     }
 
-    status_bar_t *sb = (status_bar_t *)malloc(sizeof(status_bar_t));
+    status_bar_t* sb = (status_bar_t*)malloc(sizeof(status_bar_t));
     if (!sb) {
         return NULL;
     }
@@ -42,7 +42,7 @@ status_bar_t *status_bar_create(lv_obj_t *parent)
     return sb;
 }
 
-void status_bar_destroy(status_bar_t *sb)
+void status_bar_destroy(status_bar_t* sb)
 {
     if (!sb) {
         return;
@@ -73,7 +73,7 @@ void status_bar_destroy(status_bar_t *sb)
     free(sb);
 }
 
-int status_bar_add_item(status_bar_t *sb, status_bar_item_t *item)
+int status_bar_add_item(status_bar_t* sb, status_bar_item_t* item)
 {
     if (!sb || !item || sb->item_count >= MAX_ITEMS) {
         return -1;
@@ -99,7 +99,7 @@ int status_bar_add_item(status_bar_t *sb, status_bar_item_t *item)
     return 0;
 }
 
-int status_bar_remove_item(status_bar_t *sb, int index)
+int status_bar_remove_item(status_bar_t* sb, int index)
 {
     if (!sb || index < 0 || index >= sb->item_count) {
         return -1;
@@ -120,7 +120,7 @@ int status_bar_remove_item(status_bar_t *sb, int index)
     return 0;
 }
 
-void status_bar_clear(status_bar_t *sb)
+void status_bar_clear(status_bar_t* sb)
 {
     if (!sb) {
         return;
@@ -136,7 +136,7 @@ void status_bar_clear(status_bar_t *sb)
     sb->item_count = 0;
 }
 
-void status_bar_set_item_text(status_bar_t *sb, int index, const char *text)
+void status_bar_set_item_text(status_bar_t* sb, int index, const char* text)
 {
     if (!sb || index < 0 || index >= sb->item_count) {
         return;
@@ -149,7 +149,7 @@ void status_bar_set_item_text(status_bar_t *sb, int index, const char *text)
     }
 }
 
-void status_bar_set_item_progress(status_bar_t *sb, int index, int progress)
+void status_bar_set_item_progress(status_bar_t* sb, int index, int progress)
 {
     if (!sb || index < 0 || index >= sb->item_count) {
         return;
@@ -162,7 +162,7 @@ void status_bar_set_item_progress(status_bar_t *sb, int index, int progress)
     }
 }
 
-void status_bar_set_item_visible(status_bar_t *sb, int index, bool visible)
+void status_bar_set_item_visible(status_bar_t* sb, int index, bool visible)
 {
     if (!sb || index < 0 || index >= sb->item_count) {
         return;
@@ -179,7 +179,7 @@ void status_bar_set_item_visible(status_bar_t *sb, int index, bool visible)
     }
 }
 
-void status_bar_set_height(status_bar_t *sb, int height)
+void status_bar_set_height(status_bar_t* sb, int height)
 {
     if (!sb) {
         return;
@@ -192,7 +192,7 @@ void status_bar_set_height(status_bar_t *sb, int height)
     }
 }
 
-int status_bar_get_height(status_bar_t *sb)
+int status_bar_get_height(status_bar_t* sb)
 {
     if (!sb) {
         return 0;
@@ -201,7 +201,7 @@ int status_bar_get_height(status_bar_t *sb)
     return sb->height;
 }
 
-void status_bar_set_bg_color(status_bar_t *sb, lv_color_t color)
+void status_bar_set_bg_color(status_bar_t* sb, lv_color_t color)
 {
     if (!sb) {
         return;
@@ -214,7 +214,7 @@ void status_bar_set_bg_color(status_bar_t *sb, lv_color_t color)
     }
 }
 
-void status_bar_set_text_color(status_bar_t *sb, lv_color_t color)
+void status_bar_set_text_color(status_bar_t* sb, lv_color_t color)
 {
     if (!sb) {
         return;
@@ -229,7 +229,7 @@ void status_bar_set_text_color(status_bar_t *sb, lv_color_t color)
     }
 }
 
-void status_bar_refresh(status_bar_t *sb)
+void status_bar_refresh(status_bar_t* sb)
 {
     if (!sb) {
         return;

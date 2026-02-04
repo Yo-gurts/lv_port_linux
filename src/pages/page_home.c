@@ -9,13 +9,13 @@
 
 /* 布局常量 - 可根据设计调整 */
 #define STATUS_BAR_HEIGHT 30
-#define ICON_BUTTON_PADDING 10  /* 图标按钮内边距 */
-#define ICON_SIZE 64            /* 图标基础大小 */
-#define LABEL_HEIGHT 24         /* 标签高度 */
+#define ICON_BUTTON_PADDING 10 /* 图标按钮内边距 */
+#define ICON_SIZE 64 /* 图标基础大小 */
+#define LABEL_HEIGHT 24 /* 标签高度 */
 
-static void photo_button_cb(lv_event_t *e)
+static void photo_button_cb(lv_event_t* e)
 {
-    page_manager_t *pm = (page_manager_t *)lv_event_get_user_data(e);
+    page_manager_t* pm = (page_manager_t*)lv_event_get_user_data(e);
     if (!pm) {
         return;
     }
@@ -24,9 +24,9 @@ static void photo_button_cb(lv_event_t *e)
     page_manager_navigate(pm, "photo");
 }
 
-static void video_button_cb(lv_event_t *e)
+static void video_button_cb(lv_event_t* e)
 {
-    page_manager_t *pm = (page_manager_t *)lv_event_get_user_data(e);
+    page_manager_t* pm = (page_manager_t*)lv_event_get_user_data(e);
     if (!pm) {
         return;
     }
@@ -35,9 +35,9 @@ static void video_button_cb(lv_event_t *e)
     page_manager_navigate(pm, "video");
 }
 
-static void gallery_button_cb(lv_event_t *e)
+static void gallery_button_cb(lv_event_t* e)
 {
-    page_manager_t *pm = (page_manager_t *)lv_event_get_user_data(e);
+    page_manager_t* pm = (page_manager_t*)lv_event_get_user_data(e);
     if (!pm) {
         return;
     }
@@ -46,9 +46,9 @@ static void gallery_button_cb(lv_event_t *e)
     page_manager_navigate(pm, "gallery");
 }
 
-static void settings_button_cb(lv_event_t *e)
+static void settings_button_cb(lv_event_t* e)
 {
-    page_manager_t *pm = (page_manager_t *)lv_event_get_user_data(e);
+    page_manager_t* pm = (page_manager_t*)lv_event_get_user_data(e);
     if (!pm) {
         return;
     }
@@ -57,16 +57,16 @@ static void settings_button_cb(lv_event_t *e)
     page_manager_navigate(pm, "settings");
 }
 
-static void create_icon_button(page_manager_t *pm, lv_obj_t *parent,
-                               const char *symbol, const char *name,
-                               lv_align_t align, int x_ofs, int y_ofs,
-                               lv_event_cb_t cb, lv_obj_t **out_btn)
+static void create_icon_button(page_manager_t* pm, lv_obj_t* parent,
+    const char* symbol, const char* name,
+    lv_align_t align, int x_ofs, int y_ofs,
+    lv_event_cb_t cb, lv_obj_t** out_btn)
 {
     /* 容器：图标 + 文字 */
-    lv_obj_t *container = lv_btn_create(parent);
+    lv_obj_t* container = lv_btn_create(parent);
     lv_obj_align(container, align, x_ofs, y_ofs);
-    lv_obj_set_width(container, lv_pct(30));  /* 占父容器30%宽度，自适应 */
-    lv_obj_set_height(container, lv_pct(40));  /* 占剩余高度约40% */
+    lv_obj_set_width(container, lv_pct(30)); /* 占父容器30%宽度，自适应 */
+    lv_obj_set_height(container, lv_pct(40)); /* 占剩余高度约40% */
     lv_obj_add_style(container, &style_common_btn_back, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_add_event_cb(container, cb, LV_EVENT_CLICKED, pm);
 
@@ -77,7 +77,7 @@ static void create_icon_button(page_manager_t *pm, lv_obj_t *parent,
     lv_obj_set_style_pad_all(container, ICON_BUTTON_PADDING, LV_PART_MAIN);
 
     /* 图标 */
-    lv_obj_t *icon = lv_label_create(container);
+    lv_obj_t* icon = lv_label_create(container);
     lv_label_set_text(icon, symbol);
     lv_obj_set_style_text_font(icon, &lv_font_montserrat_28, LV_PART_MAIN);
     lv_obj_add_style(icon, &style_common_label_back, LV_PART_MAIN | LV_STATE_DEFAULT);
@@ -92,7 +92,7 @@ static void create_icon_button(page_manager_t *pm, lv_obj_t *parent,
     }
 }
 
-void page_home_create(page_manager_t *pm, void *user_data)
+void page_home_create(page_manager_t* pm, void* user_data)
 {
     if (!pm) {
         return;
@@ -156,7 +156,7 @@ void page_home_create(page_manager_t *pm, void *user_data)
     page_set_private_data(pm, "home_page_data", data);
 }
 
-void page_home_destroy(page_manager_t *pm, void *user_data)
+void page_home_destroy(page_manager_t* pm, void* user_data)
 {
     if (!pm) {
         return;
@@ -186,7 +186,7 @@ void page_home_destroy(page_manager_t *pm, void *user_data)
     free(data);
 }
 
-void page_home_show(page_manager_t *pm, void *user_data)
+void page_home_show(page_manager_t* pm, void* user_data)
 {
     if (!pm) {
         return;
@@ -205,7 +205,7 @@ void page_home_show(page_manager_t *pm, void *user_data)
     }
 }
 
-void page_home_hide(page_manager_t *pm, void *user_data)
+void page_home_hide(page_manager_t* pm, void* user_data)
 {
     if (!pm) {
         return;
@@ -229,7 +229,7 @@ void page_home_update(page_manager_t* pm, void* user_data)
 
     if (data->status_bar) {
         time_t current_time = time(NULL);
-        struct tm *tm_info = localtime(&current_time);
+        struct tm* tm_info = localtime(&current_time);
         char time_str[32];
         strftime(time_str, sizeof(time_str), "%H:%M", tm_info);
         status_bar_set_item_text(data->status_bar, 0, time_str);

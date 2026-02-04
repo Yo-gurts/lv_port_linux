@@ -29,8 +29,8 @@ static void lv_linux_disp_init(void)
 #elif LV_USE_LINUX_DRM
 static void lv_linux_disp_init(void)
 {
-    const char *device = getenv_default("LV_LINUX_DRM_CARD", "/dev/dri/card0");
-    lv_display_t * disp = lv_linux_drm_create();
+    const char* device = getenv_default("LV_LINUX_DRM_CARD", "/dev/dri/card0");
+    lv_display_t* disp = lv_linux_drm_create();
 
     lv_linux_drm_set_file(disp, device, -1);
 }
@@ -42,24 +42,24 @@ static void lv_linux_disp_init(void)
 
     lv_group_set_default(lv_group_create());
 
-    lv_display_t * disp = lv_sdl_window_create(width, height);
+    lv_display_t* disp = lv_sdl_window_create(width, height);
 
-    lv_indev_t * mouse = lv_sdl_mouse_create();
+    lv_indev_t* mouse = lv_sdl_mouse_create();
     lv_indev_set_group(mouse, lv_group_get_default());
     lv_indev_set_display(mouse, disp);
     lv_display_set_default(disp);
 
     LV_IMAGE_DECLARE(mouse_cursor_icon); /*Declare the image file.*/
-    lv_obj_t * cursor_obj;
+    lv_obj_t* cursor_obj;
     cursor_obj = lv_image_create(lv_screen_active()); /*Create an image object for the cursor */
     lv_image_set_src(cursor_obj, &mouse_cursor_icon); /*Set the image source*/
-    lv_indev_set_cursor(mouse, cursor_obj);           /*Connect the image  object to the driver*/
+    lv_indev_set_cursor(mouse, cursor_obj); /*Connect the image  object to the driver*/
 
-    lv_indev_t * mousewheel = lv_sdl_mousewheel_create();
+    lv_indev_t* mousewheel = lv_sdl_mousewheel_create();
     lv_indev_set_display(mousewheel, disp);
     lv_indev_set_group(mousewheel, lv_group_get_default());
 
-    lv_indev_t * kb = lv_sdl_keyboard_create();
+    lv_indev_t* kb = lv_sdl_keyboard_create();
     lv_indev_set_display(kb, disp);
     lv_indev_set_group(kb, lv_group_get_default());
 
@@ -104,7 +104,7 @@ int main(void)
     page_manager_navigate(pm, "home");
 
     /*Handle LVGL tasks*/
-    while(1) {
+    while (1) {
         lv_timer_handler();
         usleep(5000);
     }

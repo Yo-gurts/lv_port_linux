@@ -15,10 +15,10 @@ typedef struct {
 } home_page_data_t;
 
 void page_home_create(page_manager_t* pm, void* user_data);
-void page_home_destroy(page_manager_t *pm, void *user_data);
-void page_home_show(page_manager_t *pm, void *user_data);
-void page_home_hide(page_manager_t *pm, void *user_data);
-void page_home_update(page_manager_t *pm, void *user_data);
+void page_home_destroy(page_manager_t* pm, void* user_data);
+void page_home_show(page_manager_t* pm, void* user_data);
+void page_home_hide(page_manager_t* pm, void* user_data);
+void page_home_update(page_manager_t* pm, void* user_data);
 
 #ifdef __cplusplus
 }
