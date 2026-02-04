@@ -132,19 +132,19 @@ void page_home_create(page_manager_t *pm, void *user_data)
 
     /* 第1行 */
     create_icon_button(pm, data->grid_container, LV_SYMBOL_IMAGE, "拍照",
-                       LV_ALIGN_TOP_LEFT, 0, 0,
-                       photo_button_cb, &data->photo_button);
+        LV_ALIGN_TOP_LEFT, 0, 0,
+        photo_button_cb, NULL);
     create_icon_button(pm, data->grid_container, LV_SYMBOL_VIDEO, "录像",
-                       LV_ALIGN_TOP_LEFT, 0, 0,
-                       video_button_cb, &data->video_button);
+        LV_ALIGN_TOP_LEFT, 0, 0,
+        video_button_cb, NULL);
     create_icon_button(pm, data->grid_container, LV_SYMBOL_DIRECTORY, "相册",
-                       LV_ALIGN_TOP_LEFT, 0, 0,
-                       gallery_button_cb, &data->gallery_button);
+        LV_ALIGN_TOP_LEFT, 0, 0,
+        gallery_button_cb, NULL);
 
     /* 第2行 */
     create_icon_button(pm, data->grid_container, LV_SYMBOL_SETTINGS, "设置",
-                       LV_ALIGN_TOP_LEFT, 0, 0,
-                       settings_button_cb, &data->settings_button);
+        LV_ALIGN_TOP_LEFT, 0, 0,
+        settings_button_cb, NULL);
     /* 预留2个位置 */
     create_icon_button(pm, data->grid_container, LV_SYMBOL_PLAY, "预览",
         LV_ALIGN_TOP_LEFT, 0, 0,
@@ -176,11 +176,7 @@ void page_home_destroy(page_manager_t *pm, void *user_data)
         data->grid_container = NULL;
     }
 
-    /* 按钮已随容器删除，无需单独处理 */
-    data->photo_button = NULL;
-    data->video_button = NULL;
-    data->gallery_button = NULL;
-    data->settings_button = NULL;
+    /* 按钮已随容器删除 */
 
     if (data->status_bar) {
         status_bar_destroy(data->status_bar);
