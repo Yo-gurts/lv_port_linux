@@ -5,29 +5,55 @@ set(CMAKE_C_STANDARD 99)#C99 # lvgl officially support C99 and above
 set(CMAKE_CXX_STANDARD 17)#C17
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+#=======================
+# Strict Compiler Flags (for project src only, not lvgl)
+#=======================
+if(CMAKE_C_COMPILER_ID STREQUAL "GNU" OR CMAKE_C_COMPILER_ID STREQUAL "Clang")
+    set(STRICT_C_FLAGS -Wall -Wextra -Wpedantic)
+    set(STRICT_C_FLAGS ${STRICT_C_FLAGS} -Werror=return-type -Werror=uninitialized -Werror=pointer-arith)
+    set(STRICT_C_FLAGS ${STRICT_C_FLAGS} -Werror=format-security -Werror=format=2)
+    set(STRICT_C_FLAGS ${STRICT_C_FLAGS} -Wstrict-prototypes -Wmissing-prototypes)
+    set(STRICT_C_FLAGS ${STRICT_C_FLAGS} -Wshadow -Wundef)
+    if(CMAKE_C_COMPILER_ID STREQUAL "GNU")
+        set(STRICT_C_FLAGS ${STRICT_C_FLAGS} -Wlogical-op)
+    endif()
+endif()
+
 set(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/bin)
 
-add_subdirectory(lvgl)
-target_include_directories(lvgl PUBLIC ${PROJECT_SOURCE_DIR})
-
-add_executable(main src/main.c src/mouse_cursor_icon.c)
-
-# include(${CMAKE_CURRENT_LIST_DIR}/lvgl/tests/FindLibDRM.cmake)
-# include_directories(${Libdrm_INCLUDE_DIRS})
-
+#=======================
+# LVGL Configuration
+#=======================
 if(NOT DEFINED CONFIG)
 	set(CONFIG "SDL")
 endif()
 
 if(CONFIG STREQUAL "SDL")
+	set(LV_CONF_FILE "lv_conf_sdl.h")
 	add_definitions(-DFB_RUN=0)
 	find_package(SDL2)
 	find_package(SDL2_image)
 	include_directories(${SDL2_INCLUDE_DIRS} ${SDL2_IMAGE_INCLUDE_DIRS})
 elseif(CONFIG STREQUAL "FB")
+	set(LV_CONF_FILE "lv_conf_fb.h")
 	add_definitions(-DFB_RUN=1)
 else()
 	message(FATAL_ERROR "Unknown CONFIG: ${CONFIG}")
+endif()
+
+# Set LVGL config path
+if(CONFIG STREQUAL "SDL")
+    set(LV_BUILD_CONF_PATH "${CMAKE_CURRENT_SOURCE_DIR}/include/lv_conf_sdl.h" CACHE PATH "")
+else()
+    set(LV_BUILD_CONF_PATH "${CMAKE_CURRENT_SOURCE_DIR}/include/lv_conf_fb.h" CACHE PATH "")
+endif()
+
+add_subdirectory(lvgl)
+target_include_directories(lvgl PUBLIC ${PROJECT_SOURCE_DIR})
+
+add_executable(main src/main.c src/mouse_cursor_icon.c)
+if(STRICT_C_FLAGS)
+    target_compile_options(main PRIVATE ${STRICT_C_FLAGS})
 endif()
 
 # target_link_libraries(main lvgl lvgl::examples lvgl::demos lvgl::thorvg ${SDL2_LIBRARIES} ${SDL2_IMAGE_LIBRARIES} ${Libdrm_LIBRARIES} m pthread)

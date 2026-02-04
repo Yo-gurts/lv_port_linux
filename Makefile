@@ -17,16 +17,9 @@ endif
 
 .PHONY: all clean help
 
-all: lv_conf_link
+all:
 	cmake -B $(BUILD_DIR) -DCONFIG=$(CONFIG) -DCMAKE_BUILD_TYPE=$(CMAKE_BUILD_TYPE) -DCMAKE_TOOLCHAIN_FILE=$(TOOLCHAIN_FILE)
 	cmake --build $(BUILD_DIR) -j
-
-lv_conf_link:
-ifeq ($(CONFIG), FB)
-	ln -sf config/lv_conf_fb.h lv_conf.h
-else
-	ln -sf config/lv_conf_sdl.h lv_conf.h
-endif
 
 clean:
 	rm -rf $(BUILD_DIR)
