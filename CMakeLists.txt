@@ -51,7 +51,21 @@ endif()
 add_subdirectory(lvgl)
 target_include_directories(lvgl PUBLIC ${PROJECT_SOURCE_DIR})
 
-add_executable(main src/main.c src/mouse_cursor_icon.c)
+# Add include directories
+include_directories(${PROJECT_SOURCE_DIR}/include)
+
+# Source files
+set(SOURCES
+    src/main.c
+    src/mouse_cursor_icon.c
+    src/core/page_manager.c
+    src/ui/status_bar.c
+    src/styles/style_common.c
+    src/styles/style_fonts.c
+    src/pages/page_home.c
+)
+
+add_executable(main ${SOURCES})
 if(STRICT_C_FLAGS)
     target_compile_options(main PRIVATE ${STRICT_C_FLAGS})
 endif()

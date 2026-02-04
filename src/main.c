@@ -6,6 +6,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "core/page_manager.h"
+#include "styles/style_common.h"
+#include "styles/style_fonts.h"
+#include "pages/page_home.h"
+
 static const char *getenv_default(const char *name, const char *dflt)
 {
     return getenv(name) ? : dflt;
@@ -62,6 +67,14 @@ static void lv_linux_disp_init(void)
 #error Unsupported configuration
 #endif
 
+static page_interface_t home_page_interface = {
+    .create = page_home_create,
+    .destroy = page_home_destroy,
+    .show = page_home_show,
+    .hide = page_home_hide,
+    .update = page_home_update,
+};
+
 int main(void)
 {
     lv_init();
@@ -69,9 +82,22 @@ int main(void)
     /*Linux display device init*/
     lv_linux_disp_init();
 
-    /*Create a Demo*/
-    lv_demo_widgets();
-    lv_demo_widgets_start_slideshow();
+    /* Initialize styles */
+    style_common_init();
+    style_fonts_init();
+
+    /* Create page manager */
+    page_manager_t *pm = page_manager_create();
+    if (!pm) {
+        printf("Failed to create page manager\n");
+        return -1;
+    }
+
+    /* Register pages */
+    page_manager_register(pm, "home", &home_page_interface, NULL);
+
+    /* Navigate to home page */
+    page_manager_navigate(pm, "home");
 
     /*Handle LVGL tasks*/
     while(1) {
@@ -79,5 +105,6 @@ int main(void)
         usleep(5000);
     }
 
+    page_manager_destroy(pm);
     return 0;
 }
