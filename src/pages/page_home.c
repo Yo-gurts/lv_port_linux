@@ -98,6 +98,7 @@ void page_home_create(page_manager_t *pm, void *user_data)
         return;
     }
 
+    LV_UNUSED(user_data);
     MLOG_INFO("Home page created");
 
     home_page_data_t* data = (home_page_data_t*)malloc(sizeof(home_page_data_t));
@@ -161,6 +162,7 @@ void page_home_destroy(page_manager_t *pm, void *user_data)
         return;
     }
 
+    LV_UNUSED(user_data);
     MLOG_INFO("Home page destroyed");
 
     home_page_data_t* data = (home_page_data_t*)page_get_private_data(pm, "home_page_data");
@@ -194,6 +196,7 @@ void page_home_show(page_manager_t *pm, void *user_data)
         return;
     }
 
+    LV_UNUSED(user_data);
     MLOG_INFO("Home page shown");
 
     home_page_data_t* data = (home_page_data_t*)page_get_private_data(pm, "home_page_data");
@@ -212,6 +215,7 @@ void page_home_hide(page_manager_t *pm, void *user_data)
         return;
     }
 
+    LV_UNUSED(user_data);
     MLOG_INFO("Home page hidden");
 }
 
@@ -221,7 +225,8 @@ void page_home_update(page_manager_t* pm, void* user_data)
         return;
     }
 
-    home_page_data_t *data = (home_page_data_t *)page_get_private_data(pm, "home_page_data");
+    LV_UNUSED(user_data);
+    home_page_data_t* data = (home_page_data_t*)page_get_private_data(pm, "home_page_data");
     if (!data) {
         return;
     }
