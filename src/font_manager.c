@@ -1,7 +1,7 @@
 #include "font_manager.h"
 #include "config.h"
 #include "lvgl/src/libs/freetype/lv_freetype.h"
-#include <stdio.h>
+#include "mlog.h"
 #include <stdlib.h>
 
 /* 中文字体样式 */
@@ -23,7 +23,7 @@ static void init_font_style(lv_style_t* style, int size, lv_color_t color)
         size,
         LV_FREETYPE_FONT_STYLE_NORMAL);
     if (!font) {
-        printf("Failed to create font size: %d\n", size);
+        MLOG_ERR("Failed to create font size: %d", size);
         return;
     }
 
@@ -37,7 +37,7 @@ static void init_font_style(lv_style_t* style, int size, lv_color_t color)
 
 int font_manager_init(void)
 {
-    printf("Loading Chinese font from: %s\n", CHINESE_FONT_PATH);
+    MLOG_INFO("Loading Chinese font from: %s", CHINESE_FONT_PATH);
 
     lv_color_t white = lv_color_white();
 
@@ -52,6 +52,6 @@ int font_manager_init(void)
     init_font_style(&ttf_font_30, 30, white);
     init_font_style(&ttf_font_34, 34, white);
 
-    printf("Chinese font loaded successfully\n");
+    MLOG_INFO("Chinese font loaded successfully");
     return 0;
 }

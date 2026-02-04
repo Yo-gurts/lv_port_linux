@@ -1,8 +1,8 @@
 #include "pages/page_home.h"
 #include "font_manager.h"
+#include "mlog.h"
 #include "styles/style_common.h"
 #include "ui/status_bar.h"
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
@@ -20,7 +20,7 @@ static void photo_button_cb(lv_event_t *e)
         return;
     }
 
-    printf("Photo button clicked\n");
+    MLOG_INFO("Photo button clicked");
     page_manager_navigate(pm, "photo");
 }
 
@@ -31,7 +31,7 @@ static void video_button_cb(lv_event_t *e)
         return;
     }
 
-    printf("Video button clicked\n");
+    MLOG_INFO("Video button clicked");
     page_manager_navigate(pm, "video");
 }
 
@@ -42,7 +42,7 @@ static void gallery_button_cb(lv_event_t *e)
         return;
     }
 
-    printf("Gallery button clicked\n");
+    MLOG_INFO("Gallery button clicked");
     page_manager_navigate(pm, "gallery");
 }
 
@@ -53,7 +53,7 @@ static void settings_button_cb(lv_event_t *e)
         return;
     }
 
-    printf("Settings button clicked\n");
+    MLOG_INFO("Settings button clicked");
     page_manager_navigate(pm, "settings");
 }
 
@@ -98,9 +98,9 @@ void page_home_create(page_manager_t *pm, void *user_data)
         return;
     }
 
-    printf("Home page created\n");
+    MLOG_INFO("Home page created");
 
-    home_page_data_t *data = (home_page_data_t *)malloc(sizeof(home_page_data_t));
+    home_page_data_t* data = (home_page_data_t*)malloc(sizeof(home_page_data_t));
     if (!data) {
         return;
     }
@@ -161,9 +161,9 @@ void page_home_destroy(page_manager_t *pm, void *user_data)
         return;
     }
 
-    printf("Home page destroyed\n");
+    MLOG_INFO("Home page destroyed");
 
-    home_page_data_t *data = (home_page_data_t *)page_get_private_data(pm, "home_page_data");
+    home_page_data_t* data = (home_page_data_t*)page_get_private_data(pm, "home_page_data");
     if (!data) {
         return;
     }
@@ -194,9 +194,9 @@ void page_home_show(page_manager_t *pm, void *user_data)
         return;
     }
 
-    printf("Home page shown\n");
+    MLOG_INFO("Home page shown");
 
-    home_page_data_t *data = (home_page_data_t *)page_get_private_data(pm, "home_page_data");
+    home_page_data_t* data = (home_page_data_t*)page_get_private_data(pm, "home_page_data");
     if (!data) {
         return;
     }
@@ -212,10 +212,10 @@ void page_home_hide(page_manager_t *pm, void *user_data)
         return;
     }
 
-    printf("Home page hidden\n");
+    MLOG_INFO("Home page hidden");
 }
 
-void page_home_update(page_manager_t *pm, void *user_data)
+void page_home_update(page_manager_t* pm, void* user_data)
 {
     if (!pm) {
         return;

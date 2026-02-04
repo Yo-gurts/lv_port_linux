@@ -1,16 +1,16 @@
+#include "config.h"
+#include "core/page_manager.h"
+#include "font_manager.h"
 #include "lvgl/lvgl.h"
+#include "mlog.h"
+#include "pages/page_home.h"
+#include "styles/style_common.h"
 #include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
-
-#include "config.h"
-#include "core/page_manager.h"
-#include "font_manager.h"
-#include "pages/page_home.h"
-#include "styles/style_common.h"
 
 static const char* getenv_default(const char* name, const char* dflt)
 {
@@ -93,7 +93,7 @@ int main(void)
     /* Create page manager */
     page_manager_t* pm = page_manager_create();
     if (!pm) {
-        printf("Failed to create page manager\n");
+        MLOG_ERR("Failed to create page manager");
         return -1;
     }
 
