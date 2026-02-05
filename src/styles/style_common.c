@@ -15,6 +15,8 @@ lv_style_t style_focus_orange;
 lv_style_t style_home_bg;
 /* 页面容器样式 - 透明背景、无边框、无内边距 */
 lv_style_t style_page_container;
+/* 图片按钮样式 - 全透明、无边框 */
+lv_style_t style_noboarder;
 
 /**
  * @brief 初始化所有公共样式
@@ -86,4 +88,15 @@ void style_common_init(void)
     lv_style_set_margin_bottom(&style_page_container, 0);
     lv_style_set_margin_left(&style_page_container, 0);
     lv_style_set_margin_right(&style_page_container, 0);
+
+    /* 初始化无边框-全透明样式 */
+    lv_style_init(&style_noboarder); /* 创建样式对象 */
+    lv_style_set_bg_opa(&style_noboarder, LV_OPA_TRANSP); /* 背景完全透明 */
+    lv_style_set_border_width(&style_noboarder, 0); /* 无边框 */
+    lv_style_set_radius(&style_noboarder, 0); /* 无圆角 */
+    lv_style_set_shadow_width(&style_noboarder, 0); /* 无阴影 */
+    lv_style_set_pad_top(&style_noboarder, 0); /* 无内边距 */
+    lv_style_set_pad_bottom(&style_noboarder, 0);
+    lv_style_set_pad_left(&style_noboarder, 0);
+    lv_style_set_pad_right(&style_noboarder, 0);
 }

@@ -269,6 +269,7 @@ void page_home_show(page_manager_t* pm)
         return;
     }
 
+    MLOG_INFO("Home page show");
     /* 显示 UI */
     lv_obj_clear_flag(data->container, LV_OBJ_FLAG_HIDDEN);
 
@@ -295,6 +296,7 @@ void page_home_hide(page_manager_t* pm)
         return;
     }
 
+    MLOG_INFO("Home page hide");
     /* 隐藏 UI */
     lv_obj_add_flag(data->container, LV_OBJ_FLAG_HIDDEN);
 

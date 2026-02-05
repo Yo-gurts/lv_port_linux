@@ -23,6 +23,18 @@ static void mode_switch_cb(lv_event_t* e)
     page_manager_navigate(pm, "video");
 }
 
+/* 返回按钮回调：返回上一页 */
+static void back_btn_cb(lv_event_t* e)
+{
+    page_manager_t* pm = (page_manager_t*)lv_event_get_user_data(e);
+    if (!pm) {
+        return;
+    }
+
+    MLOG_INFO("Back button clicked");
+    page_manager_back(pm);
+}
+
 /* 菜单按钮回调：返回首页 */
 static void menu_back_cb(lv_event_t* e)
 {
@@ -77,84 +89,92 @@ void page_photo_create(page_manager_t* pm)
     lv_obj_add_event_cb(data->container, gesture_cb, LV_EVENT_GESTURE, pm);
 
     /* =======================
-     * 顶部状态栏：8M | 100 | [SD] | [🔋]
+     * 顶部状态栏：[back][8M] 在左边，剩余拍照数 [SD][battery] 在右边
      * ======================= */
     data->top_bar = lv_obj_create(data->container);
     lv_obj_set_width(data->top_bar, lv_pct(100));
     lv_obj_set_height(data->top_bar, TOP_BAR_HEIGHT);
-    lv_obj_set_style_bg_opa(data->top_bar, LV_OPA_TRANSP, LV_PART_MAIN); /* 全透明 */
-    lv_obj_set_style_bg_color(data->top_bar, lv_color_hex(0x000000), LV_PART_MAIN);
-    lv_obj_set_style_bg_grad_dir(data->top_bar, LV_GRAD_DIR_NONE, LV_PART_MAIN);
-    lv_obj_set_style_border_width(data->top_bar, 0, LV_PART_MAIN);
-    lv_obj_set_scrollbar_mode(data->top_bar, LV_SCROLLBAR_MODE_OFF); /* 不可滚动 */
-    lv_obj_set_layout(data->top_bar, LV_LAYOUT_FLEX);
-    lv_obj_set_flex_flow(data->top_bar, LV_FLEX_FLOW_ROW);
-    lv_obj_set_flex_align(data->top_bar, LV_FLEX_ALIGN_SPACE_BETWEEN, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-    lv_obj_set_style_pad_left(data->top_bar, 20, LV_PART_MAIN);
-    lv_obj_set_style_pad_right(data->top_bar, 20, LV_PART_MAIN);
+    lv_obj_add_style(data->top_bar, &style_noboarder, LV_PART_MAIN);
+    lv_obj_set_scrollbar_mode(data->top_bar, LV_SCROLLBAR_MODE_OFF);
 
-    /* 分辨率 Label - 显示 8M */
+    /* 返回按钮 - 左上角 */
+    data->back_btn = lv_btn_create(data->top_bar);
+    lv_obj_set_size(data->back_btn, 50, 50);
+    lv_obj_add_style(data->back_btn, &style_noboarder, LV_PART_MAIN);
+    lv_obj_add_event_cb(data->back_btn, back_btn_cb, LV_EVENT_CLICKED, pm);
+    lv_obj_align(data->back_btn, LV_ALIGN_TOP_LEFT, 10, 0);
+    lv_obj_t* back_icon = lv_img_create(data->back_btn);
+    lv_img_set_src(back_icon, "A:" RES_ICON_PATH "/back.png");
+    lv_obj_align(back_icon, LV_ALIGN_CENTER, 0, 0);
+
+    /* 分辨率 Label - 跟在返回按钮后面 */
     data->resolution_label = lv_label_create(data->top_bar);
     lv_label_set_text(data->resolution_label, "8M");
     lv_obj_add_style(data->resolution_label, &ttf_font_20, LV_PART_MAIN);
+    lv_obj_align(data->resolution_label, LV_ALIGN_TOP_LEFT, 70, 5);
 
-    /* 剩余照片数量 Label - 显示 100 */
+    /* 剩余照片数量 Label - 右上角 */
     data->photo_count_label = lv_label_create(data->top_bar);
     lv_label_set_text(data->photo_count_label, "100");
     lv_obj_add_style(data->photo_count_label, &ttf_font_20, LV_PART_MAIN);
+    lv_obj_align(data->photo_count_label, LV_ALIGN_TOP_RIGHT, -110, 5);
 
-    /* SD卡图标 - 默认 offline */
+    /* SD卡图标 - 右上角 */
     data->sd_icon = lv_img_create(data->top_bar);
-    lv_img_set_src(data->sd_icon, "A:" RES_ICON_PATH "/sd_offline.png");
+    lv_img_set_src(data->sd_icon, "A:" RES_ICON_PATH "/sd-card.png");
+    lv_obj_align(data->sd_icon, LV_ALIGN_TOP_RIGHT, -60, 5);
 
-    /* 电池图标 - 使用 33% 电量 */
+    /* 电池图标 - 最右上角 */
     data->battery_icon = lv_img_create(data->top_bar);
     lv_img_set_src(data->battery_icon, "A:" RES_ICON_PATH "/battery33%.png");
+    lv_obj_align(data->battery_icon, LV_ALIGN_TOP_RIGHT, -10, 5);
 
     /* =======================
-     * 底部工具栏：[📷] | [◫] | [↻] | [≡]
+     * 底部工具栏：[photo][filter] ... [switch][menu]
      * ======================= */
     data->bottom_bar = lv_obj_create(data->container);
     lv_obj_set_width(data->bottom_bar, lv_pct(100));
     lv_obj_set_height(data->bottom_bar, BOTTOM_BAR_HEIGHT);
-    lv_obj_align(data->bottom_bar, LV_ALIGN_BOTTOM_MID, 0, 0); /* 贴在底部 */
-    lv_obj_set_style_bg_opa(data->bottom_bar, LV_OPA_TRANSP, LV_PART_MAIN); /* 全透明 */
-    lv_obj_set_style_bg_color(data->bottom_bar, lv_color_hex(0x000000), LV_PART_MAIN);
-    lv_obj_set_style_bg_grad_dir(data->bottom_bar, LV_GRAD_DIR_NONE, LV_PART_MAIN);
-    lv_obj_set_style_border_width(data->bottom_bar, 0, LV_PART_MAIN);
+    lv_obj_add_style(data->bottom_bar, &style_noboarder, LV_PART_MAIN);
+    lv_obj_align(data->bottom_bar, LV_ALIGN_BOTTOM_MID, 0, -5); /* 底部向上5像素 */
     lv_obj_set_scrollbar_mode(data->bottom_bar, LV_SCROLLBAR_MODE_OFF); /* 不可滚动 */
-    lv_obj_set_layout(data->bottom_bar, LV_LAYOUT_FLEX);
-    lv_obj_set_flex_flow(data->bottom_bar, LV_FLEX_FLOW_ROW);
-    lv_obj_set_flex_align(data->bottom_bar, LV_FLEX_ALIGN_SPACE_EVENLY, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
 
-    /* 拍照/录像切换按钮 */
+    /* 拍照/录像切换按钮 - 左对齐 */
     data->mode_btn = lv_btn_create(data->bottom_bar);
     lv_obj_set_size(data->mode_btn, 50, 50);
+    lv_obj_add_style(data->mode_btn, &style_noboarder, LV_PART_MAIN);
     lv_obj_add_event_cb(data->mode_btn, mode_switch_cb, LV_EVENT_CLICKED, pm);
+    lv_obj_align(data->mode_btn, LV_ALIGN_LEFT_MID, 10, 0);
     data->mode_img = lv_img_create(data->mode_btn);
-    lv_img_set_src(data->mode_img, "A:" RES_ICON_PATH "/Photo.png");
+    lv_img_set_src(data->mode_img, "A:" RES_ICON_PATH "/photo.png");
     lv_obj_align(data->mode_img, LV_ALIGN_CENTER, 0, 0);
 
-    /* 滤镜按钮 */
+    /* 滤镜按钮 - 紧随拍照按钮 */
     data->filter_btn = lv_btn_create(data->bottom_bar);
     lv_obj_set_size(data->filter_btn, 50, 50);
+    lv_obj_add_style(data->filter_btn, &style_noboarder, LV_PART_MAIN);
     lv_obj_add_event_cb(data->filter_btn, NULL, LV_EVENT_CLICKED, pm);
+    lv_obj_align(data->filter_btn, LV_ALIGN_LEFT_MID, 70, 0);
     lv_obj_t* filter_icon = lv_img_create(data->filter_btn);
     lv_img_set_src(filter_icon, "A:" RES_ICON_PATH "/filter_default.png");
     lv_obj_align(filter_icon, LV_ALIGN_CENTER, 0, 0);
 
-    /* 摄像头切换按钮 */
+    /* 摄像头切换按钮 - 右对齐 */
     data->switch_btn = lv_btn_create(data->bottom_bar);
     lv_obj_set_size(data->switch_btn, 50, 50);
+    lv_obj_add_style(data->switch_btn, &style_noboarder, LV_PART_MAIN);
     lv_obj_add_event_cb(data->switch_btn, NULL, LV_EVENT_CLICKED, pm);
+    lv_obj_align(data->switch_btn, LV_ALIGN_RIGHT_MID, -70, 0);
     lv_obj_t* switch_icon = lv_img_create(data->switch_btn);
     lv_img_set_src(switch_icon, "A:" RES_ICON_PATH "/switch.png");
     lv_obj_align(switch_icon, LV_ALIGN_CENTER, 0, 0);
 
-    /* 菜单按钮 - 点击返回首页 */
+    /* 菜单按钮 - 最右侧 */
     data->menu_btn = lv_btn_create(data->bottom_bar);
     lv_obj_set_size(data->menu_btn, 50, 50);
+    lv_obj_add_style(data->menu_btn, &style_noboarder, LV_PART_MAIN);
     lv_obj_add_event_cb(data->menu_btn, menu_back_cb, LV_EVENT_CLICKED, pm);
+    lv_obj_align(data->menu_btn, LV_ALIGN_RIGHT_MID, -10, 0);
     lv_obj_t* menu_icon = lv_img_create(data->menu_btn);
     lv_img_set_src(menu_icon, "A:" RES_ICON_PATH "/menu.png");
     lv_obj_align(menu_icon, LV_ALIGN_CENTER, 0, 0);
@@ -194,6 +214,7 @@ void page_photo_show(page_manager_t* pm)
         return;
     }
 
+    MLOG_INFO("Photo page show");
     /* 显示 UI */
     lv_obj_clear_flag(data->container, LV_OBJ_FLAG_HIDDEN);
 }
@@ -209,6 +230,7 @@ void page_photo_hide(page_manager_t* pm)
         return;
     }
 
+    MLOG_INFO("Photo page hide");
     /* 隐藏 UI */
     lv_obj_add_flag(data->container, LV_OBJ_FLAG_HIDDEN);
 }
