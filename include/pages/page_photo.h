@@ -13,10 +13,11 @@ typedef struct {
     lv_obj_t* sd_icon; /* SD卡图标 */
     lv_obj_t* battery_icon; /* 电池图标 */
     lv_obj_t* mode_btn; /* 拍照/录像模式按钮 */
-    lv_obj_t* mode_label; /* 拍照/录像模式标签 */
+    lv_obj_t* mode_img; /* 拍照/录像模式图片 */
     lv_obj_t* menu_btn; /* 菜单按钮 */
     lv_obj_t* filter_btn; /* 滤镜按钮 */
     lv_obj_t* switch_btn; /* 摄像头切换按钮 */
+    int is_video_mode; /* 是否录像模式 */
 } page_photo_data_t;
 
 void page_photo_create(page_manager_t* pm, void* user_data);

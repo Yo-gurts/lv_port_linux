@@ -47,7 +47,7 @@ void style_common_init(void)
     lv_style_set_border_width(&style_common_btn_back, 0); /* 无边框 */
     lv_style_set_radius(&style_common_btn_back, 20); /* 圆角半径20px */
     lv_style_set_shadow_width(&style_common_btn_back, 0); /* 无阴影 */
-    lv_style_set_text_color(&style_common_btn_back, lv_color_hex(0x1A1A1A)); /* 文字颜色为深灰 */
+    lv_style_set_text_color(&style_common_btn_back, lv_color_white()); /* 文字颜色为深灰 */
     lv_style_set_text_align(&style_common_btn_back, LV_TEXT_ALIGN_CENTER); /* 文字居中对齐 */
     lv_style_set_pad_top(&style_common_btn_back, 0); /* 上内边距为0 */
     lv_style_set_pad_bottom(&style_common_btn_back, 0); /* 下内边距为0 */

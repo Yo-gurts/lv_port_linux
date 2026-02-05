@@ -1,4 +1,5 @@
 #include "pages/page_photo.h"
+#include "config.h"
 #include "font_manager.h"
 #include "mlog.h"
 #include "styles/style_common.h"
@@ -8,6 +9,32 @@
 /* 布局常量 */
 #define TOP_BAR_HEIGHT 50
 #define BOTTOM_BAR_HEIGHT 50
+
+/* 拍照/录像切换回调 */
+static void mode_switch_cb(lv_event_t* e)
+{
+    page_manager_t* pm = (page_manager_t*)lv_event_get_user_data(e);
+    if (!pm) {
+        return;
+    }
+
+    page_photo_data_t* data = (page_photo_data_t*)page_get_private_data(pm, "page_photo_data");
+    if (!data) {
+        return;
+    }
+
+    /* 切换拍照/录像模式 */
+    data->is_video_mode = !data->is_video_mode;
+
+    /* 切换图片 */
+    if (data->is_video_mode) {
+        lv_img_set_src(data->mode_img, "A:" RES_ICON_PATH "/video.png");
+    } else {
+        lv_img_set_src(data->mode_img, "A:" RES_ICON_PATH "/photo.png");
+    }
+
+    MLOG_INFO("Mode switched to %s", data->is_video_mode ? "video" : "photo");
+}
 
 void page_photo_create(page_manager_t* pm, void* user_data)
 {
@@ -24,6 +51,7 @@ void page_photo_create(page_manager_t* pm, void* user_data)
     }
 
     memset(data, 0, sizeof(page_photo_data_t));
+    data->is_video_mode = 0; /* 默认拍照模式 */
 
     data->root = lv_screen_active();
 
@@ -99,11 +127,10 @@ void page_photo_create(page_manager_t* pm, void* user_data)
     data->mode_btn = lv_btn_create(bottom_bar);
     lv_obj_set_size(data->mode_btn, 50, 50);
     lv_obj_add_style(data->mode_btn, &style_common_btn_back, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_add_event_cb(data->mode_btn, NULL, LV_EVENT_CLICKED, pm);
-    data->mode_label = lv_label_create(data->mode_btn);
-    lv_label_set_text(data->mode_label, LV_SYMBOL_IMAGE);
-    lv_obj_set_style_text_font(data->mode_label, &lv_font_montserrat_24, LV_PART_MAIN);
-    lv_obj_align(data->mode_label, LV_ALIGN_CENTER, 0, 0);
+    lv_obj_add_event_cb(data->mode_btn, mode_switch_cb, LV_EVENT_CLICKED, pm);
+    data->mode_img = lv_img_create(data->mode_btn);
+    lv_img_set_src(data->mode_img, "A:" RES_ICON_PATH "/photo.png");
+    lv_obj_align(data->mode_img, LV_ALIGN_CENTER, 0, 0);
 
     /* 滤镜按钮 */
     data->filter_btn = lv_btn_create(bottom_bar);
