@@ -13,12 +13,7 @@
 /* 拍照/录像切换回调 */
 static void mode_switch_cb(lv_event_t* e)
 {
-    page_manager_t* pm = (page_manager_t*)lv_event_get_user_data(e);
-    if (!pm) {
-        return;
-    }
-
-    page_photo_data_t* data = (page_photo_data_t*)page_get_private_data(pm, "page_photo_data");
+    page_photo_data_t* data = (page_photo_data_t*)lv_event_get_user_data(e);
     if (!data) {
         return;
     }
@@ -126,7 +121,7 @@ void page_photo_create(page_manager_t* pm, void* user_data)
     /* 拍照/录像切换按钮 */
     data->mode_btn = lv_btn_create(bottom_bar);
     lv_obj_set_size(data->mode_btn, 50, 50);
-    lv_obj_add_event_cb(data->mode_btn, mode_switch_cb, LV_EVENT_CLICKED, pm);
+    lv_obj_add_event_cb(data->mode_btn, mode_switch_cb, LV_EVENT_CLICKED, data);
     data->mode_img = lv_img_create(data->mode_btn);
     lv_img_set_src(data->mode_img, "A:" RES_ICON_PATH "/photo.png");
     lv_obj_align(data->mode_img, LV_ALIGN_CENTER, 0, 0);
