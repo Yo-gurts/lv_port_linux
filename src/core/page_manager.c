@@ -20,6 +20,7 @@ page_manager_t* page_manager_create(void)
     }
 
     memset(pm, 0, sizeof(page_manager_t));
+    pm->current_page_index = -1;
     return pm;
 }
 
@@ -31,7 +32,7 @@ void page_manager_destroy(page_manager_t* pm)
 
     for (int i = 0; i < pm->page_count; i++) {
         if (pm->pages[i].interface && pm->pages[i].interface->destroy) {
-            pm->pages[i].interface->destroy(pm, pm->pages[i].private_data);
+            pm->pages[i].interface->destroy(pm);
         }
     }
 
@@ -77,32 +78,42 @@ int page_manager_navigate(page_manager_t* pm, const char* page_name)
         return -1;
     }
 
-    if (pm->current_page_index >= 0) {
-        page_t* current_page = &pm->pages[pm->current_page_index];
-        if (current_page->interface && current_page->interface->hide) {
-            current_page->interface->hide(pm, current_page->private_data);
+    /* 如果目标页是当前页，不做任何操作 */
+    if (pm->current_page_index == target_index) {
+        return 0;
+    }
+
+    /* 先隐藏并记录上一个页面 */
+    int prev_index = pm->current_page_index;
+    if (prev_index >= 0) {
+        page_t* prev_page = &pm->pages[prev_index];
+        if (prev_page->interface && prev_page->interface->hide) {
+            prev_page->interface->hide(pm);
         }
 
-        /* 销毁当前页面，释放资源 */
-        if (current_page->interface && current_page->interface->destroy) {
-            current_page->interface->destroy(pm, current_page->private_data);
-        }
-
+        /* 记录历史 */
         if (pm->history_count < MAX_PAGES) {
-            pm->history[pm->history_count++] = pm->current_page_index;
+            pm->history[pm->history_count++] = prev_index;
         }
     }
+
+    /* 设置当前页面索引 */
+    pm->current_page_index = target_index;
 
     page_t* target_page = &pm->pages[target_index];
-    if (target_page->interface && target_page->interface->create) {
-        target_page->interface->create(pm, target_page->private_data);
+
+    /* 首次访问，创建页面 */
+    if (!target_page->is_created) {
+        if (target_page->interface && target_page->interface->create) {
+            target_page->interface->create(pm);
+        }
+        target_page->is_created = 1;
     }
 
+    /* 显示目标页面 */
     if (target_page->interface && target_page->interface->show) {
-        target_page->interface->show(pm, target_page->private_data);
+        target_page->interface->show(pm);
     }
-
-    pm->current_page_index = target_index;
 
     return 0;
 }
@@ -137,40 +148,20 @@ lv_obj_t* page_get_root(page_manager_t* pm)
     return lv_screen_active();
 }
 
-void* page_get_private_data(page_manager_t* pm, const char* key)
+void* page_get_private_data(page_manager_t* pm)
 {
-    if (!pm || !key) {
+    if (!pm || pm->current_page_index < 0) {
         return NULL;
     }
 
-    for (int i = 0; i < pm->page_count; i++) {
-        if (pm->pages[i].interface == NULL) {
-            continue;
-        }
-        /* Check if this is the current page's private data */
-        if (i == pm->current_page_index) {
-            /* Return private_data which is used as user_data in registration */
-            return pm->pages[i].private_data;
-        }
-    }
-
-    return NULL;
+    return pm->pages[pm->current_page_index].private_data;
 }
 
-void page_set_private_data(page_manager_t* pm, const char* key, void* data)
+void page_set_private_data(page_manager_t* pm, void* data)
 {
-    (void)key;
-    if (!pm) {
+    if (!pm || pm->current_page_index < 0) {
         return;
     }
 
-    for (int i = 0; i < pm->page_count; i++) {
-        if (pm->pages[i].interface == NULL) {
-            continue;
-        }
-        if (i == pm->current_page_index) {
-            pm->pages[i].private_data = data;
-            return;
-        }
-    }
+    pm->pages[pm->current_page_index].private_data = data;
 }

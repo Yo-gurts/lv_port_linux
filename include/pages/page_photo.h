@@ -8,8 +8,11 @@ extern "C" {
 #endif
 
 typedef struct {
-    lv_obj_t* root;
+    lv_obj_t* container; /* 页面容器，用于 hide/show */
+    lv_obj_t* top_bar; /* 顶部状态栏 */
+    lv_obj_t* bottom_bar; /* 底部工具栏 */
     lv_obj_t* resolution_label; /* 分辨率标签 */
+    lv_obj_t* photo_count_label; /* 照片数量标签 */
     lv_obj_t* sd_icon; /* SD卡图标 */
     lv_obj_t* battery_icon; /* 电池图标 */
     lv_obj_t* mode_btn; /* 拍照/录像模式按钮 */
@@ -20,11 +23,11 @@ typedef struct {
     int is_video_mode; /* 是否录像模式 */
 } page_photo_data_t;
 
-void page_photo_create(page_manager_t* pm, void* user_data);
-void page_photo_destroy(page_manager_t* pm, void* user_data);
-void page_photo_show(page_manager_t* pm, void* user_data);
-void page_photo_hide(page_manager_t* pm, void* user_data);
-void page_photo_update(page_manager_t* pm, void* user_data);
+void page_photo_create(page_manager_t* pm);
+void page_photo_destroy(page_manager_t* pm);
+void page_photo_show(page_manager_t* pm);
+void page_photo_hide(page_manager_t* pm);
+void page_photo_update(page_manager_t* pm);
 
 #ifdef __cplusplus
 }

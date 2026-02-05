@@ -137,14 +137,11 @@ static void create_icon_button(page_manager_t* pm, lv_obj_t* parent,
     }
 }
 
-void page_home_create(page_manager_t* pm, void* user_data)
+void page_home_create(page_manager_t* pm)
 {
     if (!pm) {
         return;
     }
-
-    LV_UNUSED(user_data);
-    MLOG_INFO("Home page created");
 
     home_page_data_t* data = (home_page_data_t*)malloc(sizeof(home_page_data_t));
     if (!data) {
@@ -153,16 +150,15 @@ void page_home_create(page_manager_t* pm, void* user_data)
 
     memset(data, 0, sizeof(home_page_data_t));
 
-    data->root = lv_screen_active();
-
-    /* 清除屏幕上已有的内容 */
-    lv_obj_clean(data->root);
-
-    /* 设置渐变背景 - 使用公共样式 */
-    lv_obj_add_style(data->root, &style_home_bg, LV_PART_MAIN);
+    /* 创建页面容器 */
+    data->container = lv_obj_create(lv_screen_active());
+    lv_obj_set_width(data->container, LV_PCT(100));
+    lv_obj_set_height(data->container, LV_PCT(100));
+    lv_obj_add_style(data->container, &style_home_bg, LV_PART_MAIN);
+    lv_obj_refr_size(data->container);
 
     /* Create status bar with time, wifi and battery icons */
-    data->status_bar = status_bar_create(data->root);
+    data->status_bar = status_bar_create(data->container);
     status_bar_set_wifi_icon(data->status_bar, 3);
     status_bar_set_battery_icon(data->status_bar, 80);
 
@@ -173,109 +169,115 @@ void page_home_create(page_manager_t* pm, void* user_data)
     status_bar_update_timer_cb(data->timer);
 
     /* 2行3列图标容器 - 使用容器和flex布局实现自适应 */
-    data->grid_container = lv_obj_create(data->root);
-    lv_obj_set_width(data->grid_container, lv_pct(100));
-    lv_obj_set_height(data->grid_container, lv_pct(100));
-    lv_obj_set_style_bg_opa(data->grid_container, LV_OPA_TRANSP, LV_PART_MAIN);
-    lv_obj_set_style_border_width(data->grid_container, 0, LV_PART_MAIN);
-    lv_obj_set_layout(data->grid_container, LV_LAYOUT_FLEX);
-    lv_obj_set_flex_flow(data->grid_container, LV_FLEX_FLOW_ROW_WRAP);
-    lv_obj_set_flex_align(data->grid_container, LV_FLEX_ALIGN_SPACE_EVENLY, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+    lv_obj_t* grid_container = lv_obj_create(data->container);
+    lv_obj_set_width(grid_container, lv_pct(100));
+    lv_obj_set_height(grid_container, lv_pct(100));
+    lv_obj_set_style_bg_opa(grid_container, LV_OPA_TRANSP, LV_PART_MAIN);
+    lv_obj_set_style_border_width(grid_container, 0, LV_PART_MAIN);
+    lv_obj_set_layout(grid_container, LV_LAYOUT_FLEX);
+    lv_obj_set_flex_flow(grid_container, LV_FLEX_FLOW_ROW_WRAP);
+    lv_obj_set_flex_align(grid_container, LV_FLEX_ALIGN_SPACE_EVENLY, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
 
     /* 第1行 */
-    create_icon_button(pm, data->grid_container, LV_SYMBOL_IMAGE, "AI拍照",
+    create_icon_button(pm, grid_container, LV_SYMBOL_IMAGE, "AI拍照",
         LV_ALIGN_TOP_LEFT, 0, 0,
         photo_button_cb, NULL);
-    create_icon_button(pm, data->grid_container, LV_SYMBOL_FILE, "识万物",
+    create_icon_button(pm, grid_container, LV_SYMBOL_FILE, "识万物",
         LV_ALIGN_TOP_LEFT, 0, 0,
         recognition_button_cb, NULL);
-    create_icon_button(pm, data->grid_container, LV_SYMBOL_DIRECTORY, "相册",
+    create_icon_button(pm, grid_container, LV_SYMBOL_DIRECTORY, "相册",
         LV_ALIGN_TOP_LEFT, 0, 0,
         gallery_button_cb, NULL);
 
     /* 第2行 */
-    create_icon_button(pm, data->grid_container, LV_SYMBOL_CALL, "AI对话",
+    create_icon_button(pm, grid_container, LV_SYMBOL_CALL, "AI对话",
         LV_ALIGN_TOP_LEFT, 0, 0,
         chat_button_cb, NULL);
-    create_icon_button(pm, data->grid_container, LV_SYMBOL_EDIT, "拍照翻译",
+    create_icon_button(pm, grid_container, LV_SYMBOL_EDIT, "拍照翻译",
         LV_ALIGN_TOP_LEFT, 0, 0,
         translation_button_cb, NULL);
-    create_icon_button(pm, data->grid_container, LV_SYMBOL_SETTINGS, "设置",
+    create_icon_button(pm, grid_container, LV_SYMBOL_SETTINGS, "设置",
         LV_ALIGN_TOP_LEFT, 0, 0,
         settings_button_cb, NULL);
 
-    page_set_private_data(pm, "home_page_data", data);
+    /* 保存 private_data，供 show/hide/destroy 使用 */
+    page_set_private_data(pm, data);
 }
 
-void page_home_destroy(page_manager_t* pm, void* user_data)
+void page_home_destroy(page_manager_t* pm)
 {
     if (!pm) {
         return;
     }
 
-    LV_UNUSED(user_data);
-    MLOG_INFO("Home page destroyed");
-
-    home_page_data_t* data = (home_page_data_t*)page_get_private_data(pm, "home_page_data");
+    home_page_data_t* data = page_get_private_data(pm);
     if (!data) {
         return;
     }
 
-    /* 先删除网格容器（子元素会自动删除） */
-    if (data->grid_container) {
-        lv_obj_del(data->grid_container);
-        data->grid_container = NULL;
-    }
-
-    /* 按钮已随容器删除 */
-
-    /* 删除时间更新定时器 */
+    /* 先删除时间更新定时器，防止回调访问已释放的 data */
     if (data->timer) {
         lv_timer_delete(data->timer);
         data->timer = NULL;
     }
 
-    if (data->status_bar) {
-        status_bar_destroy(data->status_bar);
-        data->status_bar = NULL;
+    /* 删除容器（子元素会自动删除） */
+    if (data->container) {
+        lv_obj_del(data->container);
+        data->container = NULL;
     }
 
     free(data);
 }
 
-void page_home_show(page_manager_t* pm, void* user_data)
+void page_home_show(page_manager_t* pm)
 {
     if (!pm) {
         return;
     }
 
-    LV_UNUSED(user_data);
-    MLOG_INFO("Home page shown");
-
-    home_page_data_t* data = (home_page_data_t*)page_get_private_data(pm, "home_page_data");
-    if (!data) {
+    home_page_data_t* data = page_get_private_data(pm);
+    if (!data || !data->container) {
         return;
+    }
+
+    /* 显示 UI */
+    lv_obj_clear_flag(data->container, LV_OBJ_FLAG_HIDDEN);
+
+    /* 恢复定时器 */
+    if (data->timer) {
+        lv_timer_resume(data->timer);
     }
 
     if (data->status_bar) {
         status_bar_set_wifi_icon(data->status_bar, 3);
         status_bar_set_battery_icon(data->status_bar, 80);
     }
+
+    /* 立即更新时间 */
+    if (data->timer) {
+        status_bar_update_timer_cb(data->timer);
+    }
 }
 
-void page_home_hide(page_manager_t* pm, void* user_data)
+void page_home_hide(page_manager_t* pm)
 {
-    if (!pm) {
+    home_page_data_t* data = page_get_private_data(pm);
+    if (!data || !data->container) {
         return;
     }
 
-    LV_UNUSED(user_data);
-    MLOG_INFO("Home page hidden");
+    /* 隐藏 UI */
+    lv_obj_add_flag(data->container, LV_OBJ_FLAG_HIDDEN);
+
+    /* 暂停定时器，节省资源 */
+    if (data->timer) {
+        lv_timer_pause(data->timer);
+    }
 }
 
-void page_home_update(page_manager_t* pm, void* user_data)
+void page_home_update(page_manager_t* pm)
 {
     LV_UNUSED(pm);
-    LV_UNUSED(user_data);
     /* 时间由 timer 自动更新，此处无需处理 */
 }
