@@ -15,6 +15,7 @@ extern lv_style_t ttf_font_18;
 extern lv_style_t ttf_font_20;
 extern lv_style_t ttf_font_22;
 extern lv_style_t ttf_font_24;
+extern lv_style_t ttf_font_26;
 extern lv_style_t ttf_font_28;
 extern lv_style_t ttf_font_30;
 extern lv_style_t ttf_font_34;

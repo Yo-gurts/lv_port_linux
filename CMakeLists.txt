@@ -59,7 +59,6 @@ set(SOURCES
     src/main.c
     src/mouse_cursor_icon.c
     src/core/page_manager.c
-    src/ui/status_bar.c
     src/styles/style_common.c
     src/pages/page_home.c
     src/pages/page_photo.c

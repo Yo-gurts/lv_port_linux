@@ -1,4 +1,5 @@
 #include "pages/page_home.h"
+#include "config.h"
 #include "font_manager.h"
 #include "mlog.h"
 #include "styles/style_common.h"
@@ -12,6 +13,23 @@
 #define ICON_SIZE 64 /* 图标基础大小 */
 #define LABEL_HEIGHT 24 /* 标签高度 */
 
+static const char* get_battery_icon_path(int level)
+{
+    if (level < 0) {
+        level = 0;
+    }
+    if (level >= 100) {
+        return "A:" RES_ICON_PATH "/battery100%.png";
+    } else if (level >= 66) {
+        return "A:" RES_ICON_PATH "/battery66%.png";
+    } else if (level >= 33) {
+        return "A:" RES_ICON_PATH "/battery33%.png";
+    } else {
+        return "A:" RES_ICON_PATH "/battery33%.png";
+    }
+}
+
+/* ====================== Home Page Callbacks ====================== */
 static void photo_button_cb(lv_event_t* e)
 {
     page_manager_t* pm = (page_manager_t*)lv_event_get_user_data(e);
@@ -79,10 +97,10 @@ static void settings_button_cb(lv_event_t* e)
 }
 
 /* 状态栏更新定时器回调 - 每秒更新一次 */
-static void status_bar_update_timer_cb(lv_timer_t* timer)
+static void home_update_timer_cb(lv_timer_t* timer)
 {
     home_page_data_t* data = (home_page_data_t*)lv_timer_get_user_data(timer);
-    if (!data || !data->status_bar) {
+    if (!data || !data->time_label) {
         return;
     }
 
@@ -91,7 +109,7 @@ static void status_bar_update_timer_cb(lv_timer_t* timer)
     struct tm* tm_info = localtime(&current_time);
     char time_str[32];
     strftime(time_str, sizeof(time_str), "%Y-%m-%d %H:%M:%S", tm_info);
-    status_bar_set_time(data->status_bar, time_str);
+    lv_label_set_text(data->time_label, time_str);
 
     /* TODO: 更新 WiFi 信号强度 */
     // int wifi_level = get_wifi_level();
@@ -157,46 +175,55 @@ void page_home_create(page_manager_t* pm)
     lv_obj_add_style(data->container, &style_home_bg, LV_PART_MAIN);
     lv_obj_refr_size(data->container);
 
-    /* Create status bar with time, wifi and battery icons */
-    data->status_bar = status_bar_create(data->container);
-    status_bar_set_wifi_icon(data->status_bar, 3);
-    status_bar_set_battery_icon(data->status_bar, 80);
+    /* Time label - center */
+    data->time_label = lv_label_create(data->container);
+    lv_label_set_text(data->time_label, "0000-00-00 00:00:00");
+    lv_obj_add_style(data->time_label, &ttf_font_26, LV_PART_MAIN);
+    lv_obj_set_style_text_color(data->time_label, lv_color_black(), LV_PART_MAIN);
+    lv_obj_align(data->time_label, LV_ALIGN_TOP_MID, 0, 10);
+
+    /* Wifi icon - right */
+    data->wifi_icon = lv_img_create(data->container);
+    lv_img_set_src(data->wifi_icon, "A:" RES_ICON_PATH "/wifi.png");
+    lv_obj_align(data->wifi_icon, LV_ALIGN_TOP_RIGHT, -70, 5);
+
+    /* Battery icon - right */
+    data->battery_icon = lv_img_create(data->container);
+    lv_img_set_src(data->battery_icon, get_battery_icon_path(80));
+    lv_obj_align(data->battery_icon, LV_ALIGN_TOP_RIGHT, -10, 5);
 
     /* 创建状态栏更新定时器，每秒更新一次 */
-    data->timer = lv_timer_create(status_bar_update_timer_cb, 1000, data);
-
-    /* 立即更新一次时间 */
-    status_bar_update_timer_cb(data->timer);
+    data->timer = lv_timer_create(home_update_timer_cb, 1000, data);
 
     /* 2行3列图标容器 - 使用容器和flex布局实现自适应 */
-    lv_obj_t* grid_container = lv_obj_create(data->container);
-    lv_obj_set_width(grid_container, lv_pct(100));
-    lv_obj_set_height(grid_container, lv_pct(100));
-    lv_obj_set_style_bg_opa(grid_container, LV_OPA_TRANSP, LV_PART_MAIN);
-    lv_obj_set_style_border_width(grid_container, 0, LV_PART_MAIN);
-    lv_obj_set_layout(grid_container, LV_LAYOUT_FLEX);
-    lv_obj_set_flex_flow(grid_container, LV_FLEX_FLOW_ROW_WRAP);
-    lv_obj_set_flex_align(grid_container, LV_FLEX_ALIGN_SPACE_EVENLY, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+    data->grid_container = lv_obj_create(data->container);
+    lv_obj_set_width(data->grid_container, lv_pct(100));
+    lv_obj_set_height(data->grid_container, lv_pct(100));
+    lv_obj_set_style_bg_opa(data->grid_container, LV_OPA_TRANSP, LV_PART_MAIN);
+    lv_obj_set_style_border_width(data->grid_container, 0, LV_PART_MAIN);
+    lv_obj_set_layout(data->grid_container, LV_LAYOUT_FLEX);
+    lv_obj_set_flex_flow(data->grid_container, LV_FLEX_FLOW_ROW_WRAP);
+    lv_obj_set_flex_align(data->grid_container, LV_FLEX_ALIGN_SPACE_EVENLY, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
 
     /* 第1行 */
-    create_icon_button(pm, grid_container, LV_SYMBOL_IMAGE, "AI拍照",
+    create_icon_button(pm, data->grid_container, LV_SYMBOL_IMAGE, "AI拍照",
         LV_ALIGN_TOP_LEFT, 0, 0,
         photo_button_cb, NULL);
-    create_icon_button(pm, grid_container, LV_SYMBOL_FILE, "识万物",
+    create_icon_button(pm, data->grid_container, LV_SYMBOL_FILE, "识万物",
         LV_ALIGN_TOP_LEFT, 0, 0,
         recognition_button_cb, NULL);
-    create_icon_button(pm, grid_container, LV_SYMBOL_DIRECTORY, "相册",
+    create_icon_button(pm, data->grid_container, LV_SYMBOL_DIRECTORY, "相册",
         LV_ALIGN_TOP_LEFT, 0, 0,
         gallery_button_cb, NULL);
 
     /* 第2行 */
-    create_icon_button(pm, grid_container, LV_SYMBOL_CALL, "AI对话",
+    create_icon_button(pm, data->grid_container, LV_SYMBOL_CALL, "AI对话",
         LV_ALIGN_TOP_LEFT, 0, 0,
         chat_button_cb, NULL);
-    create_icon_button(pm, grid_container, LV_SYMBOL_EDIT, "拍照翻译",
+    create_icon_button(pm, data->grid_container, LV_SYMBOL_EDIT, "拍照翻译",
         LV_ALIGN_TOP_LEFT, 0, 0,
         translation_button_cb, NULL);
-    create_icon_button(pm, grid_container, LV_SYMBOL_SETTINGS, "设置",
+    create_icon_button(pm, data->grid_container, LV_SYMBOL_SETTINGS, "设置",
         LV_ALIGN_TOP_LEFT, 0, 0,
         settings_button_cb, NULL);
 
@@ -249,14 +276,14 @@ void page_home_show(page_manager_t* pm)
         lv_timer_resume(data->timer);
     }
 
-    if (data->status_bar) {
-        status_bar_set_wifi_icon(data->status_bar, 3);
-        status_bar_set_battery_icon(data->status_bar, 80);
+    /* 更新电池图标 */
+    if (data->battery_icon) {
+        lv_img_set_src(data->battery_icon, get_battery_icon_path(80));
     }
 
     /* 立即更新时间 */
     if (data->timer) {
-        status_bar_update_timer_cb(data->timer);
+        home_update_timer_cb(data->timer);
     }
 }
 

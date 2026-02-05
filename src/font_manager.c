@@ -12,6 +12,7 @@ lv_style_t ttf_font_18;
 lv_style_t ttf_font_20;
 lv_style_t ttf_font_22;
 lv_style_t ttf_font_24;
+lv_style_t ttf_font_26;
 lv_style_t ttf_font_28;
 lv_style_t ttf_font_30;
 lv_style_t ttf_font_34;
@@ -48,6 +49,7 @@ int font_manager_init(void)
     init_font_style(&ttf_font_20, 20, white);
     init_font_style(&ttf_font_22, 22, white);
     init_font_style(&ttf_font_24, 24, white);
+    init_font_style(&ttf_font_26, 26, white);
     init_font_style(&ttf_font_28, 28, white);
     init_font_style(&ttf_font_30, 30, white);
     init_font_style(&ttf_font_34, 34, white);
