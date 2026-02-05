@@ -126,7 +126,6 @@ void page_photo_create(page_manager_t* pm, void* user_data)
     /* 拍照/录像切换按钮 */
     data->mode_btn = lv_btn_create(bottom_bar);
     lv_obj_set_size(data->mode_btn, 50, 50);
-    lv_obj_add_style(data->mode_btn, &style_common_btn_back, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_add_event_cb(data->mode_btn, mode_switch_cb, LV_EVENT_CLICKED, pm);
     data->mode_img = lv_img_create(data->mode_btn);
     lv_img_set_src(data->mode_img, "A:" RES_ICON_PATH "/photo.png");
