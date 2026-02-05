@@ -124,8 +124,9 @@ void page_photo_create(page_manager_t* pm, void* user_data)
 
     data->root = lv_screen_active();
 
-    /* 背景透明 */
-    lv_obj_set_style_bg_opa(data->root, LV_OPA_TRANSP, LV_PART_MAIN);
+    /* 背景不透明（SDL模拟时避免拖影） */
+    lv_obj_set_style_bg_color(data->root, lv_color_hex(0x1a1a2e), LV_PART_MAIN);
+    lv_obj_set_style_bg_opa(data->root, LV_OPA_COVER, LV_PART_MAIN);
     lv_obj_set_style_border_width(data->root, 0, LV_PART_MAIN);
 
     /* 顶部状态栏区域 */
