@@ -158,11 +158,8 @@ void page_home_create(page_manager_t* pm, void* user_data)
     /* 清除屏幕上已有的内容 */
     lv_obj_clean(data->root);
 
-    /* 设置渐变背景 - 不使用 static 避免重复初始化 */
-    lv_obj_set_style_bg_color(data->root, lv_color_hex(0x4a90d9), LV_PART_MAIN);
-    lv_obj_set_style_bg_grad_color(data->root, lv_color_hex(0x87ceeb), LV_PART_MAIN);
-    lv_obj_set_style_bg_grad_dir(data->root, LV_GRAD_DIR_VER, LV_PART_MAIN);
-    lv_obj_set_style_bg_opa(data->root, LV_OPA_COVER, LV_PART_MAIN);
+    /* 设置渐变背景 - 使用公共样式 */
+    lv_obj_add_style(data->root, &style_home_bg, LV_PART_MAIN);
 
     /* Create status bar with time, wifi and battery icons */
     data->status_bar = status_bar_create(data->root);
