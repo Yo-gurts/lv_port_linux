@@ -83,6 +83,11 @@ int page_manager_navigate(page_manager_t* pm, const char* page_name)
             current_page->interface->hide(pm, current_page->private_data);
         }
 
+        /* 销毁当前页面，释放资源 */
+        if (current_page->interface && current_page->interface->destroy) {
+            current_page->interface->destroy(pm, current_page->private_data);
+        }
+
         if (pm->history_count < MAX_PAGES) {
             pm->history[pm->history_count++] = pm->current_page_index;
         }
