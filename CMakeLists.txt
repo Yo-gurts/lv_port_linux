@@ -62,6 +62,7 @@ set(SOURCES
     src/ui/status_bar.c
     src/styles/style_common.c
     src/pages/page_home.c
+    src/pages/page_photo.c
     src/font_manager.c
 )
 

@@ -4,6 +4,7 @@
 #include "lvgl/lvgl.h"
 #include "mlog.h"
 #include "pages/page_home.h"
+#include "pages/page_photo.h"
 #include "styles/style_common.h"
 #include <pthread.h>
 #include <stdio.h>
@@ -77,6 +78,14 @@ static page_interface_t home_page_interface = {
     .update = page_home_update,
 };
 
+static page_interface_t photo_page_interface = {
+    .create = page_photo_create,
+    .destroy = page_photo_destroy,
+    .show = page_photo_show,
+    .hide = page_photo_hide,
+    .update = page_photo_update,
+};
+
 int main(void)
 {
     lv_init();
@@ -99,6 +108,7 @@ int main(void)
 
     /* Register pages */
     page_manager_register(pm, "home", &home_page_interface, NULL);
+    page_manager_register(pm, "photo", &photo_page_interface, NULL);
 
     /* Navigate to home page */
     page_manager_navigate(pm, "home");
