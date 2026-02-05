@@ -126,21 +126,17 @@ void page_photo_create(page_manager_t* pm, void* user_data)
     /* 滤镜按钮 */
     data->filter_btn = lv_btn_create(bottom_bar);
     lv_obj_set_size(data->filter_btn, 50, 50);
-    lv_obj_add_style(data->filter_btn, &style_common_btn_back, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_add_event_cb(data->filter_btn, NULL, LV_EVENT_CLICKED, pm);
-    lv_obj_t* filter_icon = lv_label_create(data->filter_btn);
-    lv_label_set_text(filter_icon, LV_SYMBOL_IMAGE);
-    lv_obj_set_style_text_font(filter_icon, &lv_font_montserrat_24, LV_PART_MAIN);
+    lv_obj_t* filter_icon = lv_img_create(data->filter_btn);
+    lv_img_set_src(filter_icon, "A:" RES_ICON_PATH "/filter_default.png");
     lv_obj_align(filter_icon, LV_ALIGN_CENTER, 0, 0);
 
     /* 摄像头切换按钮 */
     data->switch_btn = lv_btn_create(bottom_bar);
     lv_obj_set_size(data->switch_btn, 50, 50);
-    lv_obj_add_style(data->switch_btn, &style_common_btn_back, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_add_event_cb(data->switch_btn, NULL, LV_EVENT_CLICKED, pm);
-    lv_obj_t* switch_icon = lv_label_create(data->switch_btn);
-    lv_label_set_text(switch_icon, LV_SYMBOL_REFRESH);
-    lv_obj_set_style_text_font(switch_icon, &lv_font_montserrat_24, LV_PART_MAIN);
+    lv_obj_t* switch_icon = lv_img_create(data->switch_btn);
+    lv_img_set_src(switch_icon, "A:" RES_ICON_PATH "/switch.png");
     lv_obj_align(switch_icon, LV_ALIGN_CENTER, 0, 0);
 
     page_set_private_data(pm, "page_photo_data", data);
