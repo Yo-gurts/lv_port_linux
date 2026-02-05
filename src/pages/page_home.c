@@ -78,6 +78,30 @@ static void settings_button_cb(lv_event_t* e)
     page_manager_navigate(pm, "settings");
 }
 
+/* 状态栏更新定时器回调 - 每秒更新一次 */
+static void status_bar_update_timer_cb(lv_timer_t* timer)
+{
+    home_page_data_t* data = (home_page_data_t*)lv_timer_get_user_data(timer);
+    if (!data || !data->status_bar) {
+        return;
+    }
+
+    /* 更新时间 */
+    time_t current_time = time(NULL);
+    struct tm* tm_info = localtime(&current_time);
+    char time_str[32];
+    strftime(time_str, sizeof(time_str), "%Y-%m-%d %H:%M:%S", tm_info);
+    status_bar_set_time(data->status_bar, time_str);
+
+    /* TODO: 更新 WiFi 信号强度 */
+    // int wifi_level = get_wifi_level();
+    // status_bar_set_wifi_icon(data->status_bar, wifi_level);
+
+    /* TODO: 更新电池电量 */
+    // int battery_level = get_battery_level();
+    // status_bar_set_battery_icon(data->status_bar, battery_level);
+}
+
 static void create_icon_button(page_manager_t* pm, lv_obj_t* parent,
     const char* symbol, const char* name,
     lv_align_t align, int x_ofs, int y_ofs,
@@ -136,6 +160,12 @@ void page_home_create(page_manager_t* pm, void* user_data)
     status_bar_set_wifi_icon(data->status_bar, 3);
     status_bar_set_battery_icon(data->status_bar, 80);
 
+    /* 创建状态栏更新定时器，每秒更新一次 */
+    data->timer = lv_timer_create(status_bar_update_timer_cb, 1000, data);
+
+    /* 立即更新一次时间 */
+    status_bar_update_timer_cb(data->timer);
+
     /* 2行3列图标容器 - 使用容器和flex布局实现自适应 */
     data->grid_container = lv_obj_create(data->root);
     lv_obj_set_width(data->grid_container, lv_pct(100));
@@ -193,6 +223,12 @@ void page_home_destroy(page_manager_t* pm, void* user_data)
 
     /* 按钮已随容器删除 */
 
+    /* 删除时间更新定时器 */
+    if (data->timer) {
+        lv_timer_delete(data->timer);
+        data->timer = NULL;
+    }
+
     if (data->status_bar) {
         status_bar_destroy(data->status_bar);
         data->status_bar = NULL;
@@ -233,21 +269,7 @@ void page_home_hide(page_manager_t* pm, void* user_data)
 
 void page_home_update(page_manager_t* pm, void* user_data)
 {
-    if (!pm) {
-        return;
-    }
-
+    LV_UNUSED(pm);
     LV_UNUSED(user_data);
-    home_page_data_t* data = (home_page_data_t*)page_get_private_data(pm, "home_page_data");
-    if (!data) {
-        return;
-    }
-
-    if (data->status_bar) {
-        time_t current_time = time(NULL);
-        struct tm* tm_info = localtime(&current_time);
-        char time_str[32];
-        strftime(time_str, sizeof(time_str), "%Y-%m-%d %H:%M:%S", tm_info);
-        status_bar_set_time(data->status_bar, time_str);
-    }
+    /* 时间由 timer 自动更新，此处无需处理 */
 }
