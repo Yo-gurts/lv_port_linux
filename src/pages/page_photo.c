@@ -132,7 +132,7 @@ void page_photo_create(page_manager_t* pm)
     lv_obj_set_size(data->mode_btn, 50, 50);
     lv_obj_add_event_cb(data->mode_btn, mode_switch_cb, LV_EVENT_CLICKED, pm);
     data->mode_img = lv_img_create(data->mode_btn);
-    lv_img_set_src(data->mode_img, "A:" RES_ICON_PATH "/photo.png");
+    lv_img_set_src(data->mode_img, "A:" RES_ICON_PATH "/Photo.png");
     lv_obj_align(data->mode_img, LV_ALIGN_CENTER, 0, 0);
 
     /* 滤镜按钮 */
