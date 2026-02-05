@@ -23,15 +23,37 @@ static void photo_button_cb(lv_event_t* e)
     page_manager_navigate(pm, "photo");
 }
 
-static void video_button_cb(lv_event_t* e)
+static void recognition_button_cb(lv_event_t* e)
 {
     page_manager_t* pm = (page_manager_t*)lv_event_get_user_data(e);
     if (!pm) {
         return;
     }
 
-    MLOG_INFO("Video button clicked");
-    page_manager_navigate(pm, "video");
+    MLOG_INFO("Recognition button clicked");
+    page_manager_navigate(pm, "recognition");
+}
+
+static void chat_button_cb(lv_event_t* e)
+{
+    page_manager_t* pm = (page_manager_t*)lv_event_get_user_data(e);
+    if (!pm) {
+        return;
+    }
+
+    MLOG_INFO("Chat button clicked");
+    page_manager_navigate(pm, "chat");
+}
+
+static void translation_button_cb(lv_event_t* e)
+{
+    page_manager_t* pm = (page_manager_t*)lv_event_get_user_data(e);
+    if (!pm) {
+        return;
+    }
+
+    MLOG_INFO("Translation button clicked");
+    page_manager_navigate(pm, "translation");
 }
 
 static void gallery_button_cb(lv_event_t* e)
@@ -125,27 +147,26 @@ void page_home_create(page_manager_t* pm, void* user_data)
     lv_obj_set_flex_align(data->grid_container, LV_FLEX_ALIGN_SPACE_EVENLY, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
 
     /* 第1行 */
-    create_icon_button(pm, data->grid_container, LV_SYMBOL_IMAGE, "拍照",
+    create_icon_button(pm, data->grid_container, LV_SYMBOL_IMAGE, "AI拍照",
         LV_ALIGN_TOP_LEFT, 0, 0,
         photo_button_cb, NULL);
-    create_icon_button(pm, data->grid_container, LV_SYMBOL_VIDEO, "录像",
+    create_icon_button(pm, data->grid_container, LV_SYMBOL_FILE, "识万物",
         LV_ALIGN_TOP_LEFT, 0, 0,
-        video_button_cb, NULL);
+        recognition_button_cb, NULL);
     create_icon_button(pm, data->grid_container, LV_SYMBOL_DIRECTORY, "相册",
         LV_ALIGN_TOP_LEFT, 0, 0,
         gallery_button_cb, NULL);
 
     /* 第2行 */
+    create_icon_button(pm, data->grid_container, LV_SYMBOL_CALL, "AI对话",
+        LV_ALIGN_TOP_LEFT, 0, 0,
+        chat_button_cb, NULL);
+    create_icon_button(pm, data->grid_container, LV_SYMBOL_EDIT, "拍照翻译",
+        LV_ALIGN_TOP_LEFT, 0, 0,
+        translation_button_cb, NULL);
     create_icon_button(pm, data->grid_container, LV_SYMBOL_SETTINGS, "设置",
         LV_ALIGN_TOP_LEFT, 0, 0,
         settings_button_cb, NULL);
-    /* 预留2个位置 */
-    create_icon_button(pm, data->grid_container, LV_SYMBOL_PLAY, "预览",
-        LV_ALIGN_TOP_LEFT, 0, 0,
-        NULL, NULL);
-    create_icon_button(pm, data->grid_container, LV_SYMBOL_REFRESH, "More",
-        LV_ALIGN_TOP_LEFT, 0, 0,
-        NULL, NULL);
 
     page_set_private_data(pm, "home_page_data", data);
 }
