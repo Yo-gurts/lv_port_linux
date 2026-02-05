@@ -13,6 +13,7 @@ extern lv_style_t style_common_btn_back;
 extern lv_style_t style_common_label_back;
 extern lv_style_t style_focus_orange;
 extern lv_style_t style_home_bg; /* 首页渐变背景 */
+extern lv_style_t style_page_container; /* 页面容器样式 */
 
 void style_common_init(void);
 

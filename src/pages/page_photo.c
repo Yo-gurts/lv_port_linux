@@ -77,6 +77,7 @@ void page_photo_create(page_manager_t* pm)
     data->container = lv_obj_create(lv_screen_active());
     lv_obj_set_width(data->container, LV_PCT(100));
     lv_obj_set_height(data->container, LV_PCT(100));
+    lv_obj_add_style(data->container, &style_page_container, LV_PART_MAIN);
     lv_obj_refr_size(data->container);
 
     /* 启用滑动手势检测 */

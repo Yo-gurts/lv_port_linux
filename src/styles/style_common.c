@@ -13,6 +13,8 @@ lv_style_t style_common_label_back;
 lv_style_t style_focus_orange;
 /* 首页渐变背景样式 - 浅蓝到天蓝垂直渐变 */
 lv_style_t style_home_bg;
+/* 页面容器样式 - 透明背景、无边框、无内边距 */
+lv_style_t style_page_container;
 
 /**
  * @brief 初始化所有公共样式
@@ -70,4 +72,18 @@ void style_common_init(void)
     lv_style_set_bg_grad_color(&style_home_bg, lv_color_hex(0x87ceeb)); /* 渐变结束色：天蓝 */
     lv_style_set_bg_grad_dir(&style_home_bg, LV_GRAD_DIR_VER); /* 渐变方向：垂直 */
     lv_style_set_bg_opa(&style_home_bg, LV_OPA_COVER); /* 背景完全不透明 */
+
+    /* 初始化页面容器样式 */
+    lv_style_init(&style_page_container); /* 创建样式对象 */
+    lv_style_set_border_width(&style_page_container, 0); /* 无边框 */
+    lv_style_set_radius(&style_page_container, 0); /* 无圆角 */
+    lv_style_set_bg_opa(&style_page_container, LV_OPA_TRANSP); /* 背景透明 */
+    lv_style_set_pad_top(&style_page_container, 0); /* 无内边距 */
+    lv_style_set_pad_bottom(&style_page_container, 0);
+    lv_style_set_pad_left(&style_page_container, 0);
+    lv_style_set_pad_right(&style_page_container, 0);
+    lv_style_set_margin_top(&style_page_container, 0); /* 无外边距 */
+    lv_style_set_margin_bottom(&style_page_container, 0);
+    lv_style_set_margin_left(&style_page_container, 0);
+    lv_style_set_margin_right(&style_page_container, 0);
 }

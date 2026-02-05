@@ -172,6 +172,7 @@ void page_home_create(page_manager_t* pm)
     data->container = lv_obj_create(lv_screen_active());
     lv_obj_set_width(data->container, LV_PCT(100));
     lv_obj_set_height(data->container, LV_PCT(100));
+    lv_obj_add_style(data->container, &style_page_container, LV_PART_MAIN);
     lv_obj_add_style(data->container, &style_home_bg, LV_PART_MAIN);
     lv_obj_refr_size(data->container);
 
@@ -185,7 +186,7 @@ void page_home_create(page_manager_t* pm)
     /* Wifi icon - right */
     data->wifi_icon = lv_img_create(data->container);
     lv_img_set_src(data->wifi_icon, "A:" RES_ICON_PATH "/wifi.png");
-    lv_obj_align(data->wifi_icon, LV_ALIGN_TOP_RIGHT, -70, 5);
+    lv_obj_align(data->wifi_icon, LV_ALIGN_TOP_RIGHT, -70, 0);
 
     /* Battery icon - right */
     data->battery_icon = lv_img_create(data->container);
