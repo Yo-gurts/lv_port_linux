@@ -155,6 +155,15 @@ void page_home_create(page_manager_t* pm, void* user_data)
 
     data->root = lv_screen_active();
 
+    /* 设置渐变背景 */
+    static lv_style_t style_bg;
+    lv_style_init(&style_bg);
+    lv_style_set_bg_color(&style_bg, lv_color_hex(0x4a90d9)); /* 浅蓝 */
+    lv_style_set_bg_grad_color(&style_bg, lv_color_hex(0x87ceeb)); /* 天蓝 */
+    lv_style_set_bg_grad_dir(&style_bg, LV_GRAD_DIR_VER); /* 垂直渐变 */
+    lv_style_set_bg_opa(&style_bg, LV_OPA_COVER);
+    lv_obj_add_style(data->root, &style_bg, LV_PART_MAIN);
+
     /* Create status bar with time, wifi and battery icons */
     data->status_bar = status_bar_create(data->root);
     status_bar_set_wifi_icon(data->status_bar, 3);
