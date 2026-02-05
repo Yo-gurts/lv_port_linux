@@ -6,9 +6,17 @@ extern "C" {
 #endif
 
 /* =======================
+ * 资源路径配置
+ * ======================= */
+#define RES_PATH "/home/yogurt/Documents/sophgo/v6.x.x/sophcam_v20260203/applications/dashcam/ui/aicamera/sm3_81/res"
+
+#define RES_FONT_PATH RES_PATH "/fonts"
+#define RES_ICON_PATH RES_PATH "/icons"
+
+/* =======================
  * 字体配置
  * ======================= */
-#define CHINESE_FONT_PATH "/home/yogurt/Documents/sophgo/v6.x.x/sophcam_v20260203/applications/dashcam/ui/aicamera/sm3_81/res/fonts/HarmonyOS_Sans_SC_Regular.ttf"
+#define CHINESE_FONT_PATH RES_FONT_PATH "/HarmonyOS_Sans_SC_Regular.ttf"
 
 /* =======================
  * 分辨率配置

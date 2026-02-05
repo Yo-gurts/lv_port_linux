@@ -1,8 +1,25 @@
 #include "ui/status_bar.h"
+#include "config.h"
+#include "font_manager.h"
+#include "mlog.h"
 #include <stdlib.h>
 #include <string.h>
 
-#define MAX_ITEMS 10
+static const char* get_battery_icon_path(int level)
+{
+    if (level < 0) {
+        level = 0;
+    }
+    if (level >= 100) {
+        return "A:" RES_ICON_PATH "/battery100%.png";
+    } else if (level >= 66) {
+        return "A:" RES_ICON_PATH "/battery66%.png";
+    } else if (level >= 33) {
+        return "A:" RES_ICON_PATH "/battery33%.png";
+    } else {
+        return "A:" RES_ICON_PATH "/battery33%.png";
+    }
+}
 
 status_bar_t* status_bar_create(lv_obj_t* parent)
 {
@@ -18,26 +35,34 @@ status_bar_t* status_bar_create(lv_obj_t* parent)
     memset(sb, 0, sizeof(status_bar_t));
 
     sb->parent = parent;
-    sb->item_count = 0;
-    sb->height = 30;
+    sb->height = 50;
     sb->bg_color = lv_color_hex(0x2C3E50);
     sb->text_color = lv_color_hex(0xFFFFFF);
 
+    /* Main bar object */
     sb->bar_obj = lv_obj_create(parent);
     lv_obj_set_size(sb->bar_obj, lv_pct(100), sb->height);
-    lv_obj_set_style_bg_color(sb->bar_obj, sb->bg_color, LV_PART_MAIN);
+    lv_obj_set_style_bg_opa(sb->bar_obj, LV_OPA_TRANSP, LV_PART_MAIN);
+    lv_obj_set_style_border_width(sb->bar_obj, 0, LV_PART_MAIN);
+    lv_obj_set_scrollbar_mode(sb->bar_obj, LV_SCROLLBAR_MODE_OFF);
 
-    sb->left_container = lv_obj_create(sb->bar_obj);
-    lv_obj_set_size(sb->left_container, lv_pct(50), lv_pct(100));
-    lv_obj_set_layout(sb->left_container, LV_LAYOUT_FLEX);
-    lv_obj_set_flex_flow(sb->left_container, LV_FLEX_FLOW_ROW);
-    lv_obj_align(sb->left_container, LV_ALIGN_LEFT_MID, 0, 0);
+    /* Time label - center */
+    sb->time_label = lv_label_create(sb->bar_obj);
+    lv_label_set_text(sb->time_label, "0000-00-00 00:00:00");
+    lv_obj_add_style(sb->time_label, &ttf_font_22, LV_PART_MAIN);
+    lv_obj_set_style_text_color(sb->time_label, lv_color_black(), LV_PART_MAIN);
+    lv_obj_align(sb->time_label, LV_ALIGN_CENTER, 0, 0);
 
-    sb->right_container = lv_obj_create(sb->bar_obj);
-    lv_obj_set_size(sb->right_container, lv_pct(50), lv_pct(100));
-    lv_obj_set_layout(sb->right_container, LV_LAYOUT_FLEX);
-    lv_obj_set_flex_flow(sb->right_container, LV_FLEX_FLOW_ROW);
-    lv_obj_align(sb->right_container, LV_ALIGN_RIGHT_MID, 0, 0);
+    /* Wifi icon - right */
+    sb->wifi_icon = lv_label_create(sb->bar_obj);
+    lv_label_set_text(sb->wifi_icon, LV_SYMBOL_WIFI);
+    lv_obj_set_style_text_color(sb->wifi_icon, lv_color_black(), LV_PART_MAIN);
+    lv_obj_align(sb->wifi_icon, LV_ALIGN_RIGHT_MID, -60, 0);
+
+    /* Battery icon - right */
+    sb->battery_icon = lv_img_create(sb->bar_obj);
+    lv_img_set_src(sb->battery_icon, get_battery_icon_path(100));
+    lv_obj_align(sb->battery_icon, LV_ALIGN_RIGHT_MID, -10, 0);
 
     return sb;
 }
@@ -48,21 +73,19 @@ void status_bar_destroy(status_bar_t* sb)
         return;
     }
 
-    for (int i = 0; i < sb->item_count; i++) {
-        if (sb->item_widgets[i]) {
-            lv_obj_del(sb->item_widgets[i]);
-            sb->item_widgets[i] = NULL;
-        }
+    if (sb->battery_icon) {
+        lv_obj_del(sb->battery_icon);
+        sb->battery_icon = NULL;
     }
 
-    if (sb->right_container) {
-        lv_obj_del(sb->right_container);
-        sb->right_container = NULL;
+    if (sb->wifi_icon) {
+        lv_obj_del(sb->wifi_icon);
+        sb->wifi_icon = NULL;
     }
 
-    if (sb->left_container) {
-        lv_obj_del(sb->left_container);
-        sb->left_container = NULL;
+    if (sb->time_label) {
+        lv_obj_del(sb->time_label);
+        sb->time_label = NULL;
     }
 
     if (sb->bar_obj) {
@@ -71,112 +94,6 @@ void status_bar_destroy(status_bar_t* sb)
     }
 
     free(sb);
-}
-
-int status_bar_add_item(status_bar_t* sb, status_bar_item_t* item)
-{
-    if (!sb || !item || sb->item_count >= MAX_ITEMS) {
-        return -1;
-    }
-
-    int index = sb->item_count;
-    memcpy(&sb->items[index], item, sizeof(status_bar_item_t));
-
-    if (item->type == STATUS_BAR_ITEM_TYPE_TEXT) {
-        sb->item_widgets[index] = lv_label_create(sb->left_container);
-        lv_label_set_text(sb->item_widgets[index], item->text);
-        lv_obj_set_style_text_color(sb->item_widgets[index], sb->text_color, LV_PART_MAIN);
-    } else if (item->type == STATUS_BAR_ITEM_TYPE_ICON) {
-        sb->item_widgets[index] = lv_img_create(sb->right_container);
-        lv_img_set_src(sb->item_widgets[index], item->icon_data);
-    } else if (item->type == STATUS_BAR_ITEM_TYPE_PROGRESS) {
-        sb->item_widgets[index] = lv_bar_create(sb->right_container);
-        lv_bar_set_value(sb->item_widgets[index], item->progress, LV_ANIM_OFF);
-    }
-
-    sb->item_count++;
-
-    return 0;
-}
-
-int status_bar_remove_item(status_bar_t* sb, int index)
-{
-    if (!sb || index < 0 || index >= sb->item_count) {
-        return -1;
-    }
-
-    if (sb->item_widgets[index]) {
-        lv_obj_del(sb->item_widgets[index]);
-        sb->item_widgets[index] = NULL;
-    }
-
-    for (int i = index; i < sb->item_count - 1; i++) {
-        memcpy(&sb->items[i], &sb->items[i + 1], sizeof(status_bar_item_t));
-        sb->item_widgets[i] = sb->item_widgets[i + 1];
-    }
-
-    sb->item_count--;
-
-    return 0;
-}
-
-void status_bar_clear(status_bar_t* sb)
-{
-    if (!sb) {
-        return;
-    }
-
-    for (int i = 0; i < sb->item_count; i++) {
-        if (sb->item_widgets[i]) {
-            lv_obj_del(sb->item_widgets[i]);
-            sb->item_widgets[i] = NULL;
-        }
-    }
-
-    sb->item_count = 0;
-}
-
-void status_bar_set_item_text(status_bar_t* sb, int index, const char* text)
-{
-    if (!sb || index < 0 || index >= sb->item_count) {
-        return;
-    }
-
-    sb->items[index].text = text;
-
-    if (sb->items[index].type == STATUS_BAR_ITEM_TYPE_TEXT && sb->item_widgets[index]) {
-        lv_label_set_text(sb->item_widgets[index], text);
-    }
-}
-
-void status_bar_set_item_progress(status_bar_t* sb, int index, int progress)
-{
-    if (!sb || index < 0 || index >= sb->item_count) {
-        return;
-    }
-
-    sb->items[index].progress = progress;
-
-    if (sb->items[index].type == STATUS_BAR_ITEM_TYPE_PROGRESS && sb->item_widgets[index]) {
-        lv_bar_set_value(sb->item_widgets[index], progress, LV_ANIM_OFF);
-    }
-}
-
-void status_bar_set_item_visible(status_bar_t* sb, int index, bool visible)
-{
-    if (!sb || index < 0 || index >= sb->item_count) {
-        return;
-    }
-
-    sb->items[index].visible = visible;
-
-    if (sb->item_widgets[index]) {
-        if (visible) {
-            lv_obj_clear_flag(sb->item_widgets[index], LV_OBJ_FLAG_HIDDEN);
-        } else {
-            lv_obj_add_flag(sb->item_widgets[index], LV_OBJ_FLAG_HIDDEN);
-        }
-    }
 }
 
 void status_bar_set_height(status_bar_t* sb, int height)
@@ -222,24 +139,42 @@ void status_bar_set_text_color(status_bar_t* sb, lv_color_t color)
 
     sb->text_color = color;
 
-    for (int i = 0; i < sb->item_count; i++) {
-        if (sb->items[i].type == STATUS_BAR_ITEM_TYPE_TEXT && sb->item_widgets[i]) {
-            lv_obj_set_style_text_color(sb->item_widgets[i], color, LV_PART_MAIN);
-        }
+    if (sb->time_label) {
+        lv_obj_set_style_text_color(sb->time_label, color, LV_PART_MAIN);
+    }
+    if (sb->wifi_icon) {
+        lv_obj_set_style_text_color(sb->wifi_icon, color, LV_PART_MAIN);
     }
 }
 
-void status_bar_refresh(status_bar_t* sb)
+void status_bar_set_time(status_bar_t* sb, const char* time_str)
 {
-    if (!sb) {
+    if (!sb || !sb->time_label) {
         return;
     }
 
-    for (int i = 0; i < sb->item_count; i++) {
-        if (sb->items[i].type == STATUS_BAR_ITEM_TYPE_TEXT && sb->item_widgets[i]) {
-            lv_label_set_text(sb->item_widgets[i], sb->items[i].text);
-        } else if (sb->items[i].type == STATUS_BAR_ITEM_TYPE_PROGRESS && sb->item_widgets[i]) {
-            lv_bar_set_value(sb->item_widgets[i], sb->items[i].progress, LV_ANIM_OFF);
-        }
+    if (time_str) {
+        lv_label_set_text(sb->time_label, time_str);
     }
+}
+
+void status_bar_set_wifi_icon(status_bar_t* sb, int level)
+{
+    if (!sb || !sb->wifi_icon) {
+        return;
+    }
+
+    /* WiFi signal level: 0-3 */
+    const char* wifi_symbols[] = { " .  ", " .. ", "... ", LV_SYMBOL_WIFI };
+    int idx = level < 0 ? 0 : (level > 3 ? 3 : level);
+    lv_label_set_text(sb->wifi_icon, wifi_symbols[idx]);
+}
+
+void status_bar_set_battery_icon(status_bar_t* sb, int level)
+{
+    if (!sb || !sb->battery_icon) {
+        return;
+    }
+
+    lv_img_set_src(sb->battery_icon, get_battery_icon_path(level));
 }

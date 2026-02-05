@@ -2,7 +2,6 @@
 #include "font_manager.h"
 #include "mlog.h"
 #include "styles/style_common.h"
-#include "ui/status_bar.h"
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
@@ -110,15 +109,10 @@ void page_home_create(page_manager_t* pm, void* user_data)
 
     data->root = lv_screen_active();
 
-    /* Create status bar */
+    /* Create status bar with time, wifi and battery icons */
     data->status_bar = status_bar_create(data->root);
-
-    status_bar_item_t time_item = {
-        .type = STATUS_BAR_ITEM_TYPE_TEXT,
-        .text = "12:30",
-        .visible = true
-    };
-    status_bar_add_item(data->status_bar, &time_item);
+    status_bar_set_wifi_icon(data->status_bar, 3);
+    status_bar_set_battery_icon(data->status_bar, 80);
 
     /* 2行3列图标容器 - 使用容器和flex布局实现自适应 */
     data->grid_container = lv_obj_create(data->root);
@@ -201,7 +195,8 @@ void page_home_show(page_manager_t* pm, void* user_data)
     }
 
     if (data->status_bar) {
-        status_bar_refresh(data->status_bar);
+        status_bar_set_wifi_icon(data->status_bar, 3);
+        status_bar_set_battery_icon(data->status_bar, 80);
     }
 }
 
@@ -231,7 +226,7 @@ void page_home_update(page_manager_t* pm, void* user_data)
         time_t current_time = time(NULL);
         struct tm* tm_info = localtime(&current_time);
         char time_str[32];
-        strftime(time_str, sizeof(time_str), "%H:%M", tm_info);
-        status_bar_set_item_text(data->status_bar, 0, time_str);
+        strftime(time_str, sizeof(time_str), "%Y-%m-%d %H:%M:%S", tm_info);
+        status_bar_set_time(data->status_bar, time_str);
     }
 }
