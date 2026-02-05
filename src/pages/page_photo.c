@@ -86,13 +86,12 @@ void page_photo_create(page_manager_t* pm, void* user_data)
     data->sd_icon = lv_img_create(top_bar);
     lv_img_set_src(data->sd_icon, "A:" RES_ICON_PATH "/sd_offline.png");
 
-    /* 电池图标 */
-    data->battery_icon = lv_label_create(top_bar);
-    lv_label_set_text(data->battery_icon, LV_SYMBOL_BATTERY_FULL);
-    lv_obj_set_style_text_font(data->battery_icon, &lv_font_montserrat_20, LV_PART_MAIN);
+    /* 电池图标 - 使用 33% 电量 */
+    data->battery_icon = lv_img_create(top_bar);
+    lv_img_set_src(data->battery_icon, "A:" RES_ICON_PATH "/battery33%.png");
 
     /* =======================
-     * 底部工具栏：[≡] | [📷] | [◫] | [↻]
+     * 底部工具栏：[📷] | [◫] | [↻] | [≡]
      * ======================= */
     lv_obj_t* bottom_bar = lv_obj_create(data->root);
     lv_obj_set_width(bottom_bar, lv_pct(100));
@@ -106,14 +105,6 @@ void page_photo_create(page_manager_t* pm, void* user_data)
     lv_obj_set_layout(bottom_bar, LV_LAYOUT_FLEX);
     lv_obj_set_flex_flow(bottom_bar, LV_FLEX_FLOW_ROW);
     lv_obj_set_flex_align(bottom_bar, LV_FLEX_ALIGN_SPACE_EVENLY, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-
-    /* 菜单按钮 */
-    data->menu_btn = lv_btn_create(bottom_bar);
-    lv_obj_set_size(data->menu_btn, 50, 50);
-    lv_obj_add_event_cb(data->menu_btn, NULL, LV_EVENT_CLICKED, pm);
-    lv_obj_t* menu_icon = lv_img_create(data->menu_btn);
-    lv_img_set_src(menu_icon, "A:" RES_ICON_PATH "/menu.png");
-    lv_obj_align(menu_icon, LV_ALIGN_CENTER, 0, 0);
 
     /* 拍照/录像切换按钮 */
     data->mode_btn = lv_btn_create(bottom_bar);
@@ -138,6 +129,14 @@ void page_photo_create(page_manager_t* pm, void* user_data)
     lv_obj_t* switch_icon = lv_img_create(data->switch_btn);
     lv_img_set_src(switch_icon, "A:" RES_ICON_PATH "/switch.png");
     lv_obj_align(switch_icon, LV_ALIGN_CENTER, 0, 0);
+
+    /* 菜单按钮 */
+    data->menu_btn = lv_btn_create(bottom_bar);
+    lv_obj_set_size(data->menu_btn, 50, 50);
+    lv_obj_add_event_cb(data->menu_btn, NULL, LV_EVENT_CLICKED, pm);
+    lv_obj_t* menu_icon = lv_img_create(data->menu_btn);
+    lv_img_set_src(menu_icon, "A:" RES_ICON_PATH "/menu.png");
+    lv_obj_align(menu_icon, LV_ALIGN_CENTER, 0, 0);
 
     page_set_private_data(pm, "page_photo_data", data);
 }
