@@ -82,10 +82,9 @@ void page_photo_create(page_manager_t* pm, void* user_data)
     lv_label_set_text(photo_count_label, "100");
     lv_obj_add_style(photo_count_label, &ttf_font_20, LV_PART_MAIN);
 
-    /* SD卡图标 */
-    data->sd_icon = lv_label_create(top_bar);
-    lv_label_set_text(data->sd_icon, LV_SYMBOL_DIRECTORY);
-    lv_obj_set_style_text_font(data->sd_icon, &lv_font_montserrat_20, LV_PART_MAIN);
+    /* SD卡图标 - 默认 offline */
+    data->sd_icon = lv_img_create(top_bar);
+    lv_img_set_src(data->sd_icon, "A:" RES_ICON_PATH "/sd_offline.png");
 
     /* 电池图标 */
     data->battery_icon = lv_label_create(top_bar);
@@ -111,11 +110,9 @@ void page_photo_create(page_manager_t* pm, void* user_data)
     /* 菜单按钮 */
     data->menu_btn = lv_btn_create(bottom_bar);
     lv_obj_set_size(data->menu_btn, 50, 50);
-    lv_obj_add_style(data->menu_btn, &style_common_btn_back, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_add_event_cb(data->menu_btn, NULL, LV_EVENT_CLICKED, pm);
-    lv_obj_t* menu_icon = lv_label_create(data->menu_btn);
-    lv_label_set_text(menu_icon, LV_SYMBOL_LIST);
-    lv_obj_set_style_text_font(menu_icon, &lv_font_montserrat_24, LV_PART_MAIN);
+    lv_obj_t* menu_icon = lv_img_create(data->menu_btn);
+    lv_img_set_src(menu_icon, "A:" RES_ICON_PATH "/menu.png");
     lv_obj_align(menu_icon, LV_ALIGN_CENTER, 0, 0);
 
     /* 拍照/录像切换按钮 */
