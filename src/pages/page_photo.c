@@ -1,5 +1,6 @@
 #include "pages/page_photo.h"
 #include "config.h"
+#include "core/page_manager.h"
 #include "font_manager.h"
 #include "mlog.h"
 #include "styles/style_common.h"
@@ -31,6 +32,21 @@ static void mode_switch_cb(lv_event_t* e)
     MLOG_INFO("Mode switched to %s", data->is_video_mode ? "video" : "photo");
 }
 
+/* 滑动手势回调：从左往右滑返回上一页 */
+static void gesture_cb(lv_event_t* e)
+{
+    lv_event_code_t code = lv_event_get_code(e);
+    page_manager_t* pm = (page_manager_t*)lv_event_get_user_data(e);
+
+    if (code == LV_EVENT_GESTURE) {
+        lv_dir_t dir = lv_indev_get_gesture_dir(lv_indev_get_act());
+        if (dir == LV_DIR_RIGHT) {
+            MLOG_INFO("Swipe right, back to home");
+            page_manager_back(pm);
+        }
+    }
+}
+
 void page_photo_create(page_manager_t* pm, void* user_data)
 {
     if (!pm) {
@@ -49,6 +65,12 @@ void page_photo_create(page_manager_t* pm, void* user_data)
     data->is_video_mode = 0; /* 默认拍照模式 */
 
     data->root = lv_screen_active();
+
+    /* 启用滑动手势检测 */
+    lv_obj_add_flag(data->root, LV_OBJ_FLAG_GESTURE_BUBBLE);
+
+    /* 添加滑动手势回调：从左往右滑返回上一页 */
+    lv_obj_add_event_cb(data->root, gesture_cb, LV_EVENT_GESTURE, pm);
 
     /* 背景不透明（SDL模拟时避免拖影） */
     lv_obj_set_style_bg_color(data->root, lv_color_hex(0x1a1a2e), LV_PART_MAIN);
