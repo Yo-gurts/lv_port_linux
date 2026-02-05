@@ -5,6 +5,7 @@
 #include "mlog.h"
 #include "pages/page_home.h"
 #include "pages/page_photo.h"
+#include "pages/page_video.h"
 #include "styles/style_common.h"
 #include <pthread.h>
 #include <stdio.h>
@@ -86,6 +87,14 @@ static page_interface_t photo_page_interface = {
     .update = page_photo_update,
 };
 
+static page_interface_t video_page_interface = {
+    .create = page_video_create,
+    .destroy = page_video_destroy,
+    .show = page_video_show,
+    .hide = page_video_hide,
+    .update = page_video_update,
+};
+
 int main(void)
 {
     lv_init();
@@ -109,6 +118,7 @@ int main(void)
     /* Register pages */
     page_manager_register(pm, "home", &home_page_interface, NULL);
     page_manager_register(pm, "photo", &photo_page_interface, NULL);
+    page_manager_register(pm, "video", &video_page_interface, NULL);
 
     /* Navigate to home page */
     page_manager_navigate(pm, "home");

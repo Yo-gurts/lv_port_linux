@@ -62,6 +62,7 @@ set(SOURCES
     src/styles/style_common.c
     src/pages/page_home.c
     src/pages/page_photo.c
+    src/pages/page_video.c
     src/font_manager.c
 )
 

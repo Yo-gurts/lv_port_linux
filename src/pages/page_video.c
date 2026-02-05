@@ -1,4 +1,4 @@
-#include "pages/page_photo.h"
+#include "pages/page_video.h"
 #include "config.h"
 #include "core/page_manager.h"
 #include "font_manager.h"
@@ -11,7 +11,30 @@
 #define TOP_BAR_HEIGHT 50
 #define BOTTOM_BAR_HEIGHT 50
 
-/* 拍照/录像切换回调 */
+/* 录像分辨率选项 */
+static const char* video_resolution_str[] = {
+    "FULL",
+    "HD",
+    "2.7K",
+    "4K",
+};
+
+/* 切换分辨率回调 */
+static void resolution_switch_cb(lv_event_t* e)
+{
+    page_video_data_t* data = (page_video_data_t*)lv_event_get_user_data(e);
+    if (!data) {
+        return;
+    }
+
+    /* 切换到下一个分辨率 */
+    data->current_resolution = (data->current_resolution + 1) % VIDEO_RES_COUNT;
+    lv_label_set_text(data->resolution_label, video_resolution_str[data->current_resolution]);
+
+    MLOG_INFO("Resolution switched to %s", video_resolution_str[data->current_resolution]);
+}
+
+/* 模式切换回调：切换到拍照页面 */
 static void mode_switch_cb(lv_event_t* e)
 {
     page_manager_t* pm = (page_manager_t*)lv_event_get_user_data(e);
@@ -19,8 +42,8 @@ static void mode_switch_cb(lv_event_t* e)
         return;
     }
 
-    MLOG_INFO("Switching to video page");
-    page_manager_navigate(pm, "video");
+    MLOG_INFO("Switching to photo page");
+    page_manager_navigate(pm, "photo");
 }
 
 /* 菜单按钮回调：返回首页 */
@@ -44,24 +67,26 @@ static void gesture_cb(lv_event_t* e)
     if (code == LV_EVENT_GESTURE) {
         lv_dir_t dir = lv_indev_get_gesture_dir(lv_indev_get_act());
         if (dir == LV_DIR_RIGHT) {
-            MLOG_INFO("Swipe right, back to home");
+            MLOG_INFO("Swipe right, back to previous page");
             page_manager_back(pm);
         }
     }
 }
 
-void page_photo_create(page_manager_t* pm)
+void page_video_create(page_manager_t* pm)
 {
     if (!pm) {
         return;
     }
 
-    page_photo_data_t* data = (page_photo_data_t*)malloc(sizeof(page_photo_data_t));
+    page_video_data_t* data = (page_video_data_t*)malloc(sizeof(page_video_data_t));
     if (!data) {
         return;
     }
 
-    memset(data, 0, sizeof(page_photo_data_t));
+    memset(data, 0, sizeof(page_video_data_t));
+    data->current_resolution = VIDEO_RES_FULL; /* 默认 FULL 分辨率 */
+    data->is_recording = 0; /* 默认未录像 */
 
     /* 创建页面容器 */
     data->container = lv_obj_create(lv_screen_active());
@@ -77,31 +102,33 @@ void page_photo_create(page_manager_t* pm)
     lv_obj_add_event_cb(data->container, gesture_cb, LV_EVENT_GESTURE, pm);
 
     /* =======================
-     * 顶部状态栏：8M | 100 | [SD] | [🔋]
+     * 顶部状态栏：[FULL] | [00:00] | [SD] | [🔋]
      * ======================= */
     data->top_bar = lv_obj_create(data->container);
     lv_obj_set_width(data->top_bar, lv_pct(100));
     lv_obj_set_height(data->top_bar, TOP_BAR_HEIGHT);
-    lv_obj_set_style_bg_opa(data->top_bar, LV_OPA_TRANSP, LV_PART_MAIN); /* 全透明 */
+    lv_obj_set_style_bg_opa(data->top_bar, LV_OPA_TRANSP, LV_PART_MAIN);
     lv_obj_set_style_bg_color(data->top_bar, lv_color_hex(0x000000), LV_PART_MAIN);
     lv_obj_set_style_bg_grad_dir(data->top_bar, LV_GRAD_DIR_NONE, LV_PART_MAIN);
     lv_obj_set_style_border_width(data->top_bar, 0, LV_PART_MAIN);
-    lv_obj_set_scrollbar_mode(data->top_bar, LV_SCROLLBAR_MODE_OFF); /* 不可滚动 */
+    lv_obj_set_scrollbar_mode(data->top_bar, LV_SCROLLBAR_MODE_OFF);
     lv_obj_set_layout(data->top_bar, LV_LAYOUT_FLEX);
     lv_obj_set_flex_flow(data->top_bar, LV_FLEX_FLOW_ROW);
     lv_obj_set_flex_align(data->top_bar, LV_FLEX_ALIGN_SPACE_BETWEEN, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
     lv_obj_set_style_pad_left(data->top_bar, 20, LV_PART_MAIN);
     lv_obj_set_style_pad_right(data->top_bar, 20, LV_PART_MAIN);
 
-    /* 分辨率 Label - 显示 8M */
+    /* 分辨率 Label - 点击切换分辨率 */
     data->resolution_label = lv_label_create(data->top_bar);
-    lv_label_set_text(data->resolution_label, "8M");
+    lv_label_set_text(data->resolution_label, video_resolution_str[data->current_resolution]);
     lv_obj_add_style(data->resolution_label, &ttf_font_20, LV_PART_MAIN);
+    lv_obj_add_flag(data->resolution_label, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_add_event_cb(data->resolution_label, resolution_switch_cb, LV_EVENT_CLICKED, data);
 
-    /* 剩余照片数量 Label - 显示 100 */
-    data->photo_count_label = lv_label_create(data->top_bar);
-    lv_label_set_text(data->photo_count_label, "100");
-    lv_obj_add_style(data->photo_count_label, &ttf_font_20, LV_PART_MAIN);
+    /* 录像时长 Label - 显示 00:00 */
+    data->time_label = lv_label_create(data->top_bar);
+    lv_label_set_text(data->time_label, "00:00");
+    lv_obj_add_style(data->time_label, &ttf_font_20, LV_PART_MAIN);
 
     /* SD卡图标 - 默认 offline */
     data->sd_icon = lv_img_create(data->top_bar);
@@ -117,17 +144,17 @@ void page_photo_create(page_manager_t* pm)
     data->bottom_bar = lv_obj_create(data->container);
     lv_obj_set_width(data->bottom_bar, lv_pct(100));
     lv_obj_set_height(data->bottom_bar, BOTTOM_BAR_HEIGHT);
-    lv_obj_align(data->bottom_bar, LV_ALIGN_BOTTOM_MID, 0, 0); /* 贴在底部 */
-    lv_obj_set_style_bg_opa(data->bottom_bar, LV_OPA_TRANSP, LV_PART_MAIN); /* 全透明 */
+    lv_obj_align(data->bottom_bar, LV_ALIGN_BOTTOM_MID, 0, 0);
+    lv_obj_set_style_bg_opa(data->bottom_bar, LV_OPA_TRANSP, LV_PART_MAIN);
     lv_obj_set_style_bg_color(data->bottom_bar, lv_color_hex(0x000000), LV_PART_MAIN);
     lv_obj_set_style_bg_grad_dir(data->bottom_bar, LV_GRAD_DIR_NONE, LV_PART_MAIN);
     lv_obj_set_style_border_width(data->bottom_bar, 0, LV_PART_MAIN);
-    lv_obj_set_scrollbar_mode(data->bottom_bar, LV_SCROLLBAR_MODE_OFF); /* 不可滚动 */
+    lv_obj_set_scrollbar_mode(data->bottom_bar, LV_SCROLLBAR_MODE_OFF);
     lv_obj_set_layout(data->bottom_bar, LV_LAYOUT_FLEX);
     lv_obj_set_flex_flow(data->bottom_bar, LV_FLEX_FLOW_ROW);
     lv_obj_set_flex_align(data->bottom_bar, LV_FLEX_ALIGN_SPACE_EVENLY, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
 
-    /* 拍照/录像切换按钮 */
+    /* 拍照/录像切换按钮 - 点击切换到拍照页面 */
     data->mode_btn = lv_btn_create(data->bottom_bar);
     lv_obj_set_size(data->mode_btn, 50, 50);
     lv_obj_add_event_cb(data->mode_btn, mode_switch_cb, LV_EVENT_CLICKED, pm);
@@ -163,13 +190,13 @@ void page_photo_create(page_manager_t* pm)
     page_set_private_data(pm, data);
 }
 
-void page_photo_destroy(page_manager_t* pm)
+void page_video_destroy(page_manager_t* pm)
 {
     if (!pm) {
         return;
     }
 
-    page_photo_data_t* data = page_get_private_data(pm);
+    page_video_data_t* data = page_get_private_data(pm);
     if (!data) {
         return;
     }
@@ -183,13 +210,13 @@ void page_photo_destroy(page_manager_t* pm)
     free(data);
 }
 
-void page_photo_show(page_manager_t* pm)
+void page_video_show(page_manager_t* pm)
 {
     if (!pm) {
         return;
     }
 
-    page_photo_data_t* data = page_get_private_data(pm);
+    page_video_data_t* data = page_get_private_data(pm);
     if (!data || !data->container) {
         return;
     }
@@ -198,13 +225,13 @@ void page_photo_show(page_manager_t* pm)
     lv_obj_clear_flag(data->container, LV_OBJ_FLAG_HIDDEN);
 }
 
-void page_photo_hide(page_manager_t* pm)
+void page_video_hide(page_manager_t* pm)
 {
     if (!pm) {
         return;
     }
 
-    page_photo_data_t* data = page_get_private_data(pm);
+    page_video_data_t* data = page_get_private_data(pm);
     if (!data || !data->container) {
         return;
     }
@@ -213,7 +240,7 @@ void page_photo_hide(page_manager_t* pm)
     lv_obj_add_flag(data->container, LV_OBJ_FLAG_HIDDEN);
 }
 
-void page_photo_update(page_manager_t* pm)
+void page_video_update(page_manager_t* pm)
 {
     LV_UNUSED(pm);
 }

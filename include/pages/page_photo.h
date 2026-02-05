@@ -20,7 +20,6 @@ typedef struct {
     lv_obj_t* menu_btn; /* 菜单按钮 */
     lv_obj_t* filter_btn; /* 滤镜按钮 */
     lv_obj_t* switch_btn; /* 摄像头切换按钮 */
-    int is_video_mode; /* 是否录像模式 */
 } page_photo_data_t;
 
 void page_photo_create(page_manager_t* pm);
