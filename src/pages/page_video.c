@@ -35,7 +35,7 @@ static void mode_switch_cb(lv_event_t* e)
     page_manager_navigate(pm, "photo");
 }
 
-/* 菜单按钮回调：返回首页 */
+/* 菜单按钮回调：跳转拍照设置页面 */
 static void menu_back_cb(lv_event_t* e)
 {
     page_manager_t* pm = (page_manager_t*)lv_event_get_user_data(e);
@@ -43,8 +43,8 @@ static void menu_back_cb(lv_event_t* e)
         return;
     }
 
-    MLOG_INFO("Menu clicked, navigate to home");
-    page_manager_navigate(pm, "home");
+    MLOG_INFO("Menu clicked, navigate to photo_settings");
+    page_manager_navigate(pm, "photo_settings");
 }
 
 /* 滑动手势回调：从左往右滑返回上一页 */

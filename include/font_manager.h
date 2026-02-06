@@ -20,14 +20,12 @@ extern lv_style_t ttf_font_28;
 extern lv_style_t ttf_font_30;
 extern lv_style_t ttf_font_34;
 
-/* 中文字体指针 */
-extern lv_font_t* chinese_font_24;
-extern lv_font_t* chinese_font_28;
+/* 字体大小宏定义 */
+#define NORMAL_SIZE ttf_font_34
+#define SMALL_SIZE ttf_font_24
+#define TINY_SIZE ttf_font_16
 
 /* 初始化字体管理器 */
 int font_manager_init(void);
-
-/* 获取字体指针 */
-lv_font_t* font_manager_get_font(int size);
 
 #endif /* __FONT_MANAGER_H__ */

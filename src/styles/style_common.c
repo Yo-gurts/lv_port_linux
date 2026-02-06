@@ -17,6 +17,18 @@ lv_style_t style_home_bg;
 lv_style_t style_page_container;
 /* 图片按钮样式 - 全透明、无边框 */
 lv_style_t style_noboarder;
+/* 导航栏样式 - 纯黑背景 */
+lv_style_t style_nav_bar;
+/* 设置项样式 - 深色背景 */
+lv_style_t style_settings_item;
+/* 分隔线样式 - 细蓝色 */
+lv_style_t style_settings_divider;
+/* 选中项高亮样式 - 橙色渐变 */
+lv_style_t style_settings_selected;
+/* 设置项标题样式 - 白色文字 */
+lv_style_t style_settings_title;
+/* 设置项参数样式 - 黄色文字 */
+lv_style_t style_settings_value;
 
 /**
  * @brief 初始化所有公共样式
@@ -30,7 +42,7 @@ void style_common_init(void)
     lv_style_init(&style_common_cont_top); /* 创建样式对象 */
     lv_style_set_border_width(&style_common_cont_top, 0); /* 无边框 */
     lv_style_set_radius(&style_common_cont_top, 0); /* 无圆角 */
-    lv_style_set_bg_opa(&style_common_cont_top, LV_OPA_TRANSP); /* 背景完全透明 */
+    lv_style_set_bg_opa(&style_common_cont_top, LV_OPA_COVER); /* 背景完全不透明 */
     lv_style_set_bg_color(&style_common_cont_top, lv_color_black()); /* 背景色为黑色 */
     lv_style_set_bg_grad_dir(&style_common_cont_top, LV_GRAD_DIR_NONE); /* 无渐变 */
     lv_style_set_pad_top(&style_common_cont_top, 0); /* 上内边距为0 */
@@ -99,4 +111,42 @@ void style_common_init(void)
     lv_style_set_pad_bottom(&style_noboarder, 0);
     lv_style_set_pad_left(&style_noboarder, 0);
     lv_style_set_pad_right(&style_noboarder, 0);
+
+    /* 初始化导航栏样式 */
+    lv_style_init(&style_nav_bar);
+    lv_style_set_bg_opa(&style_nav_bar, LV_OPA_COVER);
+    lv_style_set_bg_color(&style_nav_bar, lv_color_hex(0x000000));
+    lv_style_set_border_width(&style_nav_bar, 0);
+    lv_style_set_radius(&style_nav_bar, 0);
+
+    /* 初始化设置项样式 */
+    lv_style_init(&style_settings_item);
+    lv_style_set_bg_opa(&style_settings_item, LV_OPA_COVER);
+    lv_style_set_bg_color(&style_settings_item, lv_color_hex(0x1A1A1A)); /* 深色背景 */
+    lv_style_set_border_width(&style_settings_item, 0);
+    lv_style_set_pad_top(&style_settings_item, 12);
+    lv_style_set_pad_bottom(&style_settings_item, 12);
+    lv_style_set_pad_left(&style_settings_item, 15);
+    lv_style_set_pad_right(&style_settings_item, 15);
+
+    /* 初始化分隔线样式 */
+    lv_style_init(&style_settings_divider);
+    lv_style_set_bg_opa(&style_settings_divider, LV_OPA_COVER);
+    lv_style_set_bg_color(&style_settings_divider, lv_color_hex(0x4A90D9)); /* 蓝色分隔线 */
+    lv_style_set_height(&style_settings_divider, 1);
+
+    /* 初始化选中项高亮样式 */
+    lv_style_init(&style_settings_selected);
+    lv_style_set_bg_color(&style_settings_selected, lv_color_hex(0xF09F20)); /* 橙色 */
+    lv_style_set_bg_grad_color(&style_settings_selected, lv_color_hex(0xE08510)); /* 渐变 */
+    lv_style_set_bg_grad_dir(&style_settings_selected, LV_GRAD_DIR_VER);
+    lv_style_set_bg_opa(&style_settings_selected, LV_OPA_COVER);
+
+    /* 初始化设置项标题样式 */
+    lv_style_init(&style_settings_title);
+    lv_style_set_text_color(&style_settings_title, lv_color_hex(0xFFFFFF)); /* 白色 */
+
+    /* 初始化设置项参数样式 */
+    lv_style_init(&style_settings_value);
+    lv_style_set_text_color(&style_settings_value, lv_color_hex(0xFFD700)); /* 黄色 */
 }
