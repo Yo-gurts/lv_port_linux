@@ -61,6 +61,7 @@ set(SOURCES
     src/core/page_manager.c
     src/styles/style_common.c
     src/pages/page_home.c
+    src/pages/page_ai_photo.c
     src/pages/page_photo.c
     src/pages/page_video.c
     src/pages/page_photo_settings.c

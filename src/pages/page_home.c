@@ -141,8 +141,8 @@ static void recognition_button_cb(lv_event_t* e)
         return;
     }
 
-    MLOG_INFO("Recognition button clicked");
-    page_manager_navigate(pm, "recognition");
+    MLOG_INFO("AI Photo button clicked");
+    page_manager_navigate(pm, "ai_photo");
 }
 
 static void chat_button_cb(lv_event_t* e)

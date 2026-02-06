@@ -3,6 +3,7 @@
 #include "font_manager.h"
 #include "lvgl/lvgl.h"
 #include "mlog.h"
+#include "pages/page_ai_photo.h"
 #include "pages/page_home.h"
 #include "pages/page_photo.h"
 #include "pages/page_photo_settings.h"
@@ -89,6 +90,14 @@ static page_interface_t photo_page_interface = {
     .update = page_photo_update,
 };
 
+static page_interface_t ai_photo_page_interface = {
+    .create = page_ai_photo_create,
+    .destroy = page_ai_photo_destroy,
+    .show = page_ai_photo_show,
+    .hide = page_ai_photo_hide,
+    .update = page_ai_photo_update,
+};
+
 static page_interface_t video_page_interface = {
     .create = page_video_create,
     .destroy = page_video_destroy,
@@ -144,6 +153,7 @@ int main(void)
     /* Register pages */
     page_manager_register(pm, "home", &home_page_interface, NULL);
     page_manager_register(pm, "photo", &photo_page_interface, NULL);
+    page_manager_register(pm, "ai_photo", &ai_photo_page_interface, NULL);
     page_manager_register(pm, "video", &video_page_interface, NULL);
     page_manager_register(pm, "photo_settings", &photo_settings_page_interface, NULL);
     page_manager_register(pm, "video_settings", &video_settings_page_interface, NULL);
