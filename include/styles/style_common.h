@@ -17,6 +17,7 @@ extern lv_style_t style_page_container; /* 页面容器样式 */
 extern lv_style_t style_noboarder; /* 图片按钮样式 - 全透明 */
 extern lv_style_t style_nav_bar; /* 导航栏样式 */
 extern lv_style_t style_settings_item; /* 设置项样式 */
+extern lv_style_t style_settings_item_selected; /* 设置项选中样式 */
 extern lv_style_t style_settings_divider; /* 分隔线样式 */
 extern lv_style_t style_settings_selected; /* 选中项高亮样式 */
 extern lv_style_t style_settings_title; /* 设置项标题样式 */

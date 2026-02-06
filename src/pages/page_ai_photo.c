@@ -68,7 +68,7 @@ static void filter_btn_cb(lv_event_t* e)
     MLOG_INFO("Filter button clicked");
 }
 
-/* 菜单按钮回调：跳转拍照设置页面 */
+/* 菜单按钮回调：跳转AI拍照设置页面 */
 static void menu_back_cb(lv_event_t* e)
 {
     page_manager_t* pm = (page_manager_t*)lv_event_get_user_data(e);
@@ -76,8 +76,8 @@ static void menu_back_cb(lv_event_t* e)
         return;
     }
 
-    MLOG_INFO("Menu clicked, navigate to photo_settings");
-    page_manager_navigate(pm, "photo_settings");
+    MLOG_INFO("Menu clicked, navigate to ai_photo_settings");
+    page_manager_navigate(pm, "ai_photo_settings");
 }
 
 /* 滑动手势回调：从左往右滑返回上一页 */

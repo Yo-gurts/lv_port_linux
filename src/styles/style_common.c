@@ -21,6 +21,8 @@ lv_style_t style_noboarder;
 lv_style_t style_nav_bar;
 /* 设置项样式 - 深色背景 */
 lv_style_t style_settings_item;
+/* 设置项选中样式 - 浅色背景 */
+lv_style_t style_settings_item_selected;
 /* 分隔线样式 - 细蓝色 */
 lv_style_t style_settings_divider;
 /* 选中项高亮样式 - 橙色渐变 */
@@ -133,6 +135,16 @@ void style_common_init(void)
     lv_style_set_pad_bottom(&style_settings_item, 12);
     lv_style_set_pad_left(&style_settings_item, 15);
     lv_style_set_pad_right(&style_settings_item, 15);
+
+    /* 初始化设置项选中样式 */
+    lv_style_init(&style_settings_item_selected);
+    lv_style_set_bg_opa(&style_settings_item_selected, LV_OPA_COVER);
+    lv_style_set_bg_color(&style_settings_item_selected, lv_color_hex(0x2A2A2A)); /* 浅色背景表示选中 */
+    lv_style_set_border_width(&style_settings_item_selected, 0);
+    lv_style_set_pad_top(&style_settings_item_selected, 12);
+    lv_style_set_pad_bottom(&style_settings_item_selected, 12);
+    lv_style_set_pad_left(&style_settings_item_selected, 15);
+    lv_style_set_pad_right(&style_settings_item_selected, 15);
 
     /* 初始化分隔线样式 */
     lv_style_init(&style_settings_divider);
