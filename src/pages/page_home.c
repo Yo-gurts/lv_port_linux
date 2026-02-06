@@ -186,7 +186,7 @@ static void settings_button_cb(lv_event_t* e)
     }
 
     MLOG_INFO("Settings button clicked");
-    page_manager_navigate(pm, "settings");
+    page_manager_navigate(pm, "system_settings");
 }
 
 // #endregion
