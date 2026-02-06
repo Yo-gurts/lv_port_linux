@@ -32,7 +32,7 @@ typedef struct {
     lv_obj_t* container; /* 页面容器 */
     lv_obj_t* nav_bar; /* 顶部导航栏 */
     lv_obj_t* settings_container; /* 设置列表容器 */
-    photo_setting_item_t settings[8]; /* 8个设置项 */
+    photo_setting_item_t settings[7]; /* 7个设置项 */
 } page_photo_settings_data_t;
 
 void page_photo_settings_create(page_manager_t* pm);

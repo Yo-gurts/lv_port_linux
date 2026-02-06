@@ -36,7 +36,6 @@ static const setting_config_t settings_config[] = {
     { "A" RES_ICON_PATH "/white-balance.png", "白平衡", "自动", NULL, NULL, SETTING_TYPE_NORMAL },
     { "A" RES_ICON_PATH "/iso.png", "感光度", "自动", NULL, NULL, SETTING_TYPE_NORMAL },
     { "A" RES_ICON_PATH "/exposure.png", "曝光设置", "EV0", NULL, NULL, SETTING_TYPE_NORMAL },
-    { "A" RES_ICON_PATH "/ai.png", "AI设置", "普通模式", NULL, NULL, SETTING_TYPE_NORMAL },
     { "A" RES_ICON_PATH "/quality.png", "画质", "超高画质", NULL, NULL, SETTING_TYPE_NORMAL },
     { "A" RES_ICON_PATH "/face-detection.png", "人脸检测", "关闭", "开启", "关闭", SETTING_TYPE_TOGGLE },
     { "A" RES_ICON_PATH "/smile.png", "笑脸抓拍", "关闭", "开启", "关闭", SETTING_TYPE_TOGGLE },

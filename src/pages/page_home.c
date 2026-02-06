@@ -246,10 +246,10 @@ void page_home_create(page_manager_t* pm)
     lv_obj_set_flex_align(data->grid_container, LV_FLEX_ALIGN_SPACE_EVENLY, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
 
     /* 第1行 */
-    create_icon_button(pm, data->grid_container, LV_SYMBOL_IMAGE, "AI拍照",
+    create_icon_button(pm, data->grid_container, LV_SYMBOL_IMAGE, "拍照",
         LV_ALIGN_TOP_LEFT, 0, 0,
         photo_button_cb, NULL);
-    create_icon_button(pm, data->grid_container, LV_SYMBOL_FILE, "识万物",
+    create_icon_button(pm, data->grid_container, LV_SYMBOL_FILE, "AI拍照",
         LV_ALIGN_TOP_LEFT, 0, 0,
         recognition_button_cb, NULL);
     create_icon_button(pm, data->grid_container, LV_SYMBOL_DIRECTORY, "相册",
