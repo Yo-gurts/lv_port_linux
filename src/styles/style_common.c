@@ -45,11 +45,15 @@ void style_common_init(void)
     lv_style_set_bg_opa(&style_common_cont_top, LV_OPA_COVER); /* 背景完全不透明 */
     lv_style_set_bg_color(&style_common_cont_top, lv_color_black()); /* 背景色为黑色 */
     lv_style_set_bg_grad_dir(&style_common_cont_top, LV_GRAD_DIR_NONE); /* 无渐变 */
-    lv_style_set_pad_top(&style_common_cont_top, 0); /* 上内边距为0 */
-    lv_style_set_pad_bottom(&style_common_cont_top, 0); /* 下内边距为0 */
-    lv_style_set_pad_left(&style_common_cont_top, 0); /* 左内边距为0 */
-    lv_style_set_pad_right(&style_common_cont_top, 0); /* 右内边距为0 */
+    lv_style_set_pad_top(&style_common_cont_top, 0); /* 无内边距 */
+    lv_style_set_pad_bottom(&style_common_cont_top, 0);
+    lv_style_set_pad_left(&style_common_cont_top, 0);
+    lv_style_set_pad_right(&style_common_cont_top, 0);
     lv_style_set_shadow_width(&style_common_cont_top, 0); /* 无阴影 */
+    lv_style_set_margin_top(&style_common_cont_top, 0); /* 无外边距 */
+    lv_style_set_margin_bottom(&style_common_cont_top, 0);
+    lv_style_set_margin_left(&style_common_cont_top, 0);
+    lv_style_set_margin_right(&style_common_cont_top, 0);
 
     /* 初始化主背景样式 */
     lv_style_init(&style_common_main_bg); /* 创建样式对象 */
@@ -96,6 +100,7 @@ void style_common_init(void)
     lv_style_set_pad_bottom(&style_page_container, 0);
     lv_style_set_pad_left(&style_page_container, 0);
     lv_style_set_pad_right(&style_page_container, 0);
+    lv_style_set_pad_row(&style_page_container, 0); /* FLEX 布局无行间距 */
     lv_style_set_margin_top(&style_page_container, 0); /* 无外边距 */
     lv_style_set_margin_bottom(&style_page_container, 0);
     lv_style_set_margin_left(&style_page_container, 0);
