@@ -8,7 +8,6 @@
 #include "pages/page_photo_settings.h"
 #include "pages/page_video.h"
 #include "styles/style_common.h"
-#include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

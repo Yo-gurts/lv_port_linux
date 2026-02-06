@@ -12,10 +12,10 @@ typedef struct {
     lv_obj_t* container; /* 页面容器 */
     lv_obj_t* grid_container; /* 图标网格容器 */
     /* Status bar widgets */
-    lv_obj_t* time_label;
-    lv_obj_t* wifi_icon;
-    lv_obj_t* battery_icon;
-    lv_timer_t* timer; /* 时间更新定时器 */
+    lv_obj_t* lv_label_time; /* 时间标签 */
+    lv_obj_t* lv_img_wifi; /* WiFi图标 */
+    lv_obj_t* lv_img_battery; /* 电池图标 */
+    lv_timer_t* home_update_timer; /* 时间更新定时器 */
 } home_page_data_t;
 
 void page_home_create(page_manager_t* pm);
