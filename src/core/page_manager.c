@@ -3,6 +3,7 @@
 // #############################################################################
 
 #include "core/page_manager.h"
+#include "mlog.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -151,7 +152,10 @@ int page_manager_back(page_manager_t* pm)
     int prev_index = pm->history[--pm->history_count];
     const char* prev_name = pm->pages[prev_index].name;
 
-    return page_manager_navigate(pm, prev_name);
+    int ret = page_manager_navigate(pm, prev_name);
+    pm->history[--pm->history_count];
+
+    return ret;
 }
 
 const char* page_manager_get_current(page_manager_t* pm)
