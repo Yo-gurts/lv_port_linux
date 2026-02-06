@@ -5,6 +5,7 @@
 #include "mlog.h"
 #include "pages/page_ai_photo.h"
 #include "pages/page_ai_photo_settings.h"
+#include "pages/page_chat.h"
 #include "pages/page_home.h"
 #include "pages/page_photo.h"
 #include "pages/page_photo_settings.h"
@@ -139,6 +140,14 @@ static page_interface_t ai_photo_settings_page_interface = {
     .update = page_ai_photo_settings_update,
 };
 
+static page_interface_t chat_page_interface = {
+    .create = page_chat_create,
+    .destroy = page_chat_destroy,
+    .show = page_chat_show,
+    .hide = page_chat_hide,
+    .update = page_chat_update,
+};
+
 int main(void)
 {
     lv_init();
@@ -168,6 +177,7 @@ int main(void)
     page_manager_register(pm, "video_settings", &video_settings_page_interface, NULL);
     page_manager_register(pm, "system_settings", &system_settings_page_interface, NULL);
     page_manager_register(pm, "ai_photo_settings", &ai_photo_settings_page_interface, NULL);
+    page_manager_register(pm, "chat", &chat_page_interface, NULL);
 
     /* Navigate to home page */
     page_manager_navigate(pm, "home");

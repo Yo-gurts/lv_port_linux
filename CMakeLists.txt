@@ -63,6 +63,7 @@ set(SOURCES
     src/pages/page_home.c
     src/pages/page_ai_photo.c
     src/pages/page_ai_photo_settings.c
+    src/pages/page_chat.c
     src/pages/page_photo.c
     src/pages/page_video.c
     src/pages/page_photo_settings.c
