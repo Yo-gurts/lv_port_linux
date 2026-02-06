@@ -153,7 +153,7 @@ int page_manager_back(page_manager_t* pm)
     const char* prev_name = pm->pages[prev_index].name;
 
     int ret = page_manager_navigate(pm, prev_name);
-    pm->history[--pm->history_count];
+    pm->history_count--;
 
     return ret;
 }
