@@ -2,7 +2,7 @@
 // ! #region 1. 头文件与宏定义
 // #############################################################################
 
-#include "pages/page_photo_settings.h"
+#include "pages/page_video_settings.h"
 #include "config.h"
 #include "core/page_manager.h"
 #include "font_manager.h"
@@ -13,7 +13,7 @@
 
 // #endregion
 // #############################################################################
-// ! #region 2. 数据结构定义 (见 page_photo_settings.h)
+// ! #region 2. 数据结构定义 (见 page_video_settings.h)
 // #############################################################################
 
 /* 设置项配置 */
@@ -23,26 +23,22 @@ typedef struct {
     const char* value;
     const char* toggle_on;
     const char* toggle_off;
-    setting_type_t type;
-} setting_config_t;
+    video_setting_type_t type;
+} video_setting_config_t;
+
+static const video_setting_config_t settings_config[] = {
+    { "A:" RES_ICON_PATH "/4k.png", "分辨率", "3840x2160", NULL, NULL, VIDEO_SETTING_TYPE_NORMAL },
+    { "A:" RES_ICON_PATH "/white-balance.png", "白平衡", "自动", NULL, NULL, VIDEO_SETTING_TYPE_NORMAL },
+    { "A:" RES_ICON_PATH "/exposure.png", "曝光", "EV0", NULL, NULL, VIDEO_SETTING_TYPE_NORMAL },
+    { "A:" RES_ICON_PATH "/iso.png", "感光度", "自动", NULL, NULL, VIDEO_SETTING_TYPE_NORMAL },
+};
+
+#define SETTINGS_COUNT (int)(sizeof(settings_config) / sizeof(settings_config[0]))
 
 // #endregion
 // #############################################################################
 // ! #region 3. 全局变量 & 函数声明
 // #############################################################################
-
-static const setting_config_t settings_config[] = {
-    { "A" RES_ICON_PATH "/camera.png", "分辨率", "3840x2160", NULL, NULL, SETTING_TYPE_NORMAL },
-    { "A" RES_ICON_PATH "/white-balance.png", "白平衡", "自动", NULL, NULL, SETTING_TYPE_NORMAL },
-    { "A" RES_ICON_PATH "/iso.png", "感光度", "自动", NULL, NULL, SETTING_TYPE_NORMAL },
-    { "A" RES_ICON_PATH "/exposure.png", "曝光设置", "EV0", NULL, NULL, SETTING_TYPE_NORMAL },
-    { "A" RES_ICON_PATH "/ai.png", "AI设置", "普通模式", NULL, NULL, SETTING_TYPE_NORMAL },
-    { "A" RES_ICON_PATH "/quality.png", "画质", "超高画质", NULL, NULL, SETTING_TYPE_NORMAL },
-    { "A" RES_ICON_PATH "/face-detection.png", "人脸检测", "关闭", "开启", "关闭", SETTING_TYPE_TOGGLE },
-    { "A" RES_ICON_PATH "/smile.png", "笑脸抓拍", "关闭", "开启", "关闭", SETTING_TYPE_TOGGLE },
-};
-
-#define SETTINGS_COUNT (int)(sizeof(settings_config) / sizeof(settings_config[0]))
 
 // #endregion
 // #############################################################################
@@ -68,16 +64,16 @@ static const setting_config_t settings_config[] = {
 static void setting_item_cb(lv_event_t* e)
 {
     lv_obj_t* obj = lv_event_get_current_target(e);
-    page_photo_settings_data_t* data = (page_photo_settings_data_t*)lv_event_get_user_data(e);
+    page_video_settings_data_t* data = (page_video_settings_data_t*)lv_event_get_user_data(e);
     int index = (int)lv_obj_get_user_data(obj);
 
     if (index < 0 || index >= SETTINGS_COUNT) {
         return;
     }
 
-    photo_setting_item_t* item = &data->settings[index];
+    video_setting_item_t* item = &data->settings[index];
 
-    if (item->type == SETTING_TYPE_TOGGLE) {
+    if (item->type == VIDEO_SETTING_TYPE_TOGGLE) {
         /* 切换开关状态 */
         item->is_on = !item->is_on;
         const char* new_value = item->is_on ? item->toggle_on : item->toggle_off;
@@ -106,18 +102,18 @@ static void back_btn_cb(lv_event_t* e)
 // ! #region 8. 初始化、去初始化、资源管理
 // #############################################################################
 
-void page_photo_settings_create(page_manager_t* pm)
+void page_video_settings_create(page_manager_t* pm)
 {
     if (!pm) {
         return;
     }
 
-    page_photo_settings_data_t* data = (page_photo_settings_data_t*)malloc(sizeof(page_photo_settings_data_t));
+    page_video_settings_data_t* data = (page_video_settings_data_t*)malloc(sizeof(page_video_settings_data_t));
     if (!data) {
         return;
     }
 
-    memset(data, 0, sizeof(page_photo_settings_data_t));
+    memset(data, 0, sizeof(page_video_settings_data_t));
 
     /* 创建页面容器 */
     data->container = lv_obj_create(lv_screen_active());
@@ -150,7 +146,7 @@ void page_photo_settings_create(page_manager_t* pm)
 
     /* 标题文字 - 居中 */
     lv_obj_t* title_label = lv_label_create(data->nav_bar);
-    lv_label_set_text(title_label, "拍照设置");
+    lv_label_set_text(title_label, "录像设置");
     lv_obj_add_style(title_label, &NORMAL_SIZE, LV_PART_MAIN);
     lv_obj_set_style_text_color(title_label, lv_color_white(), LV_PART_MAIN);
     lv_obj_align(title_label, LV_ALIGN_CENTER, 0, 0);
@@ -167,9 +163,9 @@ void page_photo_settings_create(page_manager_t* pm)
     lv_obj_set_flex_flow(data->settings_container, LV_FLEX_FLOW_COLUMN);
     lv_obj_set_flex_align(data->settings_container, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
 
-    /* 创建8个设置项 */
+    /* 创建4个设置项 */
     for (int i = 0; i < SETTINGS_COUNT; i++) {
-        photo_setting_item_t* item = &data->settings[i];
+        video_setting_item_t* item = &data->settings[i];
 
         /* 设置项容器 */
         item->container = lv_obj_create(data->settings_container);
@@ -216,13 +212,13 @@ void page_photo_settings_create(page_manager_t* pm)
     page_set_private_data(pm, data);
 }
 
-void page_photo_settings_destroy(page_manager_t* pm)
+void page_video_settings_destroy(page_manager_t* pm)
 {
     if (!pm) {
         return;
     }
 
-    page_photo_settings_data_t* data = page_get_private_data(pm);
+    page_video_settings_data_t* data = page_get_private_data(pm);
     if (!data) {
         return;
     }
@@ -235,37 +231,37 @@ void page_photo_settings_destroy(page_manager_t* pm)
     free(data);
 }
 
-void page_photo_settings_show(page_manager_t* pm)
+void page_video_settings_show(page_manager_t* pm)
 {
     if (!pm) {
         return;
     }
 
-    page_photo_settings_data_t* data = page_get_private_data(pm);
+    page_video_settings_data_t* data = page_get_private_data(pm);
     if (!data || !data->container) {
         return;
     }
 
-    MLOG_INFO("Photo settings page show");
+    MLOG_INFO("Video settings page show");
     lv_obj_clear_flag(data->container, LV_OBJ_FLAG_HIDDEN);
 }
 
-void page_photo_settings_hide(page_manager_t* pm)
+void page_video_settings_hide(page_manager_t* pm)
 {
     if (!pm) {
         return;
     }
 
-    page_photo_settings_data_t* data = page_get_private_data(pm);
+    page_video_settings_data_t* data = page_get_private_data(pm);
     if (!data || !data->container) {
         return;
     }
 
-    MLOG_INFO("Photo settings page hide");
+    MLOG_INFO("Video settings page hide");
     lv_obj_add_flag(data->container, LV_OBJ_FLAG_HIDDEN);
 }
 
-void page_photo_settings_update(page_manager_t* pm)
+void page_video_settings_update(page_manager_t* pm)
 {
     LV_UNUSED(pm);
 }

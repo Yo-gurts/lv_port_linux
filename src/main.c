@@ -7,6 +7,7 @@
 #include "pages/page_photo.h"
 #include "pages/page_photo_settings.h"
 #include "pages/page_video.h"
+#include "pages/page_video_settings.h"
 #include "styles/style_common.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -103,6 +104,14 @@ static page_interface_t photo_settings_page_interface = {
     .update = page_photo_settings_update,
 };
 
+static page_interface_t video_settings_page_interface = {
+    .create = page_video_settings_create,
+    .destroy = page_video_settings_destroy,
+    .show = page_video_settings_show,
+    .hide = page_video_settings_hide,
+    .update = page_video_settings_update,
+};
+
 int main(void)
 {
     lv_init();
@@ -128,6 +137,7 @@ int main(void)
     page_manager_register(pm, "photo", &photo_page_interface, NULL);
     page_manager_register(pm, "video", &video_page_interface, NULL);
     page_manager_register(pm, "photo_settings", &photo_settings_page_interface, NULL);
+    page_manager_register(pm, "video_settings", &video_settings_page_interface, NULL);
 
     /* Navigate to home page */
     page_manager_navigate(pm, "home");

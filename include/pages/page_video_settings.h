@@ -1,5 +1,5 @@
-#ifndef __PAGE_PHOTO_SETTINGS_H__
-#define __PAGE_PHOTO_SETTINGS_H__
+#ifndef __PAGE_VIDEO_SETTINGS_H__
+#define __PAGE_VIDEO_SETTINGS_H__
 
 #include "core/page_manager.h"
 
@@ -9,9 +9,9 @@ extern "C" {
 
 /* 设置项类型 */
 typedef enum {
-    SETTING_TYPE_NORMAL, /* 普通设置，点击仅日志 */
-    SETTING_TYPE_TOGGLE, /* 开关设置，点击切换状态 */
-} setting_type_t;
+    VIDEO_SETTING_TYPE_NORMAL, /* 普通设置，点击仅日志 */
+    VIDEO_SETTING_TYPE_TOGGLE, /* 开关设置，点击切换状态 */
+} video_setting_type_t;
 
 /* 设置项结构 */
 typedef struct {
@@ -24,25 +24,26 @@ typedef struct {
     const char* value; /* 当前值 */
     const char* toggle_on; /* 开启时显示的值 */
     const char* toggle_off; /* 关闭时显示的值 */
-    setting_type_t type; /* 设置类型 */
+    video_setting_type_t type; /* 设置类型 */
     int is_on; /* 开关状态 */
-} photo_setting_item_t;
+} video_setting_item_t;
 
+/* 录像设置页面数据 */
 typedef struct {
     lv_obj_t* container; /* 页面容器 */
     lv_obj_t* nav_bar; /* 顶部导航栏 */
     lv_obj_t* settings_container; /* 设置列表容器 */
-    photo_setting_item_t settings[8]; /* 8个设置项 */
-} page_photo_settings_data_t;
+    video_setting_item_t settings[4]; /* 4个设置项 */
+} page_video_settings_data_t;
 
-void page_photo_settings_create(page_manager_t* pm);
-void page_photo_settings_destroy(page_manager_t* pm);
-void page_photo_settings_show(page_manager_t* pm);
-void page_photo_settings_hide(page_manager_t* pm);
-void page_photo_settings_update(page_manager_t* pm);
+void page_video_settings_create(page_manager_t* pm);
+void page_video_settings_destroy(page_manager_t* pm);
+void page_video_settings_show(page_manager_t* pm);
+void page_video_settings_hide(page_manager_t* pm);
+void page_video_settings_update(page_manager_t* pm);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* __PAGE_PHOTO_SETTINGS_H__ */
+#endif /* __PAGE_VIDEO_SETTINGS_H__ */
