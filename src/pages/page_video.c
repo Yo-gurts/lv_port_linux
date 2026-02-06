@@ -65,8 +65,8 @@ static void mode_switch_cb(lv_event_t* e)
         return;
     }
 
-    MLOG_INFO("Switching to photo page");
-    page_manager_navigate(pm, "photo");
+    MLOG_INFO("Back to photo page");
+    page_manager_back(pm);
 }
 
 /* 菜单按钮回调：跳转录像设置页面 */
