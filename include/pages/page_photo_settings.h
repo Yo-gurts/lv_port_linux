@@ -9,7 +9,7 @@ extern "C" {
 
 /* 设置项类型 */
 typedef enum {
-    SETTING_TYPE_NORMAL, /* 普通设置，点击仅日志 */
+    SETTING_TYPE_NORMAL, /* 普通设置，点击弹出滚轮 */
     SETTING_TYPE_TOGGLE, /* 开关设置，点击切换状态 */
 } setting_type_t;
 
@@ -21,9 +21,10 @@ typedef struct {
     lv_obj_t* value_label; /* 参数文字 */
     const char* icon_path; /* 图标路径 */
     const char* title; /* 标题 */
-    const char* value; /* 当前值 */
+    const char* roller_options; /* 滚轮选项字符串 */
     const char* toggle_on; /* 开启时显示的值 */
     const char* toggle_off; /* 关闭时显示的值 */
+    int current_index; /* 当前选中的索引 */
     setting_type_t type; /* 设置类型 */
     int is_on; /* 开关状态 */
 } photo_setting_item_t;
@@ -33,6 +34,9 @@ typedef struct {
     lv_obj_t* nav_bar; /* 顶部导航栏 */
     lv_obj_t* settings_container; /* 设置列表容器 */
     photo_setting_item_t settings[7]; /* 7个设置项 */
+    lv_obj_t* roller_popup; /* 滚轮弹窗 */
+    lv_obj_t* roller; /* 滚轮控件 */
+    int current_setting_index; /* 当前选中的设置项索引 */
 } page_photo_settings_data_t;
 
 void page_photo_settings_create(page_manager_t* pm);
