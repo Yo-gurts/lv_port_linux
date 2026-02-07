@@ -69,6 +69,7 @@ static void setting_item_cb(lv_event_t* e)
     lv_obj_t* obj = lv_event_get_current_target(e);
     page_system_settings_data_t* data = (page_system_settings_data_t*)lv_event_get_user_data(e);
     int index = (int)lv_obj_get_user_data(obj);
+    page_manager_t* pm = (page_manager_t*)lv_event_get_user_data(e);
 
     if (index < 0 || index >= SETTINGS_COUNT) {
         return;
@@ -83,8 +84,12 @@ static void setting_item_cb(lv_event_t* e)
         lv_label_set_text(item->value_label, new_value);
         MLOG_INFO("Setting '%s' toggled to: %s", item->title, new_value);
     } else {
-        /* 普通设置，仅日志 */
-        MLOG_INFO("Setting '%s' clicked, value: %s", item->title, item->value);
+        /* 版本信息跳转 */
+        if (index == SETTINGS_COUNT - 1) {
+            page_manager_navigate(pm, "version_info");
+        } else {
+            MLOG_INFO("Setting '%s' clicked, value: %s", item->title, item->value);
+        }
     }
 }
 
@@ -207,7 +212,7 @@ void page_system_settings_create(page_manager_t* pm)
         item->is_on = 0;
 
         /* 点击事件 */
-        lv_obj_add_event_cb(item->container, setting_item_cb, LV_EVENT_CLICKED, data);
+        lv_obj_add_event_cb(item->container, setting_item_cb, LV_EVENT_CLICKED, pm);
         lv_obj_set_user_data(item->container, (void*)(intptr_t)i);
     }
 

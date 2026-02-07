@@ -10,6 +10,7 @@
 #include "pages/page_photo.h"
 #include "pages/page_photo_settings.h"
 #include "pages/page_system_settings.h"
+#include "pages/page_version_info.h"
 #include "pages/page_video.h"
 #include "pages/page_video_settings.h"
 #include "styles/style_common.h"
@@ -132,6 +133,14 @@ static page_interface_t system_settings_page_interface = {
     .update = page_system_settings_update,
 };
 
+static page_interface_t version_info_page_interface = {
+    .create = page_version_info_create,
+    .destroy = page_version_info_destroy,
+    .show = page_version_info_show,
+    .hide = page_version_info_hide,
+    .update = page_version_info_update,
+};
+
 static page_interface_t ai_photo_settings_page_interface = {
     .create = page_ai_photo_settings_create,
     .destroy = page_ai_photo_settings_destroy,
@@ -176,6 +185,7 @@ int main(void)
     page_manager_register(pm, "photo_settings", &photo_settings_page_interface, NULL);
     page_manager_register(pm, "video_settings", &video_settings_page_interface, NULL);
     page_manager_register(pm, "system_settings", &system_settings_page_interface, NULL);
+    page_manager_register(pm, "version_info", &version_info_page_interface, NULL);
     page_manager_register(pm, "ai_photo_settings", &ai_photo_settings_page_interface, NULL);
     page_manager_register(pm, "chat", &chat_page_interface, NULL);
 

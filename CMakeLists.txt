@@ -69,6 +69,7 @@ set(SOURCES
     src/pages/page_photo_settings.c
     src/pages/page_video_settings.c
     src/pages/page_system_settings.c
+    src/pages/page_version_info.c
     src/font_manager.c
 )
 
