@@ -172,18 +172,6 @@ static void setting_item_cb(lv_event_t* e)
     }
 }
 
-/* 返回按钮回调 */
-static void back_btn_cb(lv_event_t* e)
-{
-    page_manager_t* pm = (page_manager_t*)lv_event_get_user_data(e);
-    if (!pm) {
-        return;
-    }
-
-    MLOG_INFO("Back button clicked");
-    page_manager_back(pm);
-}
-
 // #endregion
 // #############################################################################
 // ! #region 8. 初始化、去初始化、资源管理
@@ -225,7 +213,7 @@ void page_photo_settings_create(page_manager_t* pm)
     lv_obj_t* back_btn = lv_btn_create(data->nav_bar);
     lv_obj_set_size(back_btn, 50, 50);
     lv_obj_add_style(back_btn, &style_noboarder, LV_PART_MAIN);
-    lv_obj_add_event_cb(back_btn, back_btn_cb, LV_EVENT_CLICKED, pm);
+    lv_obj_add_event_cb(back_btn, page_manager_back_cb, LV_EVENT_CLICKED, pm);
     lv_obj_align(back_btn, LV_ALIGN_LEFT_MID, 10, 0);
     lv_obj_t* back_icon = lv_img_create(back_btn);
     lv_img_set_src(back_icon, "A:" RES_ICON_PATH "/back-fill.png");

@@ -204,6 +204,34 @@ void page_set_private_data(page_manager_t* pm, void* data)
 // ! #region 7. 按键、手势、定时器 等事件回调函数
 // #############################################################################
 
+/* 通用返回按钮回调 - 所有页面可直接作为事件回调使用 */
+void page_manager_back_cb(lv_event_t* e)
+{
+    page_manager_t* pm = (page_manager_t*)lv_event_get_user_data(e);
+    if (!pm) {
+        return;
+    }
+    MLOG_INFO("Back button clicked");
+    page_manager_back(pm);
+}
+
+/* 通用右滑返回回调 - 所有页面可直接作为事件回调使用 */
+void page_manager_swipe_right_cb(lv_event_t* e)
+{
+    page_manager_t* pm = (page_manager_t*)lv_event_get_user_data(e);
+    if (!pm) {
+        return;
+    }
+    lv_event_code_t code = lv_event_get_code(e);
+    if (code == LV_EVENT_GESTURE) {
+        lv_dir_t dir = lv_indev_get_gesture_dir(lv_indev_get_act());
+        if (dir == LV_DIR_RIGHT) {
+            MLOG_INFO("Swipe right, back to previous page");
+            page_manager_back(pm);
+        }
+    }
+}
+
 // #endregion
 // #############################################################################
 // ! #region 8. 初始化、去初始化、资源管理

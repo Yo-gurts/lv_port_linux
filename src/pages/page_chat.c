@@ -46,18 +46,6 @@
 // #############################################################################
 
 /* 返回按钮回调 */
-static void back_btn_cb(lv_event_t* e)
-{
-    page_manager_t* pm = (page_manager_t*)lv_event_get_user_data(e);
-    if (!pm) {
-        return;
-    }
-
-    MLOG_INFO("Back button clicked");
-    page_manager_back(pm);
-}
-
-/* 音量按钮回调 */
 static void volume_btn_cb(lv_event_t* e)
 {
     page_manager_t* pm = (page_manager_t*)lv_event_get_user_data(e);
@@ -95,21 +83,6 @@ static void timbre_btn_cb(lv_event_t* e)
     MLOG_INFO("Timbre button clicked");
 }
 
-/* 滑动手势回调：从左往右滑返回上一页 */
-static void gesture_cb(lv_event_t* e)
-{
-    lv_event_code_t code = lv_event_get_code(e);
-    page_manager_t* pm = (page_manager_t*)lv_event_get_user_data(e);
-
-    if (code == LV_EVENT_GESTURE) {
-        lv_dir_t dir = lv_indev_get_gesture_dir(lv_indev_get_act());
-        if (dir == LV_DIR_RIGHT) {
-            MLOG_INFO("Swipe right, back to home");
-            page_manager_back(pm);
-        }
-    }
-}
-
 // #endregion
 // #############################################################################
 // ! #region 8. 初始化、去初始化、资源管理
@@ -141,7 +114,7 @@ void page_chat_create(page_manager_t* pm)
     lv_obj_add_flag(data->container, LV_OBJ_FLAG_GESTURE_BUBBLE);
 
     /* 添加滑动手势回调：从左往右滑返回上一页 */
-    lv_obj_add_event_cb(data->container, gesture_cb, LV_EVENT_GESTURE, pm);
+    lv_obj_add_event_cb(data->container, page_manager_swipe_right_cb, LV_EVENT_GESTURE, pm);
 
     /* =======================
      * 消息列表区域 - 占满中间空间
@@ -176,7 +149,7 @@ void page_chat_create(page_manager_t* pm)
     data->back_btn = lv_btn_create(data->bottom_bar);
     lv_obj_set_size(data->back_btn, 50, 50);
     lv_obj_add_style(data->back_btn, &style_noboarder, LV_PART_MAIN);
-    lv_obj_add_event_cb(data->back_btn, back_btn_cb, LV_EVENT_CLICKED, pm);
+    lv_obj_add_event_cb(data->back_btn, page_manager_back_cb, LV_EVENT_CLICKED, pm);
     lv_obj_align(data->back_btn, LV_ALIGN_LEFT_MID, 10, 0);
     lv_obj_t* back_icon = lv_img_create(data->back_btn);
     lv_img_set_src(back_icon, "A:" RES_ICON_PATH "/back-fill.png");

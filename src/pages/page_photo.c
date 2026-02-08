@@ -57,18 +57,6 @@ static void mode_switch_cb(lv_event_t* e)
     page_manager_navigate(pm, "video");
 }
 
-/* 返回按钮回调：返回上一页 */
-static void back_btn_cb(lv_event_t* e)
-{
-    page_manager_t* pm = (page_manager_t*)lv_event_get_user_data(e);
-    if (!pm) {
-        return;
-    }
-
-    MLOG_INFO("Back button clicked");
-    page_manager_back(pm);
-}
-
 /* 菜单按钮回调：跳转拍照设置页面 */
 static void menu_back_cb(lv_event_t* e)
 {
@@ -79,21 +67,6 @@ static void menu_back_cb(lv_event_t* e)
 
     MLOG_INFO("Menu clicked, navigate to photo_settings");
     page_manager_navigate(pm, "photo_settings");
-}
-
-/* 滑动手势回调：从左往右滑返回上一页 */
-static void gesture_cb(lv_event_t* e)
-{
-    lv_event_code_t code = lv_event_get_code(e);
-    page_manager_t* pm = (page_manager_t*)lv_event_get_user_data(e);
-
-    if (code == LV_EVENT_GESTURE) {
-        lv_dir_t dir = lv_indev_get_gesture_dir(lv_indev_get_act());
-        if (dir == LV_DIR_RIGHT) {
-            MLOG_INFO("Swipe right, back to home");
-            page_manager_back(pm);
-        }
-    }
 }
 
 // #endregion
@@ -125,7 +98,7 @@ void page_photo_create(page_manager_t* pm)
     lv_obj_add_flag(data->container, LV_OBJ_FLAG_GESTURE_BUBBLE);
 
     /* 添加滑动手势回调：从左往右滑返回上一页 */
-    lv_obj_add_event_cb(data->container, gesture_cb, LV_EVENT_GESTURE, pm);
+    lv_obj_add_event_cb(data->container, page_manager_swipe_right_cb, LV_EVENT_GESTURE, pm);
 
     /* =======================
      * 顶部状态栏：[back][8M] 在左边，剩余拍照数 [SD][battery] 在右边
@@ -140,7 +113,7 @@ void page_photo_create(page_manager_t* pm)
     data->back_btn = lv_btn_create(data->top_bar);
     lv_obj_set_size(data->back_btn, 50, 50);
     lv_obj_add_style(data->back_btn, &style_noboarder, LV_PART_MAIN);
-    lv_obj_add_event_cb(data->back_btn, back_btn_cb, LV_EVENT_CLICKED, pm);
+    lv_obj_add_event_cb(data->back_btn, page_manager_back_cb, LV_EVENT_CLICKED, pm);
     lv_obj_align(data->back_btn, LV_ALIGN_TOP_LEFT, 10, 0);
     lv_obj_t* back_icon = lv_img_create(data->back_btn);
     lv_img_set_src(back_icon, "A:" RES_ICON_PATH "/back.png");
