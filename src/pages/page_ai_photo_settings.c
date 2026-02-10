@@ -136,7 +136,6 @@ void page_ai_photo_settings_create(page_manager_t* pm)
     lv_obj_t* title_label = lv_label_create(data->nav_bar);
     lv_label_set_text(title_label, "AI拍照设置");
     lv_obj_add_style(title_label, &NORMAL_SIZE, LV_PART_MAIN);
-    lv_obj_set_style_text_color(title_label, lv_color_white(), LV_PART_MAIN);
     lv_obj_align(title_label, LV_ALIGN_CENTER, 0, 0);
 
     /* =======================
@@ -172,7 +171,6 @@ void page_ai_photo_settings_create(page_manager_t* pm)
         item->title_label = lv_label_create(item->container);
         lv_label_set_text(item->title_label, settings_config[i].title);
         lv_obj_add_style(item->title_label, &NORMAL_SIZE, LV_PART_MAIN);
-        lv_obj_set_style_text_color(item->title_label, lv_color_white(), LV_PART_MAIN);
         lv_obj_align(item->title_label, LV_ALIGN_LEFT_MID, 55, 0);
 
         /* 选中图标 - 右侧 */

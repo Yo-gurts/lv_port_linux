@@ -182,7 +182,6 @@ void page_chat_create(page_manager_t* pm)
     data->voice_label = lv_label_create(data->voice_btn);
     lv_label_set_text(data->voice_label, "按住说话");
     lv_obj_add_style(data->voice_label, &NORMAL_SIZE, LV_PART_MAIN);
-    lv_obj_set_style_text_color(data->voice_label, lv_color_white(), LV_PART_MAIN);
     lv_obj_align(data->voice_label, LV_ALIGN_CENTER, 20, 0);
 
     /* 音色按钮 - 右侧 */

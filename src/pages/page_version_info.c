@@ -136,7 +136,6 @@ void page_version_info_create(page_manager_t* pm)
     lv_obj_t* title_label = lv_label_create(data->nav_bar);
     lv_label_set_text(title_label, "版本信息");
     lv_obj_add_style(title_label, &NORMAL_SIZE, LV_PART_MAIN);
-    lv_obj_set_style_text_color(title_label, lv_color_white(), LV_PART_MAIN);
     lv_obj_align(title_label, LV_ALIGN_CENTER, 0, 0);
 
     /* =======================
@@ -164,7 +163,6 @@ void page_version_info_create(page_manager_t* pm)
         lv_obj_t* title = lv_label_create(item_container);
         lv_label_set_text(title, info_items[i].title);
         lv_obj_add_style(title, &NORMAL_SIZE, LV_PART_MAIN);
-        lv_obj_set_style_text_color(title, lv_color_white(), LV_PART_MAIN);
         lv_obj_align(title, LV_ALIGN_LEFT_MID, 10, 0);
 
         /* 值文字 - 靠右 */

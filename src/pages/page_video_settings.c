@@ -220,7 +220,6 @@ void page_video_settings_create(page_manager_t* pm)
     lv_obj_t* title_label = lv_label_create(data->nav_bar);
     lv_label_set_text(title_label, "录像设置");
     lv_obj_add_style(title_label, &NORMAL_SIZE, LV_PART_MAIN);
-    lv_obj_set_style_text_color(title_label, lv_color_white(), LV_PART_MAIN);
     lv_obj_align(title_label, LV_ALIGN_CENTER, 0, 0);
 
     /* =======================
@@ -257,10 +256,9 @@ void page_video_settings_create(page_manager_t* pm)
         item->title_label = lv_label_create(item->container);
         lv_label_set_text(item->title_label, config->title);
         lv_obj_add_style(item->title_label, &NORMAL_SIZE, LV_PART_MAIN);
-        lv_obj_set_style_text_color(item->title_label, lv_color_white(), LV_PART_MAIN);
         lv_obj_align(item->title_label, LV_ALIGN_LEFT_MID, 55, 0);
 
-        /* 参数文字 */
+        /* 参数文字 - NORMAL_SIZE 包含白色，需覆盖为黄色 */
         item->value_label = lv_label_create(item->container);
         lv_obj_add_style(item->value_label, &NORMAL_SIZE, LV_PART_MAIN);
         lv_obj_set_style_text_color(item->value_label, lv_color_hex(0xFFD700), LV_PART_MAIN);
@@ -291,10 +289,7 @@ void page_video_settings_create(page_manager_t* pm)
      * ======================= */
     data->roller_popup = lv_obj_create(lv_screen_active());
     lv_obj_set_size(data->roller_popup, LV_PCT(100), LV_PCT(100));
-    lv_obj_set_style_bg_opa(data->roller_popup, LV_OPA_50, LV_PART_MAIN);
-    lv_obj_set_style_bg_color(data->roller_popup, lv_color_black(), LV_PART_MAIN);
-    lv_obj_set_style_border_width(data->roller_popup, 0, LV_PART_MAIN);
-    lv_obj_set_style_radius(data->roller_popup, 0, LV_PART_MAIN);
+    lv_obj_add_style(data->roller_popup, &style_roller_popup, LV_PART_MAIN);
     lv_obj_clear_flag(data->roller_popup, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_set_scrollbar_mode(data->roller_popup, LV_SCROLLBAR_MODE_OFF);
     lv_obj_add_flag(data->roller_popup, LV_OBJ_FLAG_CLICKABLE);
@@ -306,9 +301,7 @@ void page_video_settings_create(page_manager_t* pm)
     lv_obj_center(data->roller);
     lv_roller_set_visible_row_count(data->roller, 5);
     lv_obj_add_style(data->roller, &NORMAL_SIZE, LV_PART_MAIN);
-    lv_obj_set_style_bg_opa(data->roller, LV_OPA_COVER, LV_PART_MAIN);
-    lv_obj_set_style_bg_color(data->roller, lv_color_hex(0x2A2A2A), LV_PART_MAIN);
-    lv_obj_set_style_radius(data->roller, 20, LV_PART_MAIN);
+    lv_obj_add_style(data->roller, &style_roller, LV_PART_MAIN);
     lv_obj_add_event_cb(data->roller, roller_select_cb, LV_EVENT_VALUE_CHANGED | LV_EVENT_CLICKED, data);
 
     /* 保存 private_data */

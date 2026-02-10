@@ -20,8 +20,9 @@ extern lv_style_t style_settings_item; /* 设置项样式 */
 extern lv_style_t style_settings_item_selected; /* 设置项选中样式 */
 extern lv_style_t style_settings_divider; /* 分隔线样式 */
 extern lv_style_t style_settings_selected; /* 选中项高亮样式 */
-extern lv_style_t style_settings_title; /* 设置项标题样式 */
 extern lv_style_t style_settings_value; /* 设置项参数样式 */
+extern lv_style_t style_roller_popup; /* 滚轮弹窗遮罩样式 */
+extern lv_style_t style_roller; /* 滚轮样式 */
 
 void style_common_init(void);
 
