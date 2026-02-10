@@ -8,6 +8,7 @@
 #include "font_manager.h"
 #include "mlog.h"
 #include "styles/style_common.h"
+#include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -21,7 +22,7 @@
 // ! #region 3. 全局变量 & 函数声明
 // #############################################################################
 
-static const ai_setting_item_t settings_config[] = {
+static const ai_setting_config_t settings_config[] = {
     { "A" RES_ICON_PATH "/filter_default.png", "风格变换", AI_SETTING_STYLE_TRANSFORM },
     { "A" RES_ICON_PATH "/ai.png", "AI识万物", AI_SETTING_RECOGNITION },
     { "A" RES_ICON_PATH "/translate.png", "拍照翻译", AI_SETTING_TRANSLATION },
@@ -52,27 +53,25 @@ static const ai_setting_item_t settings_config[] = {
 /* 设置项点击回调 - 3选1模式 */
 static void setting_item_cb(lv_event_t* e)
 {
-    lv_obj_t* obj = lv_event_get_current_target(e);
     page_ai_photo_settings_data_t* data = (page_ai_photo_settings_data_t*)lv_event_get_user_data(e);
-    int index = (int)lv_obj_get_user_data(obj);
+    int index = (int)lv_obj_get_user_data(lv_event_get_current_target(e));
 
-    if (index < 0 || index >= SETTINGS_COUNT) {
+    if (index < 0 || index >= data->settings_count) {
         return;
     }
 
     /* 3选1模式：先取消所有选项的选中状态，再选中当前点击的选项 */
-    for (int i = 0; i < SETTINGS_COUNT; i++) {
-        data->settings[i].is_selected = 0;
-        lv_obj_add_style(data->settings[i].container, &style_settings_item, LV_PART_MAIN);
-        lv_img_set_src(data->settings[i].check_icon, NULL);
+    for (int i = 0; i < data->settings_count; i++) {
+        bool selected = (i == index);
+        lv_obj_add_style(data->items[i].container, selected ? &style_settings_item_selected : &style_settings_item, LV_PART_MAIN);
+        if (selected) {
+            lv_obj_clear_flag(data->items[i].check_icon, LV_OBJ_FLAG_HIDDEN);
+        } else {
+            lv_obj_add_flag(data->items[i].check_icon, LV_OBJ_FLAG_HIDDEN);
+        }
     }
 
-    /* 选中当前点击的选项 */
-    data->settings[index].is_selected = 1;
-    lv_obj_add_style(data->settings[index].container, &style_settings_item_selected, LV_PART_MAIN);
-    lv_img_set_src(data->settings[index].check_icon, "A:" RES_ICON_PATH "/check.png");
-
-    MLOG_INFO("AI Setting '%s' selected", data->settings[index].title);
+    MLOG_INFO("AI Setting '%s' selected", data->configs[index].title);
 }
 
 // #endregion
@@ -91,7 +90,18 @@ void page_ai_photo_settings_create(page_manager_t* pm)
         return;
     }
 
-    memset(data, 0, sizeof(page_ai_photo_settings_data_t));
+    /* 指向静态配置 */
+    data->configs = settings_config;
+    data->settings_count = SETTINGS_COUNT;
+    data->container = NULL;
+    data->nav_bar = NULL;
+    data->settings_container = NULL;
+    data->items = NULL;
+    data->items = (ai_setting_item_t*)malloc(sizeof(ai_setting_item_t) * SETTINGS_COUNT);
+    if (!data->items) {
+        free(data);
+        return;
+    }
 
     /* 创建页面容器 */
     data->container = lv_obj_create(lv_screen_active());
@@ -142,8 +152,8 @@ void page_ai_photo_settings_create(page_manager_t* pm)
     lv_obj_set_flex_align(data->settings_container, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
 
     /* 创建3个设置项 */
-    for (int i = 0; i < SETTINGS_COUNT; i++) {
-        ai_setting_item_t* item = &data->settings[i];
+    for (int i = 0; i < data->settings_count; i++) {
+        ai_setting_item_t* item = &data->items[i];
 
         /* 设置项容器 */
         item->container = lv_obj_create(data->settings_container);
@@ -167,23 +177,20 @@ void page_ai_photo_settings_create(page_manager_t* pm)
 
         /* 选中图标 - 右侧 */
         item->check_icon = lv_img_create(item->container);
+        lv_img_set_src(item->check_icon, "A:" RES_ICON_PATH "/check.png");
         lv_obj_align(item->check_icon, LV_ALIGN_RIGHT_MID, -10, 0);
 
-        /* 保存配置 */
-        item->icon_path = settings_config[i].icon_path;
-        item->title = settings_config[i].title;
-        item->type = settings_config[i].type;
-        item->is_selected = 0;
+        /* 默认选中第一个 */
+        if (i == 0) {
+            lv_obj_add_style(item->container, &style_settings_item_selected, LV_PART_MAIN);
+        } else {
+            lv_obj_add_flag(item->check_icon, LV_OBJ_FLAG_HIDDEN);
+        }
 
         /* 点击事件 */
         lv_obj_add_event_cb(item->container, setting_item_cb, LV_EVENT_CLICKED, data);
         lv_obj_set_user_data(item->container, (void*)(intptr_t)i);
     }
-
-    /* 默认选中第一个 */
-    data->settings[0].is_selected = 1;
-    lv_obj_add_style(data->settings[0].container, &style_settings_item_selected, LV_PART_MAIN);
-    lv_img_set_src(data->settings[0].check_icon, "A:" RES_ICON_PATH "/check.png");
 
     /* 保存 private_data */
     page_set_private_data(pm, data);
@@ -205,6 +212,7 @@ void page_ai_photo_settings_destroy(page_manager_t* pm)
         data->container = NULL;
     }
 
+    free(data->items);
     free(data);
 }
 

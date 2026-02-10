@@ -15,23 +15,28 @@ typedef enum {
     AI_SETTING_TRANSLATION, /* 拍照翻译 */
 } ai_setting_type_t;
 
-/* AI设置项结构 */
+/* AI设置项结构 - 仅包含静态配置 */
+typedef struct {
+    const char* icon_path; /* 图标路径 */
+    const char* title; /* 标题 */
+    ai_setting_type_t type; /* 设置类型 */
+} ai_setting_config_t;
+
+/* AI设置项运行时数据结构 */
 typedef struct {
     lv_obj_t* container; /* 行容器 */
     lv_obj_t* icon; /* 左侧图标 */
     lv_obj_t* title_label; /* 标题文字 */
     lv_obj_t* check_icon; /* 选中图标 */
-    const char* icon_path; /* 图标路径 */
-    const char* title; /* 标题 */
-    ai_setting_type_t type; /* 设置类型 */
-    int is_selected; /* 是否选中 */
 } ai_setting_item_t;
 
 typedef struct {
     lv_obj_t* container; /* 页面容器 */
     lv_obj_t* nav_bar; /* 顶部导航栏 */
     lv_obj_t* settings_container; /* 设置列表容器 */
-    ai_setting_item_t settings[3]; /* 3个设置项 */
+    const ai_setting_config_t* configs; /* 配置数组 */
+    ai_setting_item_t* items; /* 控件数组 */
+    int settings_count; /* 设置项数量 */
 } page_ai_photo_settings_data_t;
 
 void page_ai_photo_settings_create(page_manager_t* pm);
