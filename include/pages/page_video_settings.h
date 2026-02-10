@@ -1,17 +1,11 @@
 #ifndef __PAGE_VIDEO_SETTINGS_H__
 #define __PAGE_VIDEO_SETTINGS_H__
 
-#include "core/page_manager.h"
+#include "ui/common_settings.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-/* 设置项类型 */
-typedef enum {
-    VIDEO_SETTING_TYPE_NORMAL, /* 普通设置，点击仅日志 */
-    VIDEO_SETTING_TYPE_TOGGLE, /* 开关设置，点击切换状态 */
-} video_setting_type_t;
 
 /* 设置项结构 */
 typedef struct {
@@ -19,13 +13,7 @@ typedef struct {
     lv_obj_t* icon; /* 左侧图标 */
     lv_obj_t* title_label; /* 标题文字 */
     lv_obj_t* value_label; /* 参数文字 */
-    const char* icon_path; /* 图标路径 */
-    const char* title; /* 标题 */
-    const char* value; /* 当前值 */
-    const char* toggle_on; /* 开启时显示的值 */
-    const char* toggle_off; /* 关闭时显示的值 */
-    video_setting_type_t type; /* 设置类型 */
-    int is_on; /* 开关状态 */
+    int current_index; /* 当前选中的索引（toggle时0=关闭，1=开启） */
 } video_setting_item_t;
 
 /* 录像设置页面数据 */

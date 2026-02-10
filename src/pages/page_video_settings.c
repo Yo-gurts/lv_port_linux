@@ -16,29 +16,18 @@
 // ! #region 2. 数据结构定义 (见 page_video_settings.h)
 // #############################################################################
 
-/* 设置项配置 */
-typedef struct {
-    const char* icon_path;
-    const char* title;
-    const char* value;
-    const char* toggle_on;
-    const char* toggle_off;
-    video_setting_type_t type;
-} video_setting_config_t;
-
-static const video_setting_config_t settings_config[] = {
-    { "A:" RES_ICON_PATH "/4k.png", "分辨率", "3840x2160", NULL, NULL, VIDEO_SETTING_TYPE_NORMAL },
-    { "A:" RES_ICON_PATH "/white-balance.png", "白平衡", "自动", NULL, NULL, VIDEO_SETTING_TYPE_NORMAL },
-    { "A:" RES_ICON_PATH "/exposure.png", "曝光", "EV0", NULL, NULL, VIDEO_SETTING_TYPE_NORMAL },
-    { "A:" RES_ICON_PATH "/iso.png", "感光度", "自动", NULL, NULL, VIDEO_SETTING_TYPE_NORMAL },
-};
-
-#define SETTINGS_COUNT (int)(sizeof(settings_config) / sizeof(settings_config[0]))
-
-// #endregion
 // #############################################################################
 // ! #region 3. 全局变量 & 函数声明
 // #############################################################################
+
+static const setting_config_t settings_config[] = {
+    { .icon_path = "A:" RES_ICON_PATH "/4k.png", .title = "分辨率", .value = "3840x2160", .type = SETTING_TYPE_NORMAL },
+    { .icon_path = "A:" RES_ICON_PATH "/white-balance.png", .title = "白平衡", .value = "自动", .type = SETTING_TYPE_NORMAL },
+    { .icon_path = "A:" RES_ICON_PATH "/exposure.png", .title = "曝光", .value = "EV0", .type = SETTING_TYPE_NORMAL },
+    { .icon_path = "A:" RES_ICON_PATH "/iso.png", .title = "感光度", .value = "自动", .type = SETTING_TYPE_NORMAL },
+};
+
+#define SETTINGS_COUNT (int)(sizeof(settings_config) / sizeof(settings_config[0]))
 
 // #endregion
 // #############################################################################
@@ -72,16 +61,17 @@ static void setting_item_cb(lv_event_t* e)
     }
 
     video_setting_item_t* item = &data->settings[index];
+    const setting_config_t* config = &settings_config[index];
 
-    if (item->type == VIDEO_SETTING_TYPE_TOGGLE) {
+    if (config->type == SETTING_TYPE_TOGGLE) {
         /* 切换开关状态 */
-        item->is_on = !item->is_on;
-        const char* new_value = item->is_on ? item->toggle_on : item->toggle_off;
+        item->current_index = !item->current_index;
+        const char* new_value = item->current_index ? "开启" : "关闭";
         lv_label_set_text(item->value_label, new_value);
-        MLOG_INFO("Setting '%s' toggled to: %s", item->title, new_value);
+        MLOG_INFO("Setting '%s' toggled to: %s", config->title, new_value);
     } else {
         /* 普通设置，仅日志 */
-        MLOG_INFO("Setting '%s' clicked, value: %s", item->title, item->value);
+        MLOG_INFO("Setting '%s' clicked, value: %s", config->title, config->value);
     }
 }
 
@@ -182,14 +172,7 @@ void page_video_settings_create(page_manager_t* pm)
         lv_obj_set_style_text_color(item->value_label, lv_color_hex(0xFFD700), LV_PART_MAIN);
         lv_obj_align(item->value_label, LV_ALIGN_RIGHT_MID, 0, 0);
 
-        /* 保存配置 */
-        item->icon_path = settings_config[i].icon_path;
-        item->title = settings_config[i].title;
-        item->value = settings_config[i].value;
-        item->toggle_on = settings_config[i].toggle_on;
-        item->toggle_off = settings_config[i].toggle_off;
-        item->type = settings_config[i].type;
-        item->is_on = 0;
+        item->current_index = 0;
 
         /* 点击事件 */
         lv_obj_add_event_cb(item->container, setting_item_cb, LV_EVENT_CLICKED, data);
