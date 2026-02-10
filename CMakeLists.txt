@@ -6,6 +6,12 @@ set(CMAKE_CXX_STANDARD 17)#C17
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 #=======================
+# Project Configuration
+#=======================
+set(PROJECT_PATH_STR "${CMAKE_CURRENT_SOURCE_DIR}")
+add_definitions(-DPROJECT_PATH="${PROJECT_PATH_STR}")
+
+#=======================
 # Strict Compiler Flags (for project src only, not lvgl)
 #=======================
 if(CMAKE_C_COMPILER_ID STREQUAL "GNU" OR CMAKE_C_COMPILER_ID STREQUAL "Clang")

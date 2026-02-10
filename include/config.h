@@ -8,10 +8,8 @@ extern "C" {
 /* =======================
  * 资源路径配置
  * ======================= */
-#define RES_PATH "/home/yogurt/Documents/sophgo/v6.x.x/sophcam_v20260203/applications/dashcam/ui/aicamera/sm3_81/res"
-
-#define RES_FONT_PATH RES_PATH "/fonts"
-#define RES_ICON_PATH RES_PATH "/icons"
+#define RES_FONT_PATH PROJECT_PATH "/res/fonts"
+#define RES_ICON_PATH PROJECT_PATH "/res/icons"
 
 /* =======================
  * 字体配置
