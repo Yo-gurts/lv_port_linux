@@ -1,5 +1,5 @@
-#ifndef __STYLE_COMMON_H__
-#define __STYLE_COMMON_H__
+#ifndef __STYLE_MANAGER_H__
+#define __STYLE_MANAGER_H__
 
 #include "lvgl.h"
 

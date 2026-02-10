@@ -1,4 +1,4 @@
-#include "styles/style_common.h" /* 包含公共样式头文件 */
+#include "core/style_manager.h" /* 包含样式管理头文件 */
 #include "mlog.h" /* 日志输出头文件 */
 
 /* 顶部容器样式 - 透明背景、无边框 */

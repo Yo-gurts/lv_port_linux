@@ -1,6 +1,7 @@
 #include "config.h"
 #include "core/font_manager.h"
 #include "core/page_manager.h"
+#include "core/style_manager.h"
 #include "lvgl/lvgl.h"
 #include "mlog.h"
 #include "pages/page_ai_photo.h"
@@ -13,7 +14,6 @@
 #include "pages/page_version_info.h"
 #include "pages/page_video.h"
 #include "pages/page_video_settings.h"
-#include "styles/style_common.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

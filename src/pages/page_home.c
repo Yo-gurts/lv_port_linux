@@ -5,8 +5,8 @@
 #include "pages/page_home.h"
 #include "config.h"
 #include "core/font_manager.h"
+#include "core/style_manager.h"
 #include "mlog.h"
-#include "styles/style_common.h"
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>

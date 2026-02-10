@@ -66,7 +66,7 @@ set(SOURCES
     src/mouse_cursor_icon.c
     src/core/page_manager.c
     src/core/font_manager.c
-    src/styles/style_common.c
+    src/core/style_manager.c
     src/pages/page_home.c
     src/pages/page_ai_photo.c
     src/pages/page_ai_photo_settings.c
