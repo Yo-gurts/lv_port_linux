@@ -123,23 +123,24 @@ void page_video_create(page_manager_t* pm)
     /* 分辨率图标 - 跟在返回按钮后面 */
     data->resolution_img = lv_img_create(data->top_bar);
     lv_img_set_src(data->resolution_img, "A:" RES_ICON_PATH "/4k.png");
-    lv_obj_align(data->resolution_img, LV_ALIGN_TOP_LEFT, 65, 5);
+    lv_obj_align(data->resolution_img, LV_ALIGN_LEFT_MID, 65, 0);
 
     /* 录像时长 Label - 右上角 */
     data->time_label = lv_label_create(data->top_bar);
     lv_label_set_text(data->time_label, "00:00:00");
     lv_obj_add_style(data->time_label, &NORMAL_SIZE, LV_PART_MAIN);
-    lv_obj_align(data->time_label, LV_ALIGN_TOP_RIGHT, -110, 5);
+    lv_obj_set_style_text_color(data->time_label, lv_color_black(), LV_PART_MAIN);
+    lv_obj_align(data->time_label, LV_ALIGN_RIGHT_MID, -110, 0);
 
     /* SD卡图标 - 右上角 */
     data->sd_icon = lv_img_create(data->top_bar);
     lv_img_set_src(data->sd_icon, "A:" RES_ICON_PATH "/sd-card.png");
-    lv_obj_align(data->sd_icon, LV_ALIGN_TOP_RIGHT, -60, 5);
+    lv_obj_align(data->sd_icon, LV_ALIGN_RIGHT_MID, -60, 0);
 
     /* 电池图标 - 最右上角 */
     data->battery_icon = lv_img_create(data->top_bar);
     lv_img_set_src(data->battery_icon, "A:" RES_ICON_PATH "/battery33%.png");
-    lv_obj_align(data->battery_icon, LV_ALIGN_TOP_RIGHT, -10, 5);
+    lv_obj_align(data->battery_icon, LV_ALIGN_RIGHT_MID, -10, 0);
 
     /* =======================
      * 底部工具栏：[photo][filter] ... [switch][menu]
