@@ -16,29 +16,19 @@
 // ! #region 2. 数据结构定义 (见 page_system_settings.h)
 // #############################################################################
 
-/* 设置项配置 */
-typedef struct {
-    const char* icon_path;
-    const char* title;
-    const char* value;
-    const char* toggle_on;
-    const char* toggle_off;
-    setting_type_t type;
-} setting_config_t;
-
 // #endregion
 // #############################################################################
 // ! #region 3. 全局变量 & 函数声明
 // #############################################################################
 
 static const setting_config_t settings_config[] = {
-    { "A" RES_ICON_PATH "/language.png", "语言", "简体中文", NULL, NULL, SETTING_TYPE_NORMAL },
-    { "A" RES_ICON_PATH "/wifi.png", "WiFi设置", "未连接", NULL, NULL, SETTING_TYPE_NORMAL },
-    { "A" RES_ICON_PATH "/datetime.png", "时间和日期", "2026-02-07 12:00", NULL, NULL, SETTING_TYPE_NORMAL },
-    { "A" RES_ICON_PATH "/volume.png", "音量设置", "80%", NULL, NULL, SETTING_TYPE_NORMAL },
-    { "A" RES_ICON_PATH "/format.png", "格式化", "请确认", NULL, NULL, SETTING_TYPE_NORMAL },
-    { "A" RES_ICON_PATH "/factory.png", "出厂设置", "请确认", NULL, NULL, SETTING_TYPE_NORMAL },
-    { "A" RES_ICON_PATH "/info.png", "版本信息", "V1.0.0", NULL, NULL, SETTING_TYPE_NORMAL },
+    { .icon_path = "A" RES_ICON_PATH "/language.png", .title = "语言", .value = "简体中文", .type = SETTING_TYPE_NORMAL },
+    { .icon_path = "A" RES_ICON_PATH "/wifi.png", .title = "WiFi设置", .value = "未连接", .type = SETTING_TYPE_NORMAL },
+    { .icon_path = "A" RES_ICON_PATH "/datetime.png", .title = "时间和日期", .value = "2026-02-07 12:00", .type = SETTING_TYPE_NORMAL },
+    { .icon_path = "A" RES_ICON_PATH "/volume.png", .title = "音量设置", .value = "80%", .type = SETTING_TYPE_NORMAL },
+    { .icon_path = "A" RES_ICON_PATH "/format.png", .title = "格式化", .value = "请确认", .type = SETTING_TYPE_NORMAL },
+    { .icon_path = "A" RES_ICON_PATH "/factory.png", .title = "出厂设置", .value = "请确认", .type = SETTING_TYPE_NORMAL },
+    { .icon_path = "A" RES_ICON_PATH "/info.png", .title = "版本信息", .value = "V1.0.0", .type = SETTING_TYPE_NORMAL },
 };
 
 #define SETTINGS_COUNT (int)(sizeof(settings_config) / sizeof(settings_config[0]))
@@ -76,19 +66,20 @@ static void setting_item_cb(lv_event_t* e)
     }
 
     system_setting_item_t* item = &data->settings[index];
+    const setting_config_t* config = &settings_config[index];
 
-    if (item->type == SETTING_TYPE_TOGGLE) {
+    if (config->type == SETTING_TYPE_TOGGLE) {
         /* 切换开关状态 */
-        item->is_on = !item->is_on;
-        const char* new_value = item->is_on ? item->toggle_on : item->toggle_off;
+        item->current_index = !item->current_index;
+        const char* new_value = item->current_index ? "开启" : "关闭";
         lv_label_set_text(item->value_label, new_value);
-        MLOG_INFO("Setting '%s' toggled to: %s", item->title, new_value);
+        MLOG_INFO("Setting '%s' toggled to: %s", config->title, new_value);
     } else {
         /* 版本信息跳转 */
         if (index == SETTINGS_COUNT - 1) {
             page_manager_navigate(pm, "version_info");
         } else {
-            MLOG_INFO("Setting '%s' clicked, value: %s", item->title, item->value);
+            MLOG_INFO("Setting '%s' clicked, value: %s", config->title, config->value);
         }
     }
 }
@@ -190,14 +181,7 @@ void page_system_settings_create(page_manager_t* pm)
         lv_obj_set_style_text_color(item->value_label, lv_color_hex(0xFFD700), LV_PART_MAIN);
         lv_obj_align(item->value_label, LV_ALIGN_RIGHT_MID, 0, 0);
 
-        /* 保存配置 */
-        item->icon_path = settings_config[i].icon_path;
-        item->title = settings_config[i].title;
-        item->value = settings_config[i].value;
-        item->toggle_on = settings_config[i].toggle_on;
-        item->toggle_off = settings_config[i].toggle_off;
-        item->type = settings_config[i].type;
-        item->is_on = 0;
+        item->current_index = 0;
 
         /* 点击事件 */
         lv_obj_add_event_cb(item->container, setting_item_cb, LV_EVENT_CLICKED, pm);

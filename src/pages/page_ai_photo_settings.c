@@ -16,19 +16,12 @@
 // ! #region 2. 数据结构定义 (见 page_ai_photo_settings.h)
 // #############################################################################
 
-/* 设置项配置 */
-typedef struct {
-    const char* icon_path;
-    const char* title;
-    ai_setting_type_t type;
-} setting_config_t;
-
 // #endregion
 // #############################################################################
 // ! #region 3. 全局变量 & 函数声明
 // #############################################################################
 
-static const setting_config_t settings_config[] = {
+static const ai_setting_item_t settings_config[] = {
     { "A" RES_ICON_PATH "/filter_default.png", "风格变换", AI_SETTING_STYLE_TRANSFORM },
     { "A" RES_ICON_PATH "/ai.png", "AI识万物", AI_SETTING_RECOGNITION },
     { "A" RES_ICON_PATH "/translate.png", "拍照翻译", AI_SETTING_TRANSLATION },

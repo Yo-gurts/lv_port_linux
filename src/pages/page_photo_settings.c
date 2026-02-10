@@ -16,64 +16,107 @@
 // ! #region 2. 数据结构定义 (见 page_photo_settings.h)
 // #############################################################################
 
-/* 设置项配置 */
-typedef struct {
-    const char* icon_path;
-    const char* title;
-    const char* value;
-    const char* toggle_on;
-    const char* toggle_off;
-    setting_type_t type;
-    const char* roller_options; /* 滚轮选项，用\n分隔 */
-} setting_config_t;
-
 /* 滚轮选项定义 */
-#define RESOLUTION_OPTIONS "8M(3840x2160)\n12M(4000x3000)\n24M(5600x4200)\n48M(8000x6000)\n64M(8192x8192)"
-#define WHITE_BALANCE_OPTIONS "自动\n晴天\n阴天\n白炽灯\n荧光灯"
-#define ISO_OPTIONS "自动\nISO100\nISO400\nISO800\nISO1600\nISO3200"
-#define EXPOSURE_OPTIONS "EV-2.0\nEV-1.5\nEV-1.0\nEV-0.5\nEV0\nEV+0.5\nEV+1.0\nEV+1.5\nEV+2.0"
-#define QUALITY_OPTIONS "超高画质\n高画质\n普通画质"
+static const char* resolution_options[] = {
+    "8M(3840x2160)", "12M(4000x3000)", "24M(5600x4200)", "48M(8000x6000)", "64M(8192x8192)"
+};
+static const char* white_balance_options[] = {
+    "自动", "晴天", "阴天", "白炽灯", "荧光灯"
+};
+static const char* iso_options[] = {
+    "自动", "ISO100", "ISO400", "ISO800", "ISO1600", "ISO3200"
+};
+static const char* exposure_options[] = {
+    "EV-2.0", "EV-1.5", "EV-1.0", "EV-0.5", "EV0", "EV+0.5", "EV+1.0", "EV+1.5", "EV+2.0"
+};
+static const char* quality_options[] = {
+    "超高画质", "高画质", "普通画质"
+};
 
-#define SETTINGS_COUNT 7
+/* 设置项配置 - 静态数据 */
+static const setting_config_t configs[] = {
+    {
+        .title = "分辨率",
+        .icon_path = "A" RES_ICON_PATH "/camera.png",
+        .value = "8M(3840x2160)",
+        .roller_options = resolution_options,
+        .roller_count = 5,
+        .type = SETTING_TYPE_NORMAL,
+    },
+    {
+        .title = "白平衡",
+        .icon_path = "A" RES_ICON_PATH "/white-balance.png",
+        .value = "自动",
+        .roller_options = white_balance_options,
+        .roller_count = 5,
+        .type = SETTING_TYPE_NORMAL,
+    },
+    {
+        .title = "感光度",
+        .icon_path = "A" RES_ICON_PATH "/iso.png",
+        .value = "自动",
+        .roller_options = iso_options,
+        .roller_count = 6,
+        .type = SETTING_TYPE_NORMAL,
+    },
+    {
+        .title = "曝光设置",
+        .icon_path = "A" RES_ICON_PATH "/exposure.png",
+        .value = "EV0",
+        .roller_options = exposure_options,
+        .roller_count = 9,
+        .type = SETTING_TYPE_NORMAL,
+    },
+    {
+        .title = "画质",
+        .icon_path = "A" RES_ICON_PATH "/quality.png",
+        .value = "超高画质",
+        .roller_options = quality_options,
+        .roller_count = 3,
+        .type = SETTING_TYPE_NORMAL,
+    },
+    {
+        .title = "人脸检测",
+        .icon_path = "A" RES_ICON_PATH "/face-detection.png",
+        .value = "关闭",
+        .type = SETTING_TYPE_TOGGLE,
+    },
+    {
+        .title = "笑脸抓拍",
+        .icon_path = "A" RES_ICON_PATH "/smile.png",
+        .value = "关闭",
+        .type = SETTING_TYPE_TOGGLE,
+    },
+};
+
+#define SETTINGS_COUNT (int)(sizeof(configs) / sizeof(configs[0]))
 
 // #endregion
 // #############################################################################
 // ! #region 3. 全局变量 & 函数声明
 // #############################################################################
 
-static const setting_config_t settings_config[] = {
-    { "A" RES_ICON_PATH "/camera.png", "分辨率", "8M(3840x2160)", NULL, NULL, SETTING_TYPE_NORMAL, RESOLUTION_OPTIONS },
-    { "A" RES_ICON_PATH "/white-balance.png", "白平衡", "自动", NULL, NULL, SETTING_TYPE_NORMAL, WHITE_BALANCE_OPTIONS },
-    { "A" RES_ICON_PATH "/iso.png", "感光度", "自动", NULL, NULL, SETTING_TYPE_NORMAL, ISO_OPTIONS },
-    { "A" RES_ICON_PATH "/exposure.png", "曝光设置", "EV0", NULL, NULL, SETTING_TYPE_NORMAL, EXPOSURE_OPTIONS },
-    { "A" RES_ICON_PATH "/quality.png", "画质", "超高画质", NULL, NULL, SETTING_TYPE_NORMAL, QUALITY_OPTIONS },
-    { "A" RES_ICON_PATH "/face-detection.png", "人脸检测", "关闭", "开启", "关闭", SETTING_TYPE_TOGGLE, NULL },
-    { "A" RES_ICON_PATH "/smile.png", "笑脸抓拍", "关闭", "开启", "关闭", SETTING_TYPE_TOGGLE, NULL },
-};
-
 // #endregion
 // #############################################################################
 // ! #region 4. 内部工具函数（注意用static修饰）
 // #############################################################################
 
-/* 从完整选项字符串中获取第idx个选项（返回副本） */
-static void get_option_by_index(const char* options, int idx, char* buf, int buflen)
+/* 将字符串数组构建为lv_roller选项字符串（用\n分隔） */
+static void build_roller_options(const char** options, int count, char* buf, int buflen)
 {
-    const char* p = options;
-    int i = 0;
-
-    /* 跳过前idx个换行符 */
-    while (i < idx && *p) {
-        if (*p == '\n') {
-            i++;
+    buf[0] = '\0';
+    for (int i = 0; i < count && buflen > 1; i++) {
+        int len = strlen(options[i]);
+        if (len >= buflen - 1) {
+            len = buflen - 1;
         }
-        p++;
-    }
-
-    /* 复制当前选项 */
-    while (*p && *p != '\n' && buflen > 1) {
-        *buf++ = *p++;
-        buflen--;
+        strncpy(buf, options[i], len);
+        buf += len;
+        buflen -= len;
+        if (i < count - 1 && buflen > 1) {
+            *buf++ = '\n';
+            buflen--;
+        }
     }
     *buf = '\0';
 }
@@ -86,17 +129,15 @@ static void apply_roller_selection(page_photo_settings_data_t* data)
         return;
     }
 
-    photo_setting_item_t* item = &data->settings[index];
+    const setting_config_t* config = &data->configs[index];
+    setting_item_t* item = &data->items[index];
     int selected = lv_roller_get_selected(data->roller);
 
     item->current_index = selected;
-
-    char buf[64];
-    get_option_by_index(item->roller_options, selected, buf, sizeof(buf));
-    lv_label_set_text(item->value_label, buf);
+    lv_label_set_text(item->value_label, config->roller_options[selected]);
     lv_obj_add_flag(data->roller_popup, LV_OBJ_FLAG_HIDDEN);
 
-    MLOG_INFO("Setting '%s' selected: %s", item->title, buf);
+    MLOG_INFO("Setting '%s' selected: %s", config->title, config->roller_options[selected]);
 }
 
 // #endregion
@@ -129,8 +170,6 @@ static void roller_select_cb(lv_event_t* e)
 static void modal_click_cb(lv_event_t* e)
 {
     page_photo_settings_data_t* data = (page_photo_settings_data_t*)lv_event_get_user_data(e);
-
-    /* 应用当前选中值后关闭弹窗 */
     apply_roller_selection(data);
 }
 
@@ -145,20 +184,23 @@ static void setting_item_cb(lv_event_t* e)
         return;
     }
 
-    photo_setting_item_t* item = &data->settings[index];
+    const setting_config_t* config = &data->configs[index];
+    setting_item_t* item = &data->items[index];
 
-    if (item->type == SETTING_TYPE_TOGGLE) {
+    if (config->type == SETTING_TYPE_TOGGLE) {
         /* 切换开关状态 */
-        item->is_on = !item->is_on;
-        const char* new_value = item->is_on ? item->toggle_on : item->toggle_off;
+        item->current_index = !item->current_index;
+        const char* new_value = item->current_index ? "开启" : "关闭";
         lv_label_set_text(item->value_label, new_value);
-        MLOG_INFO("Setting '%s' toggled to: %s", item->title, new_value);
+        MLOG_INFO("Setting '%s' toggled to: %s", config->title, new_value);
     } else {
         /* 普通设置，弹出滚轮 */
         data->current_setting_index = index;
 
-        /* 更新滚轮选项 */
-        lv_roller_set_options(data->roller, item->roller_options, LV_ROLLER_MODE_NORMAL);
+        /* 构建滚轮选项字符串 */
+        char options_buf[256];
+        build_roller_options(config->roller_options, config->roller_count, options_buf, sizeof(options_buf));
+        lv_roller_set_options(data->roller, options_buf, LV_ROLLER_MODE_NORMAL);
 
         /* 设置当前选中项 */
         lv_roller_set_selected(data->roller, item->current_index, LV_ANIM_OFF);
@@ -166,9 +208,7 @@ static void setting_item_cb(lv_event_t* e)
         /* 显示弹窗 */
         lv_obj_clear_flag(data->roller_popup, LV_OBJ_FLAG_HIDDEN);
 
-        char buf[64];
-        get_option_by_index(item->roller_options, item->current_index, buf, sizeof(buf));
-        MLOG_INFO("Setting '%s' clicked, value: %s", item->title, buf);
+        MLOG_INFO("Setting '%s' clicked, value: %s", config->title, config->roller_options[item->current_index]);
     }
 }
 
@@ -190,6 +230,15 @@ void page_photo_settings_create(page_manager_t* pm)
 
     memset(data, 0, sizeof(page_photo_settings_data_t));
 
+    /* 指向静态配置 */
+    data->configs = configs;
+    data->items = (setting_item_t*)malloc(sizeof(setting_item_t) * SETTINGS_COUNT);
+    if (!data->items) {
+        free(data);
+        return;
+    }
+    memset(data->items, 0, sizeof(setting_item_t) * SETTINGS_COUNT);
+
     /* 创建页面容器 */
     data->container = lv_obj_create(lv_screen_active());
     lv_obj_set_width(data->container, LV_PCT(100));
@@ -209,7 +258,7 @@ void page_photo_settings_create(page_manager_t* pm)
     lv_obj_set_scrollbar_mode(data->nav_bar, LV_SCROLLBAR_MODE_OFF);
     lv_obj_add_style(data->nav_bar, &style_common_cont_top, LV_PART_MAIN);
 
-    /* 返回按钮 - 左上角 */
+    /* 返回按钮 */
     lv_obj_t* back_btn = lv_btn_create(data->nav_bar);
     lv_obj_set_size(back_btn, 50, 50);
     lv_obj_add_style(back_btn, &style_noboarder, LV_PART_MAIN);
@@ -219,7 +268,7 @@ void page_photo_settings_create(page_manager_t* pm)
     lv_img_set_src(back_icon, "A:" RES_ICON_PATH "/back-fill.png");
     lv_obj_align(back_icon, LV_ALIGN_CENTER, 0, 0);
 
-    /* 标题文字 - 居中 */
+    /* 标题 */
     lv_obj_t* title_label = lv_label_create(data->nav_bar);
     lv_label_set_text(title_label, "拍照设置");
     lv_obj_add_style(title_label, &NORMAL_SIZE, LV_PART_MAIN);
@@ -227,7 +276,7 @@ void page_photo_settings_create(page_manager_t* pm)
     lv_obj_align(title_label, LV_ALIGN_CENTER, 0, 0);
 
     /* =======================
-     * 2. 设置列表区域 - 占满剩余空间
+     * 2. 设置列表
      * ======================= */
     data->settings_container = lv_obj_create(data->container);
     lv_obj_set_width(data->settings_container, lv_pct(100));
@@ -238,11 +287,12 @@ void page_photo_settings_create(page_manager_t* pm)
     lv_obj_set_flex_flow(data->settings_container, LV_FLEX_FLOW_COLUMN);
     lv_obj_set_flex_align(data->settings_container, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
 
-    /* 创建7个设置项 */
+    /* 创建设置项 */
     for (int i = 0; i < SETTINGS_COUNT; i++) {
-        photo_setting_item_t* item = &data->settings[i];
+        const setting_config_t* config = &data->configs[i];
+        setting_item_t* item = &data->items[i];
 
-        /* 设置项容器 */
+        /* 容器 */
         item->container = lv_obj_create(data->settings_container);
         lv_obj_set_width(item->container, lv_pct(100));
         lv_obj_set_height(item->container, 55);
@@ -250,58 +300,37 @@ void page_photo_settings_create(page_manager_t* pm)
         lv_obj_set_scrollbar_mode(item->container, LV_SCROLLBAR_MODE_OFF);
         lv_obj_add_style(item->container, &style_settings_item, LV_PART_MAIN);
 
-        /* 左侧图标 */
+        /* 图标 */
         item->icon = lv_img_create(item->container);
-        lv_img_set_src(item->icon, settings_config[i].icon_path);
+        lv_img_set_src(item->icon, config->icon_path);
         lv_obj_align(item->icon, LV_ALIGN_LEFT_MID, 0, 0);
 
-        /* 标题文字 */
+        /* 标题 */
         item->title_label = lv_label_create(item->container);
-        lv_label_set_text(item->title_label, settings_config[i].title);
+        lv_label_set_text(item->title_label, config->title);
         lv_obj_add_style(item->title_label, &NORMAL_SIZE, LV_PART_MAIN);
         lv_obj_set_style_text_color(item->title_label, lv_color_white(), LV_PART_MAIN);
         lv_obj_align(item->title_label, LV_ALIGN_LEFT_MID, 55, 0);
 
-        /* 保存配置 */
-        item->icon_path = settings_config[i].icon_path;
-        item->title = settings_config[i].title;
-        item->roller_options = settings_config[i].roller_options;
-        item->toggle_on = settings_config[i].toggle_on;
-        item->toggle_off = settings_config[i].toggle_off;
-        item->type = settings_config[i].type;
-        item->is_on = 0;
-
-        /* 参数文字 */
+        /* 值 */
         item->value_label = lv_label_create(item->container);
         lv_obj_add_style(item->value_label, &NORMAL_SIZE, LV_PART_MAIN);
         lv_obj_set_style_text_color(item->value_label, lv_color_hex(0xFFD700), LV_PART_MAIN);
         lv_obj_align(item->value_label, LV_ALIGN_RIGHT_MID, -10, 0);
 
-        if (item->type == SETTING_TYPE_TOGGLE) {
-            /* 开关类型：直接显示初始值 */
+        if (config->type == SETTING_TYPE_TOGGLE) {
+            /* 开关类型 */
             item->current_index = 0;
-            lv_label_set_text(item->value_label, settings_config[i].value);
+            lv_label_set_text(item->value_label, config->value);
         } else {
-            /* 滚轮类型：计算初始索引 */
-            const char* opts = item->roller_options;
-            const char* val = settings_config[i].value;
-            int len = strlen(val);
-            int idx = 0;
-            const char* p = opts;
-
-            while (*p) {
-                if (strncmp(p, val, len) == 0 && (p[len] == '\n' || p[len] == '\0')) {
+            /* 滚轮类型：查找初始索引 */
+            for (int j = 0; j < config->roller_count; j++) {
+                if (strcmp(config->roller_options[j], config->value) == 0) {
+                    item->current_index = j;
                     break;
                 }
-                if (*p == '\n') {
-                    idx++;
-                }
-                p++;
             }
-            item->current_index = idx;
-            char buf[64];
-            get_option_by_index(item->roller_options, item->current_index, buf, sizeof(buf));
-            lv_label_set_text(item->value_label, buf);
+            lv_label_set_text(item->value_label, config->roller_options[item->current_index]);
         }
 
         /* 点击事件 */
@@ -312,22 +341,18 @@ void page_photo_settings_create(page_manager_t* pm)
     /* =======================
      * 3. 滚轮弹窗
      * ======================= */
-    /* 半透明遮罩 - 直接创建在屏幕上，覆盖整个屏幕 */
-    lv_obj_t* modal = lv_obj_create(lv_screen_active());
-    lv_obj_set_size(modal, LV_PCT(100), LV_PCT(100));
-    lv_obj_set_style_bg_opa(modal, LV_OPA_50, LV_PART_MAIN);
-    lv_obj_set_style_bg_color(modal, lv_color_black(), LV_PART_MAIN);
-    lv_obj_set_style_border_width(modal, 0, LV_PART_MAIN);
-    lv_obj_set_style_radius(modal, 0, LV_PART_MAIN);
-    lv_obj_clear_flag(modal, LV_OBJ_FLAG_SCROLLABLE);
-    lv_obj_set_scrollbar_mode(modal, LV_SCROLLBAR_MODE_OFF);
-    lv_obj_add_flag(modal, LV_OBJ_FLAG_CLICKABLE);
-    lv_obj_add_flag(modal, LV_OBJ_FLAG_HIDDEN);
-    data->roller_popup = modal;
-    /* 点击遮罩关闭 */
+    data->roller_popup = lv_obj_create(lv_screen_active());
+    lv_obj_set_size(data->roller_popup, LV_PCT(100), LV_PCT(100));
+    lv_obj_set_style_bg_opa(data->roller_popup, LV_OPA_50, LV_PART_MAIN);
+    lv_obj_set_style_bg_color(data->roller_popup, lv_color_black(), LV_PART_MAIN);
+    lv_obj_set_style_border_width(data->roller_popup, 0, LV_PART_MAIN);
+    lv_obj_set_style_radius(data->roller_popup, 0, LV_PART_MAIN);
+    lv_obj_clear_flag(data->roller_popup, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_scrollbar_mode(data->roller_popup, LV_SCROLLBAR_MODE_OFF);
+    lv_obj_add_flag(data->roller_popup, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_add_flag(data->roller_popup, LV_OBJ_FLAG_HIDDEN);
     lv_obj_add_event_cb(data->roller_popup, modal_click_cb, LV_EVENT_CLICKED, data);
 
-    /* 滚轮 - 只显示选项，居中 */
     data->roller = lv_roller_create(data->roller_popup);
     lv_obj_set_size(data->roller, 300, 200);
     lv_obj_center(data->roller);
@@ -336,10 +361,8 @@ void page_photo_settings_create(page_manager_t* pm)
     lv_obj_set_style_bg_opa(data->roller, LV_OPA_COVER, LV_PART_MAIN);
     lv_obj_set_style_bg_color(data->roller, lv_color_hex(0x2A2A2A), LV_PART_MAIN);
     lv_obj_set_style_radius(data->roller, 20, LV_PART_MAIN);
-    /* 点击滚轮选中后关闭 */
     lv_obj_add_event_cb(data->roller, roller_select_cb, LV_EVENT_VALUE_CHANGED | LV_EVENT_CLICKED, data);
 
-    /* 保存 private_data */
     page_set_private_data(pm, data);
 }
 
@@ -359,6 +382,7 @@ void page_photo_settings_destroy(page_manager_t* pm)
         data->container = NULL;
     }
 
+    free(data->items);
     free(data);
 }
 
@@ -376,7 +400,6 @@ void page_photo_settings_show(page_manager_t* pm)
     MLOG_INFO("Photo settings page show");
     lv_obj_clear_flag(data->container, LV_OBJ_FLAG_HIDDEN);
 
-    /* 隐藏弹窗 */
     if (data->roller_popup) {
         lv_obj_add_flag(data->roller_popup, LV_OBJ_FLAG_HIDDEN);
     }
