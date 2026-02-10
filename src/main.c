@@ -1,6 +1,6 @@
 #include "config.h"
+#include "core/font_manager.h"
 #include "core/page_manager.h"
-#include "font_manager.h"
 #include "lvgl/lvgl.h"
 #include "mlog.h"
 #include "pages/page_ai_photo.h"

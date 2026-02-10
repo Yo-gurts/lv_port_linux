@@ -4,8 +4,8 @@
 
 #include "pages/page_video.h"
 #include "config.h"
+#include "core/font_manager.h"
 #include "core/page_manager.h"
-#include "font_manager.h"
 #include "mlog.h"
 #include "styles/style_common.h"
 #include <stdlib.h>
@@ -128,7 +128,7 @@ void page_video_create(page_manager_t* pm)
     /* 录像时长 Label - 右上角 */
     data->time_label = lv_label_create(data->top_bar);
     lv_label_set_text(data->time_label, "00:00:00");
-    lv_obj_add_style(data->time_label, &ttf_font_24, LV_PART_MAIN);
+    lv_obj_add_style(data->time_label, &NORMAL_SIZE, LV_PART_MAIN);
     lv_obj_align(data->time_label, LV_ALIGN_TOP_RIGHT, -110, 5);
 
     /* SD卡图标 - 右上角 */

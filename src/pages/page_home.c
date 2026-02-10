@@ -4,7 +4,7 @@
 
 #include "pages/page_home.h"
 #include "config.h"
-#include "font_manager.h"
+#include "core/font_manager.h"
 #include "mlog.h"
 #include "styles/style_common.h"
 #include <stdlib.h>
@@ -76,7 +76,7 @@ static void create_icon_button(page_manager_t* pm, lv_obj_t* parent,
     /* 文字 - 使用中文字体样式 */
     lv_obj_t* label = lv_label_create(container);
     lv_label_set_text(label, name);
-    lv_obj_add_style(label, &ttf_font_24, LV_PART_MAIN);
+    lv_obj_add_style(label, &NORMAL_SIZE, LV_PART_MAIN);
 
     if (out_btn) {
         *out_btn = container;

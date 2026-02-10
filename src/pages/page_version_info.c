@@ -4,8 +4,8 @@
 
 #include "pages/page_version_info.h"
 #include "config.h"
+#include "core/font_manager.h"
 #include "core/page_manager.h"
-#include "font_manager.h"
 #include "mlog.h"
 #include "styles/style_common.h"
 #include <stdlib.h>

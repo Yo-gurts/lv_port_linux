@@ -1,4 +1,4 @@
-#include "font_manager.h"
+#include "core/font_manager.h"
 #include "config.h"
 #include "lvgl/src/libs/freetype/lv_freetype.h"
 #include "mlog.h"

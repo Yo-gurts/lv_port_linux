@@ -65,6 +65,7 @@ set(SOURCES
     src/main.c
     src/mouse_cursor_icon.c
     src/core/page_manager.c
+    src/core/font_manager.c
     src/styles/style_common.c
     src/pages/page_home.c
     src/pages/page_ai_photo.c
@@ -76,7 +77,6 @@ set(SOURCES
     src/pages/page_video_settings.c
     src/pages/page_system_settings.c
     src/pages/page_version_info.c
-    src/font_manager.c
 )
 
 add_executable(main ${SOURCES})
