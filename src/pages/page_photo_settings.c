@@ -253,12 +253,12 @@ void page_photo_settings_create(page_manager_t* pm)
      * ======================= */
     data->nav_bar = lv_obj_create(data->container);
     lv_obj_set_width(data->nav_bar, lv_pct(100));
-    lv_obj_set_height(data->nav_bar, 50);
-    lv_obj_clear_flag(data->nav_bar, LV_OBJ_FLAG_SCROLLABLE);
-    lv_obj_set_scrollbar_mode(data->nav_bar, LV_SCROLLBAR_MODE_OFF);
+    lv_obj_set_height(data->nav_bar, 50); /* 50高度 */
+    lv_obj_clear_flag(data->nav_bar, LV_OBJ_FLAG_SCROLLABLE); /* 禁用滚动 */
+    lv_obj_set_scrollbar_mode(data->nav_bar, LV_SCROLLBAR_MODE_OFF); /* 隐藏滚动条 */
     lv_obj_add_style(data->nav_bar, &style_common_cont_top, LV_PART_MAIN);
 
-    /* 返回按钮 */
+    /* 返回按钮 - 左上角 */
     lv_obj_t* back_btn = lv_btn_create(data->nav_bar);
     lv_obj_set_size(back_btn, 50, 50);
     lv_obj_add_style(back_btn, &style_noboarder, LV_PART_MAIN);
@@ -268,7 +268,7 @@ void page_photo_settings_create(page_manager_t* pm)
     lv_img_set_src(back_icon, "A:" RES_ICON_PATH "/back-fill.png");
     lv_obj_align(back_icon, LV_ALIGN_CENTER, 0, 0);
 
-    /* 标题 */
+    /* 标题文字 - 居中 */
     lv_obj_t* title_label = lv_label_create(data->nav_bar);
     lv_label_set_text(title_label, "拍照设置");
     lv_obj_add_style(title_label, &NORMAL_SIZE, LV_PART_MAIN);
@@ -276,11 +276,11 @@ void page_photo_settings_create(page_manager_t* pm)
     lv_obj_align(title_label, LV_ALIGN_CENTER, 0, 0);
 
     /* =======================
-     * 2. 设置列表
+     * 2. 设置列表区域 - 占满剩余空间
      * ======================= */
     data->settings_container = lv_obj_create(data->container);
     lv_obj_set_width(data->settings_container, lv_pct(100));
-    lv_obj_set_flex_grow(data->settings_container, 1);
+    lv_obj_set_flex_grow(data->settings_container, 1); /* 填满剩余空间 */
     lv_obj_set_style_bg_opa(data->settings_container, LV_OPA_COVER, LV_PART_MAIN);
     lv_obj_set_style_bg_color(data->settings_container, lv_color_hex(0x121212), LV_PART_MAIN);
     lv_obj_set_layout(data->settings_container, LV_LAYOUT_FLEX);
@@ -292,27 +292,27 @@ void page_photo_settings_create(page_manager_t* pm)
         const setting_config_t* config = &data->configs[i];
         setting_item_t* item = &data->items[i];
 
-        /* 容器 */
+        /* 设置项容器 */
         item->container = lv_obj_create(data->settings_container);
         lv_obj_set_width(item->container, lv_pct(100));
         lv_obj_set_height(item->container, 55);
-        lv_obj_clear_flag(item->container, LV_OBJ_FLAG_SCROLLABLE);
-        lv_obj_set_scrollbar_mode(item->container, LV_SCROLLBAR_MODE_OFF);
+        lv_obj_clear_flag(item->container, LV_OBJ_FLAG_SCROLLABLE); /* 禁用滚动 */
+        lv_obj_set_scrollbar_mode(item->container, LV_SCROLLBAR_MODE_OFF); /* 隐藏滚动条 */
         lv_obj_add_style(item->container, &style_settings_item, LV_PART_MAIN);
 
-        /* 图标 */
+        /* 左侧图标 */
         item->icon = lv_img_create(item->container);
         lv_img_set_src(item->icon, config->icon_path);
         lv_obj_align(item->icon, LV_ALIGN_LEFT_MID, 0, 0);
 
-        /* 标题 */
+        /* 标题文字 */
         item->title_label = lv_label_create(item->container);
         lv_label_set_text(item->title_label, config->title);
         lv_obj_add_style(item->title_label, &NORMAL_SIZE, LV_PART_MAIN);
         lv_obj_set_style_text_color(item->title_label, lv_color_white(), LV_PART_MAIN);
         lv_obj_align(item->title_label, LV_ALIGN_LEFT_MID, 55, 0);
 
-        /* 值 */
+        /* 参数文字 */
         item->value_label = lv_label_create(item->container);
         lv_obj_add_style(item->value_label, &NORMAL_SIZE, LV_PART_MAIN);
         lv_obj_set_style_text_color(item->value_label, lv_color_hex(0xFFD700), LV_PART_MAIN);
@@ -363,6 +363,7 @@ void page_photo_settings_create(page_manager_t* pm)
     lv_obj_set_style_radius(data->roller, 20, LV_PART_MAIN);
     lv_obj_add_event_cb(data->roller, roller_select_cb, LV_EVENT_VALUE_CHANGED | LV_EVENT_CLICKED, data);
 
+    /* 保存 private_data */
     page_set_private_data(pm, data);
 }
 

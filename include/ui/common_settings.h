@@ -23,6 +23,15 @@ typedef struct {
     setting_type_t type; /* 设置类型 */
 } setting_config_t;
 
+/* 设置项 - 运行时的控件 */
+typedef struct {
+    lv_obj_t* container; /* 行容器 */
+    lv_obj_t* icon; /* 左侧图标 */
+    lv_obj_t* title_label; /* 标题文字 */
+    lv_obj_t* value_label; /* 参数文字 */
+    int current_index; /* 当前选中的索引 */
+} setting_item_t;
+
 #ifdef __cplusplus
 }
 #endif

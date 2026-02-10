@@ -7,21 +7,16 @@
 extern "C" {
 #endif
 
-/* 设置项结构 */
-typedef struct {
-    lv_obj_t* container; /* 行容器 */
-    lv_obj_t* icon; /* 左侧图标 */
-    lv_obj_t* title_label; /* 标题文字 */
-    lv_obj_t* value_label; /* 参数文字 */
-    int current_index; /* 当前选中的索引（toggle时0=关闭，1=开启） */
-} video_setting_item_t;
-
 /* 录像设置页面数据 */
 typedef struct {
     lv_obj_t* container; /* 页面容器 */
     lv_obj_t* nav_bar; /* 顶部导航栏 */
     lv_obj_t* settings_container; /* 设置列表容器 */
-    video_setting_item_t settings[4]; /* 4个设置项 */
+    const setting_config_t* configs; /* 配置数组 */
+    setting_item_t* items; /* 控件数组 */
+    lv_obj_t* roller_popup; /* 滚轮弹窗 */
+    lv_obj_t* roller; /* 滚轮控件 */
+    int current_setting_index; /* 当前选中的设置项索引 */
 } page_video_settings_data_t;
 
 void page_video_settings_create(page_manager_t* pm);

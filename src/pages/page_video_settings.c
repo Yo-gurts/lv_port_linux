@@ -16,15 +16,30 @@
 // ! #region 2. 数据结构定义 (见 page_video_settings.h)
 // #############################################################################
 
+/* 滚轮选项定义 */
+static const char* resolution_options[] = {
+    "4K(3840x2160)", "2.7K(2704x1520)", "1080P(1920x1080)", "720P(1280x720)"
+};
+static const char* white_balance_options[] = {
+    "自动", "晴天", "阴天", "白炽灯", "荧光灯"
+};
+static const char* exposure_options[] = {
+    "EV-2.0", "EV-1.5", "EV-1.0", "EV-0.5", "EV0", "EV+0.5", "EV+1.0", "EV+1.5", "EV+2.0"
+};
+static const char* iso_options[] = {
+    "自动", "ISO100", "ISO200", "ISO400", "ISO800", "ISO1600"
+};
+
+// #endregion
 // #############################################################################
 // ! #region 3. 全局变量 & 函数声明
 // #############################################################################
 
 static const setting_config_t settings_config[] = {
-    { .icon_path = "A:" RES_ICON_PATH "/4k.png", .title = "分辨率", .value = "3840x2160", .type = SETTING_TYPE_NORMAL },
-    { .icon_path = "A:" RES_ICON_PATH "/white-balance.png", .title = "白平衡", .value = "自动", .type = SETTING_TYPE_NORMAL },
-    { .icon_path = "A:" RES_ICON_PATH "/exposure.png", .title = "曝光", .value = "EV0", .type = SETTING_TYPE_NORMAL },
-    { .icon_path = "A:" RES_ICON_PATH "/iso.png", .title = "感光度", .value = "自动", .type = SETTING_TYPE_NORMAL },
+    { .title = "分辨率", .icon_path = "A" RES_ICON_PATH "/4k.png", .value = "4K(3840x2160)", .roller_options = resolution_options, .roller_count = 4, .type = SETTING_TYPE_NORMAL },
+    { .title = "白平衡", .icon_path = "A" RES_ICON_PATH "/white-balance.png", .value = "自动", .roller_options = white_balance_options, .roller_count = 5, .type = SETTING_TYPE_NORMAL },
+    { .title = "曝光", .icon_path = "A" RES_ICON_PATH "/exposure.png", .value = "EV0", .roller_options = exposure_options, .roller_count = 9, .type = SETTING_TYPE_NORMAL },
+    { .title = "感光度", .icon_path = "A" RES_ICON_PATH "/iso.png", .value = "自动", .roller_options = iso_options, .roller_count = 6, .type = SETTING_TYPE_NORMAL },
 };
 
 #define SETTINGS_COUNT (int)(sizeof(settings_config) / sizeof(settings_config[0]))
@@ -33,6 +48,45 @@ static const setting_config_t settings_config[] = {
 // #############################################################################
 // ! #region 4. 内部工具函数（注意用static修饰）
 // #############################################################################
+
+/* 将字符串数组构建为lv_roller选项字符串（用\n分隔） */
+static void build_roller_options(const char** options, int count, char* buf, int buflen)
+{
+    buf[0] = '\0';
+    for (int i = 0; i < count && buflen > 1; i++) {
+        int len = strlen(options[i]);
+        if (len >= buflen - 1) {
+            len = buflen - 1;
+        }
+        strncpy(buf, options[i], len);
+        buf += len;
+        buflen -= len;
+        if (i < count - 1 && buflen > 1) {
+            *buf++ = '\n';
+            buflen--;
+        }
+    }
+    *buf = '\0';
+}
+
+/* 获取滚轮当前选中值并应用到UI */
+static void apply_roller_selection(page_video_settings_data_t* data)
+{
+    int index = data->current_setting_index;
+    if (index < 0 || index >= SETTINGS_COUNT) {
+        return;
+    }
+
+    const setting_config_t* config = &data->configs[index];
+    setting_item_t* item = &data->items[index];
+    int selected = lv_roller_get_selected(data->roller);
+
+    item->current_index = selected;
+    lv_label_set_text(item->value_label, config->roller_options[selected]);
+    lv_obj_add_flag(data->roller_popup, LV_OBJ_FLAG_HIDDEN);
+
+    MLOG_INFO("Setting '%s' selected: %s", config->title, config->roller_options[selected]);
+}
 
 // #endregion
 // #############################################################################
@@ -49,6 +103,24 @@ static const setting_config_t settings_config[] = {
 // ! #region 7. 按键、手势、定时器 等事件回调函数
 // #############################################################################
 
+/* 滚轮选中回调 */
+static void roller_select_cb(lv_event_t* e)
+{
+    lv_event_code_t code = lv_event_get_code(e);
+    page_video_settings_data_t* data = (page_video_settings_data_t*)lv_event_get_user_data(e);
+
+    if (code == LV_EVENT_VALUE_CHANGED || code == LV_EVENT_CLICKED) {
+        apply_roller_selection(data);
+    }
+}
+
+/* 点击遮罩关闭弹窗回调 */
+static void modal_click_cb(lv_event_t* e)
+{
+    page_video_settings_data_t* data = (page_video_settings_data_t*)lv_event_get_user_data(e);
+    apply_roller_selection(data);
+}
+
 /* 设置项点击回调 */
 static void setting_item_cb(lv_event_t* e)
 {
@@ -60,8 +132,8 @@ static void setting_item_cb(lv_event_t* e)
         return;
     }
 
-    video_setting_item_t* item = &data->settings[index];
-    const setting_config_t* config = &settings_config[index];
+    const setting_config_t* config = &data->configs[index];
+    setting_item_t* item = &data->items[index];
 
     if (config->type == SETTING_TYPE_TOGGLE) {
         /* 切换开关状态 */
@@ -70,8 +142,21 @@ static void setting_item_cb(lv_event_t* e)
         lv_label_set_text(item->value_label, new_value);
         MLOG_INFO("Setting '%s' toggled to: %s", config->title, new_value);
     } else {
-        /* 普通设置，仅日志 */
-        MLOG_INFO("Setting '%s' clicked, value: %s", config->title, config->value);
+        /* 普通设置，弹出滚轮 */
+        data->current_setting_index = index;
+
+        /* 构建滚轮选项字符串 */
+        char options_buf[256];
+        build_roller_options(config->roller_options, config->roller_count, options_buf, sizeof(options_buf));
+        lv_roller_set_options(data->roller, options_buf, LV_ROLLER_MODE_NORMAL);
+
+        /* 设置当前选中项 */
+        lv_roller_set_selected(data->roller, item->current_index, LV_ANIM_OFF);
+
+        /* 显示弹窗 */
+        lv_obj_clear_flag(data->roller_popup, LV_OBJ_FLAG_HIDDEN);
+
+        MLOG_INFO("Setting '%s' clicked, value: %s", config->title, config->roller_options[item->current_index]);
     }
 }
 
@@ -92,6 +177,15 @@ void page_video_settings_create(page_manager_t* pm)
     }
 
     memset(data, 0, sizeof(page_video_settings_data_t));
+
+    /* 指向静态配置 */
+    data->configs = settings_config;
+    data->items = (setting_item_t*)malloc(sizeof(setting_item_t) * SETTINGS_COUNT);
+    if (!data->items) {
+        free(data);
+        return;
+    }
+    memset(data->items, 0, sizeof(setting_item_t) * SETTINGS_COUNT);
 
     /* 创建页面容器 */
     data->container = lv_obj_create(lv_screen_active());
@@ -141,9 +235,10 @@ void page_video_settings_create(page_manager_t* pm)
     lv_obj_set_flex_flow(data->settings_container, LV_FLEX_FLOW_COLUMN);
     lv_obj_set_flex_align(data->settings_container, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
 
-    /* 创建4个设置项 */
+    /* 创建设置项 */
     for (int i = 0; i < SETTINGS_COUNT; i++) {
-        video_setting_item_t* item = &data->settings[i];
+        const setting_config_t* config = &data->configs[i];
+        setting_item_t* item = &data->items[i];
 
         /* 设置项容器 */
         item->container = lv_obj_create(data->settings_container);
@@ -155,29 +250,66 @@ void page_video_settings_create(page_manager_t* pm)
 
         /* 左侧图标 */
         item->icon = lv_img_create(item->container);
-        lv_img_set_src(item->icon, settings_config[i].icon_path);
+        lv_img_set_src(item->icon, config->icon_path);
         lv_obj_align(item->icon, LV_ALIGN_LEFT_MID, 0, 0);
 
         /* 标题文字 */
         item->title_label = lv_label_create(item->container);
-        lv_label_set_text(item->title_label, settings_config[i].title);
+        lv_label_set_text(item->title_label, config->title);
         lv_obj_add_style(item->title_label, &NORMAL_SIZE, LV_PART_MAIN);
         lv_obj_set_style_text_color(item->title_label, lv_color_white(), LV_PART_MAIN);
         lv_obj_align(item->title_label, LV_ALIGN_LEFT_MID, 55, 0);
 
         /* 参数文字 */
         item->value_label = lv_label_create(item->container);
-        lv_label_set_text(item->value_label, settings_config[i].value);
         lv_obj_add_style(item->value_label, &NORMAL_SIZE, LV_PART_MAIN);
         lv_obj_set_style_text_color(item->value_label, lv_color_hex(0xFFD700), LV_PART_MAIN);
-        lv_obj_align(item->value_label, LV_ALIGN_RIGHT_MID, 0, 0);
+        lv_obj_align(item->value_label, LV_ALIGN_RIGHT_MID, -10, 0);
 
-        item->current_index = 0;
+        if (config->type == SETTING_TYPE_TOGGLE) {
+            /* 开关类型 */
+            item->current_index = 0;
+            lv_label_set_text(item->value_label, config->value);
+        } else {
+            /* 滚轮类型：查找初始索引 */
+            for (int j = 0; j < config->roller_count; j++) {
+                if (strcmp(config->roller_options[j], config->value) == 0) {
+                    item->current_index = j;
+                    break;
+                }
+            }
+            lv_label_set_text(item->value_label, config->roller_options[item->current_index]);
+        }
 
         /* 点击事件 */
         lv_obj_add_event_cb(item->container, setting_item_cb, LV_EVENT_CLICKED, data);
         lv_obj_set_user_data(item->container, (void*)(intptr_t)i);
     }
+
+    /* =======================
+     * 3. 滚轮弹窗
+     * ======================= */
+    data->roller_popup = lv_obj_create(lv_screen_active());
+    lv_obj_set_size(data->roller_popup, LV_PCT(100), LV_PCT(100));
+    lv_obj_set_style_bg_opa(data->roller_popup, LV_OPA_50, LV_PART_MAIN);
+    lv_obj_set_style_bg_color(data->roller_popup, lv_color_black(), LV_PART_MAIN);
+    lv_obj_set_style_border_width(data->roller_popup, 0, LV_PART_MAIN);
+    lv_obj_set_style_radius(data->roller_popup, 0, LV_PART_MAIN);
+    lv_obj_clear_flag(data->roller_popup, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_scrollbar_mode(data->roller_popup, LV_SCROLLBAR_MODE_OFF);
+    lv_obj_add_flag(data->roller_popup, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_add_flag(data->roller_popup, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_add_event_cb(data->roller_popup, modal_click_cb, LV_EVENT_CLICKED, data);
+
+    data->roller = lv_roller_create(data->roller_popup);
+    lv_obj_set_size(data->roller, 300, 200);
+    lv_obj_center(data->roller);
+    lv_roller_set_visible_row_count(data->roller, 5);
+    lv_obj_add_style(data->roller, &NORMAL_SIZE, LV_PART_MAIN);
+    lv_obj_set_style_bg_opa(data->roller, LV_OPA_COVER, LV_PART_MAIN);
+    lv_obj_set_style_bg_color(data->roller, lv_color_hex(0x2A2A2A), LV_PART_MAIN);
+    lv_obj_set_style_radius(data->roller, 20, LV_PART_MAIN);
+    lv_obj_add_event_cb(data->roller, roller_select_cb, LV_EVENT_VALUE_CHANGED | LV_EVENT_CLICKED, data);
 
     /* 保存 private_data */
     page_set_private_data(pm, data);
@@ -199,6 +331,7 @@ void page_video_settings_destroy(page_manager_t* pm)
         data->container = NULL;
     }
 
+    free(data->items);
     free(data);
 }
 
@@ -215,6 +348,10 @@ void page_video_settings_show(page_manager_t* pm)
 
     MLOG_INFO("Video settings page show");
     lv_obj_clear_flag(data->container, LV_OBJ_FLAG_HIDDEN);
+
+    if (data->roller_popup) {
+        lv_obj_add_flag(data->roller_popup, LV_OBJ_FLAG_HIDDEN);
+    }
 }
 
 void page_video_settings_hide(page_manager_t* pm)

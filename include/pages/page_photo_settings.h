@@ -7,15 +7,6 @@
 extern "C" {
 #endif
 
-/* 设置项 - 运行时的控件 */
-typedef struct {
-    lv_obj_t* container; /* 行容器 */
-    lv_obj_t* icon; /* 左侧图标 */
-    lv_obj_t* title_label; /* 标题文字 */
-    lv_obj_t* value_label; /* 参数文字 */
-    int current_index; /* 当前选中的索引 */
-} setting_item_t;
-
 typedef struct {
     lv_obj_t* container; /* 页面容器 */
     lv_obj_t* nav_bar; /* 顶部导航栏 */
