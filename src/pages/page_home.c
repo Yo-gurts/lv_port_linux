@@ -215,6 +215,12 @@ void page_home_create(page_manager_t* pm)
     lv_obj_add_style(data->container, &style_home_bg, LV_PART_MAIN);
     lv_obj_refr_size(data->container);
 
+    /* 启用滑动手势检测，不将 GESTURE 事件传递给父控件 */
+    lv_obj_clear_flag(data->container, LV_OBJ_FLAG_GESTURE_BUBBLE);
+
+    /* 添加滑动手势回调：从左往右滑返回上一页 */
+    lv_obj_add_event_cb(data->container, page_manager_swipe_right_cb, LV_EVENT_GESTURE, pm);
+
     /* Time label - center */
     data->lv_label_time = lv_label_create(data->container);
     lv_label_set_text(data->lv_label_time, "0000-00-00 00:00:00");

@@ -215,7 +215,8 @@ void page_manager_back_cb(lv_event_t* e)
     page_manager_back(pm);
 }
 
-/* 通用右滑返回回调 - 所有页面可直接作为事件回调使用 */
+/* 通用右滑返回回调 - 所有页面可直接作为事件回调使用
+ * 当检测到滑动时，调用 lv_indev_set_wait_until_release() 避免释放时触发点击 */
 void page_manager_swipe_right_cb(lv_event_t* e)
 {
     page_manager_t* pm = (page_manager_t*)lv_event_get_user_data(e);
@@ -228,6 +229,11 @@ void page_manager_swipe_right_cb(lv_event_t* e)
         if (dir == LV_DIR_RIGHT) {
             MLOG_INFO("Swipe right, back to previous page");
             page_manager_back(pm);
+        }
+        /* 检测到滑动，忽略后续的点击事件 */
+        lv_indev_t* indev = lv_indev_get_act();
+        if (indev) {
+            lv_indev_wait_release(indev);
         }
     }
 }
