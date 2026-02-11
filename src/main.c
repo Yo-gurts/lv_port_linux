@@ -6,6 +6,7 @@
 #include "mlog.h"
 #include "pages/page_ai_photo.h"
 #include "pages/page_ai_photo_settings.h"
+#include "pages/page_album.h"
 #include "pages/page_chat.h"
 #include "pages/page_home.h"
 #include "pages/page_photo.h"
@@ -45,8 +46,8 @@ static void lv_linux_disp_init(void)
 #elif LV_USE_SDL
 static void lv_linux_disp_init(void)
 {
-    const int width = atoi(getenv_default("LV_SDL_VIDEO_WIDTH", "800"));
-    const int height = atoi(getenv_default("LV_SDL_VIDEO_HEIGHT", "480"));
+    const int width = H_RES;
+    const int height = V_RES;
 
     lv_group_set_default(lv_group_create());
 
@@ -157,6 +158,14 @@ static page_interface_t chat_page_interface = {
     .update = page_chat_update,
 };
 
+static page_interface_t album_page_interface = {
+    .create = page_album_create,
+    .destroy = page_album_destroy,
+    .show = page_album_show,
+    .hide = page_album_hide,
+    .update = page_album_update,
+};
+
 int main(void)
 {
     lv_init();
@@ -188,6 +197,7 @@ int main(void)
     page_manager_register(pm, "version_info", &version_info_page_interface, NULL);
     page_manager_register(pm, "ai_photo_settings", &ai_photo_settings_page_interface, NULL);
     page_manager_register(pm, "chat", &chat_page_interface, NULL);
+    page_manager_register(pm, "album", &album_page_interface, NULL);
 
     /* Navigate to home page */
     page_manager_navigate(pm, "home");

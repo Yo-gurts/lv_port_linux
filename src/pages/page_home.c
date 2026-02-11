@@ -167,15 +167,15 @@ static void translation_button_cb(lv_event_t* e)
     page_manager_navigate(pm, "translation");
 }
 
-static void gallery_button_cb(lv_event_t* e)
+static void album_button_cb(lv_event_t* e)
 {
     page_manager_t* pm = (page_manager_t*)lv_event_get_user_data(e);
     if (!pm) {
         return;
     }
 
-    MLOG_INFO("Gallery button clicked");
-    page_manager_navigate(pm, "gallery");
+    MLOG_INFO("album button clicked");
+    page_manager_navigate(pm, "album");
 }
 
 static void settings_button_cb(lv_event_t* e)
@@ -254,7 +254,7 @@ void page_home_create(page_manager_t* pm)
         recognition_button_cb, NULL);
     create_icon_button(pm, data->grid_container, LV_SYMBOL_DIRECTORY, "相册",
         LV_ALIGN_TOP_LEFT, 0, 0,
-        gallery_button_cb, NULL);
+        album_button_cb, NULL);
 
     /* 第2行 */
     create_icon_button(pm, data->grid_container, LV_SYMBOL_CALL, "AI对话",
