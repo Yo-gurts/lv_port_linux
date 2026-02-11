@@ -23,6 +23,7 @@
 
 #if LV_USE_LINUX_FBDEV
 #include "core/framebuffer_manager.h"
+#include "lvgl/src/drivers/evdev/lv_evdev.h"
 
 static void lv_linux_disp_init(void)
 {
@@ -36,6 +37,14 @@ static void lv_linux_disp_init(void)
     if (!fb_mgr) {
         MLOG_ERR("Failed to create framebuffer manager");
     }
+
+    /* Initialize touchscreen input device */
+#if LV_USE_EVDEV
+    lv_indev_t* indev = lv_evdev_create(LV_INDEV_TYPE_POINTER, TOUCH_PANEL_EVENT_PATH);
+    if (!indev) {
+        MLOG_ERR("Failed to create touchscreen input: %s", TOUCH_PANEL_EVENT_PATH);
+    }
+#endif
 }
 #elif LV_USE_SDL
 static void lv_linux_disp_init(void)
