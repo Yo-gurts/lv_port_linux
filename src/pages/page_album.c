@@ -17,7 +17,8 @@
 #define GRID_ITEM_HEIGHT 140
 #define GRID_COLS 3
 #define GRID_ROWS 3
-#define GRID_GAP 4
+#define GRID_GAP_X 4
+#define GRID_GAP_Y 2
 
 // #endregion
 // #############################################################################
@@ -218,16 +219,15 @@ void page_album_create(page_manager_t* pm)
     lv_obj_set_style_bg_color(data->grid_container, lv_color_hex(0x121212), LV_PART_MAIN);
 
     /* 计算整体 grid 尺寸 */
-    int grid_width = GRID_ITEM_WIDTH * GRID_COLS + GRID_GAP * (GRID_COLS - 1);
-    int grid_height = GRID_ITEM_HEIGHT * GRID_ROWS + GRID_GAP * (GRID_ROWS - 1);
+    int grid_width = GRID_ITEM_WIDTH * GRID_COLS + GRID_GAP_X * (GRID_COLS - 1);
 
     /* 创建3页（每页9张，共27张） */
     for (int page = 0; page < 3; page++) {
-        lv_obj_t* tile = lv_tileview_add_tile(data->grid_container, page, 0, LV_DIR_HOR);
+        lv_obj_t* tile = lv_tileview_add_tile(data->grid_container, 0, page, LV_DIR_VER);
 
         /* 计算水平起始位置（居中） */
         int start_x = (H_RES - grid_width) / 2;
-        int start_y = GRID_GAP;
+        int start_y = GRID_GAP_Y;
 
         /* 每页9张图片 - 手动计算位置 */
         for (int i = 0; i < 9; i++) {
@@ -242,8 +242,8 @@ void page_album_create(page_manager_t* pm)
             lv_obj_set_scrollbar_mode(item_container, LV_SCROLLBAR_MODE_OFF);
 
             /* 计算位置 */
-            int x = start_x + col * (GRID_ITEM_WIDTH + GRID_GAP);
-            int y = start_y + row * (GRID_ITEM_HEIGHT + GRID_GAP);
+            int x = start_x + col * (GRID_ITEM_WIDTH + GRID_GAP_X);
+            int y = start_y + row * (GRID_ITEM_HEIGHT + GRID_GAP_Y);
             lv_obj_set_pos(item_container, x, y);
 
             /* 图片占位符 */

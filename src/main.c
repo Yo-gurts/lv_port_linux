@@ -21,12 +21,6 @@
 #include <time.h>
 #include <unistd.h>
 
-static const char* getenv_default(const char* name, const char* dflt)
-{
-    const char* env = getenv(name);
-    return env ? env : dflt;
-}
-
 #if LV_USE_LINUX_FBDEV
 static void lv_linux_disp_init(void)
 {

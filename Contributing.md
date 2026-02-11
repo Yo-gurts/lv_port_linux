@@ -60,7 +60,6 @@
 - **命名与注释规范**
   - 控件变量示例：`lv_label_title`、`lv_btn_ok`
   - 样式变量示例：`style_screen_bg`、`style_btn_pressed`
-  - 事件函数示例：`event_handler_btn_ok()`
   - 中文注释必须描述控件用途、事件逻辑和资源来源。
 
 
