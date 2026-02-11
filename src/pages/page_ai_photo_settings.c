@@ -112,6 +112,9 @@ void page_ai_photo_settings_create(page_manager_t* pm)
     lv_obj_set_flex_flow(data->container, LV_FLEX_FLOW_COLUMN);
     lv_obj_refr_size(data->container);
 
+    /* 启用滑动手势检测，不将 GESTURE 事件传递给父控件 */
+    lv_obj_clear_flag(data->container, LV_OBJ_FLAG_GESTURE_BUBBLE);
+
     /* =======================
      * 1. 顶部导航栏
      * ======================= */
