@@ -26,7 +26,7 @@
 
 static void lv_linux_disp_init(void)
 {
-    const char* device = getenv_default("LV_LINUX_FBDEV_DEVICE", FB_DEV_NAME);
+    const char* device = FB_DEV_NAME;
     lv_display_t* disp = lv_linux_fbdev_create();
 
     lv_linux_fbdev_set_file(disp, device);

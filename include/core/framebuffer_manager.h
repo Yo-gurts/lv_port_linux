@@ -15,6 +15,7 @@ extern "C" {
 #endif
 
 struct framebuffer_manager_t;
+typedef struct framebuffer_manager_t framebuffer_manager_t;
 
 /**
  * @brief 创建 framebuffer 管理器并注册 flush 完成回调

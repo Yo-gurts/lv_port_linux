@@ -5,10 +5,10 @@
 #include "core/framebuffer_manager.h"
 #include "mlog.h"
 #include <fcntl.h>
-#include <ioctl.h>
 #include <linux/fb.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <sys/ioctl.h>
 #include <unistd.h>
 
 // #endregion
@@ -84,7 +84,7 @@ framebuffer_manager_t* framebuffer_manager_create(const char* device, lv_display
     }
 
     /* Make sure that the display is on. */
-    if (ioctl(dsc->fbfd, FBIOBLANK, FB_BLANK_UNBLANK) != 0) {
+    if (ioctl(mgr->fbfd, FBIOBLANK, FB_BLANK_UNBLANK) != 0) {
         perror("ioctl(FBIOBLANK)");
         /* Don't return. Some framebuffer drivers like efifb or simplefb don't implement FBIOBLANK.*/
     }

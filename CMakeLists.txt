@@ -8,7 +8,11 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 #=======================
 # Project Configuration
 #=======================
-set(PROJECT_PATH_STR "${CMAKE_CURRENT_SOURCE_DIR}")
+if(CMAKE_C_COMPILER_TARGET MATCHES "arm-none-linux" OR CMAKE_SYSTEM_PROCESSOR MATCHES "arm")
+    set(PROJECT_PATH_STR "/mnt/data")
+else()
+    set(PROJECT_PATH_STR "${CMAKE_CURRENT_SOURCE_DIR}")
+endif()
 add_definitions(-DPROJECT_PATH="${PROJECT_PATH_STR}")
 
 #=======================
@@ -97,12 +101,14 @@ if(CONFIG STREQUAL "SDL")
 endif()
 
 # FreeType library for Chinese font support
-if(CONFIG STREQUAL "SDL")
+set(FREETYPE_INCLUDE "${CMAKE_CURRENT_SOURCE_DIR}/third_party/freetype/freetype2")
+if(CMAKE_C_COMPILER_TARGET MATCHES "arm-none-linux" OR CMAKE_SYSTEM_PROCESSOR MATCHES "arm")
+    set(FREETYPE_LIB "${CMAKE_CURRENT_SOURCE_DIR}/third_party/freetype/lib/arm-none-linux-musleabihf/libfreetype.a")
+else()
     set(FREETYPE_LIB "${CMAKE_CURRENT_SOURCE_DIR}/third_party/freetype/lib/x86_64/libfreetype.a")
-    set(FREETYPE_INCLUDE "${CMAKE_CURRENT_SOURCE_DIR}/third_party/freetype/freetype2")
-    target_include_directories(main PRIVATE ${FREETYPE_INCLUDE})
-    target_include_directories(lvgl PRIVATE ${FREETYPE_INCLUDE})
-    target_link_libraries(main ${FREETYPE_LIB})
 endif()
+target_include_directories(main PRIVATE ${FREETYPE_INCLUDE})
+target_include_directories(lvgl PRIVATE ${FREETYPE_INCLUDE})
+target_link_libraries(main ${FREETYPE_LIB})
 
 add_custom_target (run COMMAND ${EXECUTABLE_OUTPUT_PATH}/main DEPENDS main)
