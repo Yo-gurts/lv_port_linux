@@ -22,20 +22,20 @@
 #include <unistd.h>
 
 #if LV_USE_LINUX_FBDEV
+#include "core/framebuffer_manager.h"
+
 static void lv_linux_disp_init(void)
 {
     const char* device = getenv_default("LV_LINUX_FBDEV_DEVICE", FB_DEV_NAME);
     lv_display_t* disp = lv_linux_fbdev_create();
 
     lv_linux_fbdev_set_file(disp, device);
-}
-#elif LV_USE_LINUX_DRM
-static void lv_linux_disp_init(void)
-{
-    const char* device = getenv_default("LV_LINUX_DRM_CARD", "/dev/dri/card0");
-    lv_display_t* disp = lv_linux_drm_create();
+    lv_display_set_resolution(disp, H_RES, V_RES);
 
-    lv_linux_drm_set_file(disp, device, -1);
+    framebuffer_manager_t* fb_mgr = framebuffer_manager_create(FB_DEV_NAME, disp);
+    if (!fb_mgr) {
+        MLOG_ERR("Failed to create framebuffer manager");
+    }
 }
 #elif LV_USE_SDL
 static void lv_linux_disp_init(void)

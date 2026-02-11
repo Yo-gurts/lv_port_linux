@@ -80,6 +80,11 @@ set(SOURCES
     src/pages/page_version_info.c
 )
 
+# Framebuffer manager (only for FB mode)
+if(CONFIG STREQUAL "FB")
+    list(APPEND SOURCES src/core/framebuffer_manager.c)
+endif()
+
 add_executable(main ${SOURCES})
 if(STRICT_C_FLAGS)
     target_compile_options(main PRIVATE ${STRICT_C_FLAGS})
