@@ -19,11 +19,11 @@ typedef struct {
     lv_obj_t* timbre_btn; /* 音色按钮 */
 } page_chat_data_t;
 
-void page_chat_create(page_manager_t* pm);
-void page_chat_destroy(page_manager_t* pm);
-void page_chat_show(page_manager_t* pm);
-void page_chat_hide(page_manager_t* pm);
-void page_chat_update(page_manager_t* pm);
+void page_chat_create(void);
+void page_chat_destroy(void);
+void page_chat_show(void);
+void page_chat_hide(void);
+void page_chat_update(void);
 
 #ifdef __cplusplus
 }

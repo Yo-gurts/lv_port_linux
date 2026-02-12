@@ -20,11 +20,11 @@ typedef struct {
 } page_album_data_t;
 
 /* 相册页面函数 */
-void page_album_create(page_manager_t* pm);
-void page_album_destroy(page_manager_t* pm);
-void page_album_show(page_manager_t* pm);
-void page_album_hide(page_manager_t* pm);
-void page_album_update(page_manager_t* pm);
+void page_album_create(void);
+void page_album_destroy(void);
+void page_album_show(void);
+void page_album_hide(void);
+void page_album_update(void);
 
 #ifdef __cplusplus
 }

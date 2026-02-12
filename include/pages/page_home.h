@@ -18,11 +18,11 @@ typedef struct {
     lv_timer_t* home_update_timer; /* 时间更新定时器 */
 } home_page_data_t;
 
-void page_home_create(page_manager_t* pm);
-void page_home_destroy(page_manager_t* pm);
-void page_home_show(page_manager_t* pm);
-void page_home_hide(page_manager_t* pm);
-void page_home_update(page_manager_t* pm);
+void page_home_create(void);
+void page_home_destroy(void);
+void page_home_show(void);
+void page_home_hide(void);
+void page_home_update(void);
 
 #ifdef __cplusplus
 }

@@ -23,11 +23,11 @@ typedef struct {
     lv_obj_t* switch_btn; /* 摄像头切换按钮 */
 } page_photo_data_t;
 
-void page_photo_create(page_manager_t* pm);
-void page_photo_destroy(page_manager_t* pm);
-void page_photo_show(page_manager_t* pm);
-void page_photo_hide(page_manager_t* pm);
-void page_photo_update(page_manager_t* pm);
+void page_photo_create(void);
+void page_photo_destroy(void);
+void page_photo_show(void);
+void page_photo_hide(void);
+void page_photo_update(void);
 
 #ifdef __cplusplus
 }

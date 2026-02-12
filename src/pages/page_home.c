@@ -48,7 +48,7 @@ static const char* get_battery_icon_path(int level)
     }
 }
 
-static void create_icon_button(page_manager_t* pm, lv_obj_t* parent,
+static void create_icon_button(lv_obj_t* parent,
     const char* symbol, const char* name,
     lv_align_t align, int x_ofs, int y_ofs,
     lv_event_cb_t cb, lv_obj_t** out_btn)
@@ -59,7 +59,7 @@ static void create_icon_button(page_manager_t* pm, lv_obj_t* parent,
     lv_obj_set_width(container, lv_pct(30)); /* 占父容器30%宽度，自适应 */
     lv_obj_set_height(container, lv_pct(40)); /* 占剩余高度约40% */
     lv_obj_add_style(container, &style_common_btn_back, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_add_event_cb(container, cb, LV_EVENT_CLICKED, pm);
+    lv_obj_add_event_cb(container, cb, LV_EVENT_CLICKED, NULL);
 
     /* 使用 flex 布局垂直排列图标和文字 */
     lv_obj_set_layout(container, LV_LAYOUT_FLEX);
@@ -125,68 +125,44 @@ static void home_update_timer_cb(lv_timer_t* timer)
 /* Home Page Callbacks */
 static void photo_button_cb(lv_event_t* e)
 {
-    page_manager_t* pm = (page_manager_t*)lv_event_get_user_data(e);
-    if (!pm) {
-        return;
-    }
-
+    LV_UNUSED(e);
     MLOG_INFO("Photo button clicked");
-    page_manager_navigate(pm, "photo");
+    page_manager_navigate("photo");
 }
 
 static void recognition_button_cb(lv_event_t* e)
 {
-    page_manager_t* pm = (page_manager_t*)lv_event_get_user_data(e);
-    if (!pm) {
-        return;
-    }
-
+    LV_UNUSED(e);
     MLOG_INFO("AI Photo button clicked");
-    page_manager_navigate(pm, "ai_photo");
+    page_manager_navigate("ai_photo");
 }
 
 static void chat_button_cb(lv_event_t* e)
 {
-    page_manager_t* pm = (page_manager_t*)lv_event_get_user_data(e);
-    if (!pm) {
-        return;
-    }
-
+    LV_UNUSED(e);
     MLOG_INFO("Chat button clicked");
-    page_manager_navigate(pm, "chat");
+    page_manager_navigate("chat");
 }
 
 static void translation_button_cb(lv_event_t* e)
 {
-    page_manager_t* pm = (page_manager_t*)lv_event_get_user_data(e);
-    if (!pm) {
-        return;
-    }
-
+    LV_UNUSED(e);
     MLOG_INFO("Translation button clicked");
-    page_manager_navigate(pm, "translation");
+    page_manager_navigate("ai_photo");
 }
 
 static void album_button_cb(lv_event_t* e)
 {
-    page_manager_t* pm = (page_manager_t*)lv_event_get_user_data(e);
-    if (!pm) {
-        return;
-    }
-
+    LV_UNUSED(e);
     MLOG_INFO("album button clicked");
-    page_manager_navigate(pm, "album");
+    page_manager_navigate("album");
 }
 
 static void settings_button_cb(lv_event_t* e)
 {
-    page_manager_t* pm = (page_manager_t*)lv_event_get_user_data(e);
-    if (!pm) {
-        return;
-    }
-
+    LV_UNUSED(e);
     MLOG_INFO("Settings button clicked");
-    page_manager_navigate(pm, "system_settings");
+    page_manager_navigate("system_settings");
 }
 
 // #endregion
@@ -194,12 +170,8 @@ static void settings_button_cb(lv_event_t* e)
 // ! #region 8. 初始化、去初始化、资源管理
 // #############################################################################
 
-void page_home_create(page_manager_t* pm)
+void page_home_create(void)
 {
-    if (!pm) {
-        return;
-    }
-
     home_page_data_t* data = (home_page_data_t*)malloc(sizeof(home_page_data_t));
     if (!data) {
         return;
@@ -219,7 +191,7 @@ void page_home_create(page_manager_t* pm)
     lv_obj_clear_flag(data->container, LV_OBJ_FLAG_GESTURE_BUBBLE);
 
     /* 添加滑动手势回调：从左往右滑返回上一页 */
-    lv_obj_add_event_cb(data->container, page_manager_swipe_right_cb, LV_EVENT_GESTURE, pm);
+    lv_obj_add_event_cb(data->container, page_manager_swipe_right_cb, LV_EVENT_GESTURE, NULL);
 
     /* Time label - center */
     data->lv_label_time = lv_label_create(data->container);
@@ -252,38 +224,34 @@ void page_home_create(page_manager_t* pm)
     lv_obj_set_flex_align(data->grid_container, LV_FLEX_ALIGN_SPACE_EVENLY, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
 
     /* 第1行 */
-    create_icon_button(pm, data->grid_container, LV_SYMBOL_IMAGE, "拍照",
+    create_icon_button(data->grid_container, LV_SYMBOL_IMAGE, "拍照",
         LV_ALIGN_TOP_LEFT, 0, 0,
         photo_button_cb, NULL);
-    create_icon_button(pm, data->grid_container, LV_SYMBOL_FILE, "AI拍照",
+    create_icon_button(data->grid_container, LV_SYMBOL_FILE, "AI拍照",
         LV_ALIGN_TOP_LEFT, 0, 0,
         recognition_button_cb, NULL);
-    create_icon_button(pm, data->grid_container, LV_SYMBOL_DIRECTORY, "相册",
+    create_icon_button(data->grid_container, LV_SYMBOL_DIRECTORY, "相册",
         LV_ALIGN_TOP_LEFT, 0, 0,
         album_button_cb, NULL);
 
     /* 第2行 */
-    create_icon_button(pm, data->grid_container, LV_SYMBOL_CALL, "AI对话",
+    create_icon_button(data->grid_container, LV_SYMBOL_CALL, "AI对话",
         LV_ALIGN_TOP_LEFT, 0, 0,
         chat_button_cb, NULL);
-    create_icon_button(pm, data->grid_container, LV_SYMBOL_EDIT, "拍照翻译",
+    create_icon_button(data->grid_container, LV_SYMBOL_EDIT, "拍照翻译",
         LV_ALIGN_TOP_LEFT, 0, 0,
         translation_button_cb, NULL);
-    create_icon_button(pm, data->grid_container, LV_SYMBOL_SETTINGS, "设置",
+    create_icon_button(data->grid_container, LV_SYMBOL_SETTINGS, "设置",
         LV_ALIGN_TOP_LEFT, 0, 0,
         settings_button_cb, NULL);
 
     /* 保存 private_data，供 show/hide/destroy 使用 */
-    page_set_private_data(pm, data);
+    page_set_private_data(data);
 }
 
-void page_home_destroy(page_manager_t* pm)
+void page_home_destroy(void)
 {
-    if (!pm) {
-        return;
-    }
-
-    home_page_data_t* data = page_get_private_data(pm);
+    home_page_data_t* data = page_get_private_data();
     if (!data) {
         return;
     }
@@ -303,13 +271,9 @@ void page_home_destroy(page_manager_t* pm)
     free(data);
 }
 
-void page_home_show(page_manager_t* pm)
+void page_home_show(void)
 {
-    if (!pm) {
-        return;
-    }
-
-    home_page_data_t* data = page_get_private_data(pm);
+    home_page_data_t* data = page_get_private_data();
     if (!data || !data->container) {
         return;
     }
@@ -334,9 +298,9 @@ void page_home_show(page_manager_t* pm)
     }
 }
 
-void page_home_hide(page_manager_t* pm)
+void page_home_hide(void)
 {
-    home_page_data_t* data = page_get_private_data(pm);
+    home_page_data_t* data = page_get_private_data();
     if (!data || !data->container) {
         return;
     }
@@ -351,9 +315,9 @@ void page_home_hide(page_manager_t* pm)
     }
 }
 
-void page_home_update(page_manager_t* pm)
+void page_home_update(void)
 {
-    LV_UNUSED(pm);
+    /* no-op */
     /* 时间由 timer 自动更新，此处无需处理 */
 }
 

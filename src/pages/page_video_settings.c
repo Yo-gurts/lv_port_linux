@@ -167,12 +167,8 @@ static void setting_item_cb(lv_event_t* e)
 // ! #region 8. 初始化、去初始化、资源管理
 // #############################################################################
 
-void page_video_settings_create(page_manager_t* pm)
+void page_video_settings_create(void)
 {
-    if (!pm) {
-        return;
-    }
-
     page_video_settings_data_t* data = (page_video_settings_data_t*)malloc(sizeof(page_video_settings_data_t));
     if (!data) {
         return;
@@ -202,7 +198,7 @@ void page_video_settings_create(page_manager_t* pm)
     lv_obj_clear_flag(data->container, LV_OBJ_FLAG_GESTURE_BUBBLE);
 
     /* 添加滑动手势回调：从左往右滑返回上一页 */
-    lv_obj_add_event_cb(data->container, page_manager_swipe_right_cb, LV_EVENT_GESTURE, pm);
+    lv_obj_add_event_cb(data->container, page_manager_swipe_right_cb, LV_EVENT_GESTURE, NULL);
 
     /* =======================
      * 1. 顶部导航栏
@@ -218,7 +214,7 @@ void page_video_settings_create(page_manager_t* pm)
     lv_obj_t* back_btn = lv_btn_create(data->nav_bar);
     lv_obj_set_size(back_btn, 50, 50);
     lv_obj_add_style(back_btn, &style_noboarder, LV_PART_MAIN);
-    lv_obj_add_event_cb(back_btn, page_manager_back_cb, LV_EVENT_CLICKED, pm);
+    lv_obj_add_event_cb(back_btn, page_manager_back_cb, LV_EVENT_CLICKED, NULL);
     lv_obj_align(back_btn, LV_ALIGN_LEFT_MID, 10, 0);
     lv_obj_t* back_icon = lv_img_create(back_btn);
     lv_img_set_src(back_icon, "A:" RES_ICON_PATH "/back-fill.png");
@@ -313,16 +309,12 @@ void page_video_settings_create(page_manager_t* pm)
     lv_obj_add_event_cb(data->roller, roller_select_cb, LV_EVENT_VALUE_CHANGED | LV_EVENT_CLICKED, data);
 
     /* 保存 private_data */
-    page_set_private_data(pm, data);
+    page_set_private_data(data);
 }
 
-void page_video_settings_destroy(page_manager_t* pm)
+void page_video_settings_destroy(void)
 {
-    if (!pm) {
-        return;
-    }
-
-    page_video_settings_data_t* data = page_get_private_data(pm);
+    page_video_settings_data_t* data = page_get_private_data();
     if (!data) {
         return;
     }
@@ -336,13 +328,9 @@ void page_video_settings_destroy(page_manager_t* pm)
     free(data);
 }
 
-void page_video_settings_show(page_manager_t* pm)
+void page_video_settings_show(void)
 {
-    if (!pm) {
-        return;
-    }
-
-    page_video_settings_data_t* data = page_get_private_data(pm);
+    page_video_settings_data_t* data = page_get_private_data();
     if (!data || !data->container) {
         return;
     }
@@ -355,13 +343,9 @@ void page_video_settings_show(page_manager_t* pm)
     }
 }
 
-void page_video_settings_hide(page_manager_t* pm)
+void page_video_settings_hide(void)
 {
-    if (!pm) {
-        return;
-    }
-
-    page_video_settings_data_t* data = page_get_private_data(pm);
+    page_video_settings_data_t* data = page_get_private_data();
     if (!data || !data->container) {
         return;
     }
@@ -370,9 +354,9 @@ void page_video_settings_hide(page_manager_t* pm)
     lv_obj_add_flag(data->container, LV_OBJ_FLAG_HIDDEN);
 }
 
-void page_video_settings_update(page_manager_t* pm)
+void page_video_settings_update(void)
 {
-    LV_UNUSED(pm);
+    /* no-op */
 }
 
 // #endregion

@@ -18,11 +18,11 @@ typedef struct {
     int current_setting_index; /* 当前选中的设置项索引 */
 } page_photo_settings_data_t;
 
-void page_photo_settings_create(page_manager_t* pm);
-void page_photo_settings_destroy(page_manager_t* pm);
-void page_photo_settings_show(page_manager_t* pm);
-void page_photo_settings_hide(page_manager_t* pm);
-void page_photo_settings_update(page_manager_t* pm);
+void page_photo_settings_create(void);
+void page_photo_settings_destroy(void);
+void page_photo_settings_show(void);
+void page_photo_settings_hide(void);
+void page_photo_settings_update(void);
 
 #ifdef __cplusplus
 }

@@ -4,7 +4,6 @@
 
 #include "core/page_manager.h"
 #include "mlog.h"
-#include <stdlib.h>
 #include <string.h>
 
 #define MAX_PAGES 32
@@ -27,45 +26,103 @@ struct page_manager_t {
 // ! #region 3. 全局变量 & 函数声明
 // #############################################################################
 
+static page_manager_t g_page_manager;
+static int g_page_manager_inited = 0;
+
 // #endregion
 // #############################################################################
 // ! #region 4. 内部工具函数（注意用static修饰）
 // #############################################################################
+
+static page_manager_t* page_manager_get_instance(void)
+{
+    if (!g_page_manager_inited) {
+        return NULL;
+    }
+    return &g_page_manager;
+}
+
+static int page_manager_switch_to_index(int target_index, int record_history)
+{
+    page_manager_t* pm = page_manager_get_instance();
+    if (!pm || target_index < 0 || target_index >= pm->page_count) {
+        return -1;
+    }
+
+    if (pm->current_page_index == target_index) {
+        return 0;
+    }
+
+    int prev_index = pm->current_page_index;
+    if (prev_index >= 0) {
+        page_t* prev_page = &pm->pages[prev_index];
+        if (prev_page->interface && prev_page->interface->hide) {
+            prev_page->interface->hide();
+        }
+
+        if (record_history && pm->history_count < MAX_PAGES) {
+            pm->history[pm->history_count++] = prev_index;
+        }
+    }
+
+    pm->current_page_index = target_index;
+
+    page_t* target_page = &pm->pages[target_index];
+    if (!target_page->is_created) {
+        if (target_page->interface && target_page->interface->create) {
+            target_page->interface->create();
+        }
+        target_page->is_created = 1;
+    }
+
+    if (target_page->interface && target_page->interface->show) {
+        target_page->interface->show();
+    }
+
+    return 0;
+}
 
 // #endregion
 // #############################################################################
 // ! #region 5. 对外接口函数
 // #############################################################################
 
-page_manager_t* page_manager_create(void)
+int page_manager_create(void)
 {
-    page_manager_t* pm = (page_manager_t*)malloc(sizeof(page_manager_t));
-    if (!pm) {
-        return NULL;
-    }
-
-    memset(pm, 0, sizeof(page_manager_t));
-    pm->current_page_index = -1;
-    return pm;
+    memset(&g_page_manager, 0, sizeof(g_page_manager));
+    g_page_manager.current_page_index = -1;
+    g_page_manager_inited = 1;
+    return 0;
 }
 
-void page_manager_destroy(page_manager_t* pm)
+void page_manager_destroy(void)
 {
+    page_manager_t* pm = page_manager_get_instance();
     if (!pm) {
         return;
     }
 
     for (int i = 0; i < pm->page_count; i++) {
-        if (pm->pages[i].interface && pm->pages[i].interface->destroy) {
-            pm->pages[i].interface->destroy(pm);
+        if (!pm->pages[i].is_created) {
+            continue;
         }
-    }
 
-    free(pm);
+        // page_xxx_destory 获取私有数据是通过 current_page_index
+        pm->current_page_index = i;
+        if (pm->pages[i].interface && pm->pages[i].interface->destroy) {
+            pm->pages[i].interface->destroy();
+        }
+        // Todo: free memory
+        pm->pages[i].private_data = NULL;
+        pm->pages[i].is_created = 0;
+    }
+    pm->current_page_index = -1;
+    g_page_manager_inited = 0;
 }
 
-int page_manager_register(page_manager_t* pm, const char* name, page_interface_t* interface, void* user_data)
+int page_manager_register(const char* name, page_interface_t* interface, void* user_data)
 {
+    page_manager_t* pm = page_manager_get_instance();
     if (!pm || !name || !interface) {
         return -1;
     }
@@ -85,8 +142,9 @@ int page_manager_register(page_manager_t* pm, const char* name, page_interface_t
     return 0;
 }
 
-int page_manager_navigate(page_manager_t* pm, const char* page_name)
+int page_manager_navigate(const char* page_name)
 {
+    page_manager_t* pm = page_manager_get_instance();
     if (!pm || !page_name) {
         return -1;
     }
@@ -103,63 +161,27 @@ int page_manager_navigate(page_manager_t* pm, const char* page_name)
         return -1;
     }
 
-    /* 如果目标页是当前页，不做任何操作 */
-    if (pm->current_page_index == target_index) {
-        return 0;
-    }
-
-    /* 先隐藏并记录上一个页面 */
-    int prev_index = pm->current_page_index;
-    if (prev_index >= 0) {
-        page_t* prev_page = &pm->pages[prev_index];
-        if (prev_page->interface && prev_page->interface->hide) {
-            prev_page->interface->hide(pm);
-        }
-
-        /* 记录历史 */
-        if (pm->history_count < MAX_PAGES) {
-            pm->history[pm->history_count++] = prev_index;
-        }
-    }
-
-    /* 设置当前页面索引 */
-    pm->current_page_index = target_index;
-
-    page_t* target_page = &pm->pages[target_index];
-
-    /* 首次访问，创建页面 */
-    if (!target_page->is_created) {
-        if (target_page->interface && target_page->interface->create) {
-            target_page->interface->create(pm);
-        }
-        target_page->is_created = 1;
-    }
-
-    /* 显示目标页面 */
-    if (target_page->interface && target_page->interface->show) {
-        target_page->interface->show(pm);
-    }
-
-    return 0;
+    return page_manager_switch_to_index(target_index, 1);
 }
 
-int page_manager_back(page_manager_t* pm)
+int page_manager_back(void)
 {
+    page_manager_t* pm = page_manager_get_instance();
     if (!pm || pm->history_count == 0) {
         return -1;
     }
 
     int prev_index = pm->history[--pm->history_count];
-    const char* prev_name = pm->pages[prev_index].name;
+    if (prev_index < 0 || prev_index >= pm->page_count) {
+        return -1;
+    }
 
-    int ret = page_manager_navigate(pm, prev_name);
-    pm->history_count--;
-
-    return ret;
+    return page_manager_switch_to_index(prev_index, 0);
 }
 
-const char* page_manager_get_current(page_manager_t* pm)
+const char* page_manager_get_current(void)
 {
+    page_manager_t* pm = page_manager_get_instance();
     if (!pm || pm->current_page_index < 0) {
         return NULL;
     }
@@ -167,17 +189,17 @@ const char* page_manager_get_current(page_manager_t* pm)
     return pm->pages[pm->current_page_index].name;
 }
 
-lv_obj_t* page_get_root(page_manager_t* pm)
+lv_obj_t* page_get_root(void)
 {
-    if (!pm) {
+    if (!page_manager_get_instance()) {
         return NULL;
     }
-
     return lv_screen_active();
 }
 
-void* page_get_private_data(page_manager_t* pm)
+void* page_get_private_data(void)
 {
+    page_manager_t* pm = page_manager_get_instance();
     if (!pm || pm->current_page_index < 0) {
         return NULL;
     }
@@ -185,8 +207,9 @@ void* page_get_private_data(page_manager_t* pm)
     return pm->pages[pm->current_page_index].private_data;
 }
 
-void page_set_private_data(page_manager_t* pm, void* data)
+void page_set_private_data(void* data)
 {
+    page_manager_t* pm = page_manager_get_instance();
     if (!pm || pm->current_page_index < 0) {
         return;
     }
@@ -207,28 +230,21 @@ void page_set_private_data(page_manager_t* pm, void* data)
 /* 通用返回按钮回调 - 所有页面可直接作为事件回调使用 */
 void page_manager_back_cb(lv_event_t* e)
 {
-    page_manager_t* pm = (page_manager_t*)lv_event_get_user_data(e);
-    if (!pm) {
-        return;
-    }
+    LV_UNUSED(e);
     MLOG_INFO("Back button clicked");
-    page_manager_back(pm);
+    page_manager_back();
 }
 
 /* 通用右滑返回回调 - 所有页面可直接作为事件回调使用
  * 当检测到滑动时，调用 lv_indev_set_wait_until_release() 避免释放时触发点击 */
 void page_manager_swipe_right_cb(lv_event_t* e)
 {
-    page_manager_t* pm = (page_manager_t*)lv_event_get_user_data(e);
-    if (!pm) {
-        return;
-    }
     lv_event_code_t code = lv_event_get_code(e);
     if (code == LV_EVENT_GESTURE) {
         lv_dir_t dir = lv_indev_get_gesture_dir(lv_indev_get_act());
         if (dir == LV_DIR_RIGHT) {
             MLOG_INFO("Swipe right, back to previous page");
-            page_manager_back(pm);
+            page_manager_back();
         }
         /* 检测到滑动，忽略后续的点击事件 */
         lv_indev_t* indev = lv_indev_get_act();

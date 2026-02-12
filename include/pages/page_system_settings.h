@@ -23,11 +23,11 @@ typedef struct {
     system_setting_item_t settings[7]; /* 7个设置项 */
 } page_system_settings_data_t;
 
-void page_system_settings_create(page_manager_t* pm);
-void page_system_settings_destroy(page_manager_t* pm);
-void page_system_settings_show(page_manager_t* pm);
-void page_system_settings_hide(page_manager_t* pm);
-void page_system_settings_update(page_manager_t* pm);
+void page_system_settings_create(void);
+void page_system_settings_destroy(void);
+void page_system_settings_show(void);
+void page_system_settings_hide(void);
+void page_system_settings_update(void);
 
 #ifdef __cplusplus
 }

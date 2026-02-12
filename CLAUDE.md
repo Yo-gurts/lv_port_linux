@@ -40,7 +40,7 @@ make -j
 The app uses a custom **Page Manager** (`src/core/page_manager.c`) for managing UI pages:
 
 - **Lifecycle**: `create()` → `show()` → `hide()` → `destroy()`
-- **Navigation**: `page_manager_navigate(pm, "page_name")` and `page_manager_back(pm)`
+- **Navigation**: `page_manager_navigate("page_name")` and `page_manager_back()`
 - **Pages**: Home, Photo, Video, Photo Settings
 - Each page stores private data via `page_set_private_data()/page_get_private_data()`
 

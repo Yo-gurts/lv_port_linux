@@ -188,27 +188,26 @@ int ui_main(void)
     style_common_init();
 
     /* Create page manager */
-    page_manager_t* pm = page_manager_create();
-    if (!pm) {
+    if (page_manager_create() != 0) {
         MLOG_ERR("Failed to create page manager");
         return -1;
     }
 
     /* Register pages */
-    page_manager_register(pm, "home", &home_page_interface, NULL);
-    page_manager_register(pm, "photo", &photo_page_interface, NULL);
-    page_manager_register(pm, "ai_photo", &ai_photo_page_interface, NULL);
-    page_manager_register(pm, "video", &video_page_interface, NULL);
-    page_manager_register(pm, "photo_settings", &photo_settings_page_interface, NULL);
-    page_manager_register(pm, "video_settings", &video_settings_page_interface, NULL);
-    page_manager_register(pm, "system_settings", &system_settings_page_interface, NULL);
-    page_manager_register(pm, "version_info", &version_info_page_interface, NULL);
-    page_manager_register(pm, "ai_photo_settings", &ai_photo_settings_page_interface, NULL);
-    page_manager_register(pm, "chat", &chat_page_interface, NULL);
-    page_manager_register(pm, "album", &album_page_interface, NULL);
+    page_manager_register("home", &home_page_interface, NULL);
+    page_manager_register("photo", &photo_page_interface, NULL);
+    page_manager_register("ai_photo", &ai_photo_page_interface, NULL);
+    page_manager_register("video", &video_page_interface, NULL);
+    page_manager_register("photo_settings", &photo_settings_page_interface, NULL);
+    page_manager_register("video_settings", &video_settings_page_interface, NULL);
+    page_manager_register("system_settings", &system_settings_page_interface, NULL);
+    page_manager_register("version_info", &version_info_page_interface, NULL);
+    page_manager_register("ai_photo_settings", &ai_photo_settings_page_interface, NULL);
+    page_manager_register("chat", &chat_page_interface, NULL);
+    page_manager_register("album", &album_page_interface, NULL);
 
     /* Navigate to home page */
-    page_manager_navigate(pm, "home");
+    page_manager_navigate("home");
 
     /* Handle LVGL tasks */
     while (1) {
@@ -216,6 +215,6 @@ int ui_main(void)
         usleep(5000);
     }
 
-    page_manager_destroy(pm);
+    page_manager_destroy();
     return 0;
 }

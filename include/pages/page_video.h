@@ -24,11 +24,11 @@ typedef struct {
     int is_recording; /* 是否正在录像 */
 } page_video_data_t;
 
-void page_video_create(page_manager_t* pm);
-void page_video_destroy(page_manager_t* pm);
-void page_video_show(page_manager_t* pm);
-void page_video_hide(page_manager_t* pm);
-void page_video_update(page_manager_t* pm);
+void page_video_create(void);
+void page_video_destroy(void);
+void page_video_show(void);
+void page_video_hide(void);
+void page_video_update(void);
 
 #ifdef __cplusplus
 }

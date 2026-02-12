@@ -48,22 +48,13 @@
 /* 返回按钮回调 */
 static void volume_btn_cb(lv_event_t* e)
 {
-    page_manager_t* pm = (page_manager_t*)lv_event_get_user_data(e);
-    if (!pm) {
-        return;
-    }
-
+    LV_UNUSED(e);
     MLOG_INFO("Volume button clicked");
 }
 
 /* 按住说话按钮回调 */
 static void voice_btn_cb(lv_event_t* e)
 {
-    page_manager_t* pm = (page_manager_t*)lv_event_get_user_data(e);
-    if (!pm) {
-        return;
-    }
-
     lv_event_code_t code = lv_event_get_code(e);
     if (code == LV_EVENT_PRESSED) {
         MLOG_INFO("Voice button pressed");
@@ -75,11 +66,7 @@ static void voice_btn_cb(lv_event_t* e)
 /* 音色按钮回调 */
 static void timbre_btn_cb(lv_event_t* e)
 {
-    page_manager_t* pm = (page_manager_t*)lv_event_get_user_data(e);
-    if (!pm) {
-        return;
-    }
-
+    LV_UNUSED(e);
     MLOG_INFO("Timbre button clicked");
 }
 
@@ -88,12 +75,8 @@ static void timbre_btn_cb(lv_event_t* e)
 // ! #region 8. 初始化、去初始化、资源管理
 // #############################################################################
 
-void page_chat_create(page_manager_t* pm)
+void page_chat_create(void)
 {
-    if (!pm) {
-        return;
-    }
-
     page_chat_data_t* data = (page_chat_data_t*)malloc(sizeof(page_chat_data_t));
     if (!data) {
         return;
@@ -114,7 +97,7 @@ void page_chat_create(page_manager_t* pm)
     lv_obj_clear_flag(data->container, LV_OBJ_FLAG_GESTURE_BUBBLE);
 
     /* 添加滑动手势回调：从左往右滑返回上一页 */
-    lv_obj_add_event_cb(data->container, page_manager_swipe_right_cb, LV_EVENT_GESTURE, pm);
+    lv_obj_add_event_cb(data->container, page_manager_swipe_right_cb, LV_EVENT_GESTURE, NULL);
 
     /* =======================
      * 消息列表区域 - 占满中间空间
@@ -149,7 +132,7 @@ void page_chat_create(page_manager_t* pm)
     data->back_btn = lv_btn_create(data->bottom_bar);
     lv_obj_set_size(data->back_btn, 50, 50);
     lv_obj_add_style(data->back_btn, &style_noboarder, LV_PART_MAIN);
-    lv_obj_add_event_cb(data->back_btn, page_manager_back_cb, LV_EVENT_CLICKED, pm);
+    lv_obj_add_event_cb(data->back_btn, page_manager_back_cb, LV_EVENT_CLICKED, NULL);
     lv_obj_align(data->back_btn, LV_ALIGN_LEFT_MID, 10, 0);
     lv_obj_t* back_icon = lv_img_create(data->back_btn);
     lv_img_set_src(back_icon, "A:" RES_ICON_PATH "/back-fill.png");
@@ -159,7 +142,7 @@ void page_chat_create(page_manager_t* pm)
     data->volume_btn = lv_btn_create(data->bottom_bar);
     lv_obj_set_size(data->volume_btn, 50, 50);
     lv_obj_add_style(data->volume_btn, &style_noboarder, LV_PART_MAIN);
-    lv_obj_add_event_cb(data->volume_btn, volume_btn_cb, LV_EVENT_CLICKED, pm);
+    lv_obj_add_event_cb(data->volume_btn, volume_btn_cb, LV_EVENT_CLICKED, NULL);
     lv_obj_align(data->volume_btn, LV_ALIGN_LEFT_MID, 70, 0);
     lv_obj_t* volume_icon = lv_img_create(data->volume_btn);
     lv_img_set_src(volume_icon, "A:" RES_ICON_PATH "/volume.png");
@@ -170,7 +153,7 @@ void page_chat_create(page_manager_t* pm)
     lv_obj_set_size(data->voice_btn, 320, 60);
     lv_obj_add_style(data->voice_btn, &style_common_btn_back, LV_PART_MAIN);
     lv_obj_set_style_radius(data->voice_btn, 30, LV_PART_MAIN);
-    lv_obj_add_event_cb(data->voice_btn, voice_btn_cb, LV_EVENT_PRESSED | LV_EVENT_RELEASED, pm);
+    lv_obj_add_event_cb(data->voice_btn, voice_btn_cb, LV_EVENT_PRESSED | LV_EVENT_RELEASED, NULL);
     lv_obj_align(data->voice_btn, LV_ALIGN_CENTER, 0, 0);
 
     /* 按住说话图标 */
@@ -188,23 +171,19 @@ void page_chat_create(page_manager_t* pm)
     data->timbre_btn = lv_btn_create(data->bottom_bar);
     lv_obj_set_size(data->timbre_btn, 50, 50);
     lv_obj_add_style(data->timbre_btn, &style_noboarder, LV_PART_MAIN);
-    lv_obj_add_event_cb(data->timbre_btn, timbre_btn_cb, LV_EVENT_CLICKED, pm);
+    lv_obj_add_event_cb(data->timbre_btn, timbre_btn_cb, LV_EVENT_CLICKED, NULL);
     lv_obj_align(data->timbre_btn, LV_ALIGN_RIGHT_MID, -20, 0);
     lv_obj_t* timbre_icon = lv_img_create(data->timbre_btn);
     lv_img_set_src(timbre_icon, "A:" RES_ICON_PATH "/gender-female.png");
     lv_obj_align(timbre_icon, LV_ALIGN_CENTER, 0, 0);
 
     /* 保存 private_data */
-    page_set_private_data(pm, data);
+    page_set_private_data(data);
 }
 
-void page_chat_destroy(page_manager_t* pm)
+void page_chat_destroy(void)
 {
-    if (!pm) {
-        return;
-    }
-
-    page_chat_data_t* data = page_get_private_data(pm);
+    page_chat_data_t* data = page_get_private_data();
     if (!data) {
         return;
     }
@@ -217,13 +196,9 @@ void page_chat_destroy(page_manager_t* pm)
     free(data);
 }
 
-void page_chat_show(page_manager_t* pm)
+void page_chat_show(void)
 {
-    if (!pm) {
-        return;
-    }
-
-    page_chat_data_t* data = page_get_private_data(pm);
+    page_chat_data_t* data = page_get_private_data();
     if (!data || !data->container) {
         return;
     }
@@ -232,13 +207,9 @@ void page_chat_show(page_manager_t* pm)
     lv_obj_clear_flag(data->container, LV_OBJ_FLAG_HIDDEN);
 }
 
-void page_chat_hide(page_manager_t* pm)
+void page_chat_hide(void)
 {
-    if (!pm) {
-        return;
-    }
-
-    page_chat_data_t* data = page_get_private_data(pm);
+    page_chat_data_t* data = page_get_private_data();
     if (!data || !data->container) {
         return;
     }
@@ -247,9 +218,9 @@ void page_chat_hide(page_manager_t* pm)
     lv_obj_add_flag(data->container, LV_OBJ_FLAG_HIDDEN);
 }
 
-void page_chat_update(page_manager_t* pm)
+void page_chat_update(void)
 {
-    LV_UNUSED(pm);
+    /* no-op */
 }
 
 // #endregion

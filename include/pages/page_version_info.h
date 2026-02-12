@@ -16,11 +16,11 @@ typedef struct {
     int click_count; /* 连点计数 */
 } page_version_info_data_t;
 
-void page_version_info_create(page_manager_t* pm);
-void page_version_info_destroy(page_manager_t* pm);
-void page_version_info_show(page_manager_t* pm);
-void page_version_info_hide(page_manager_t* pm);
-void page_version_info_update(page_manager_t* pm);
+void page_version_info_create(void);
+void page_version_info_destroy(void);
+void page_version_info_show(void);
+void page_version_info_hide(void);
+void page_version_info_update(void);
 
 #ifdef __cplusplus
 }
