@@ -115,7 +115,7 @@ void page_video_create(void)
     lv_obj_add_event_cb(data->back_btn, back_btn_cb, LV_EVENT_CLICKED, NULL);
     lv_obj_align(data->back_btn, LV_ALIGN_TOP_LEFT, 10, 0);
     lv_obj_t* back_icon = lv_img_create(data->back_btn);
-    lv_img_set_src(back_icon, "A:" RES_ICON_PATH "/back.png");
+    lv_img_set_src(back_icon, "A:" RES_ICON_PATH "/back-circle.png");
     lv_obj_align(back_icon, LV_ALIGN_CENTER, 0, 0);
 
     /* 分辨率图标 - 跟在返回按钮后面 */

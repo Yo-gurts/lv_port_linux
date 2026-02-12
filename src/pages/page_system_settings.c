@@ -24,9 +24,9 @@
 
 static const setting_config_t settings_config[] = {
     { .icon_path = "A" RES_ICON_PATH "/language.png", .title = "语言", .value = "简体中文", .type = SETTING_TYPE_NORMAL },
-    { .icon_path = "A" RES_ICON_PATH "/wifi.png", .title = "WiFi设置", .value = "未连接", .type = SETTING_TYPE_NORMAL },
+    { .icon_path = "A" RES_ICON_PATH "/sys-wifi.png", .title = "WiFi设置", .value = "未连接", .type = SETTING_TYPE_NORMAL },
     { .icon_path = "A" RES_ICON_PATH "/datetime.png", .title = "时间和日期", .value = "2026-02-07 12:00", .type = SETTING_TYPE_NORMAL },
-    { .icon_path = "A" RES_ICON_PATH "/volume.png", .title = "音量设置", .value = "80%", .type = SETTING_TYPE_NORMAL },
+    { .icon_path = "A" RES_ICON_PATH "/sys-volume.png", .title = "音量设置", .value = "80%", .type = SETTING_TYPE_NORMAL },
     { .icon_path = "A" RES_ICON_PATH "/format.png", .title = "格式化", .value = "请确认", .type = SETTING_TYPE_NORMAL },
     { .icon_path = "A" RES_ICON_PATH "/factory.png", .title = "出厂设置", .value = "请确认", .type = SETTING_TYPE_NORMAL },
     { .icon_path = "A" RES_ICON_PATH "/info.png", .title = "版本信息", .value = "V1.0.0", .type = SETTING_TYPE_NORMAL },
@@ -134,7 +134,7 @@ void page_system_settings_create(void)
     lv_obj_add_event_cb(back_btn, page_manager_back_cb, LV_EVENT_CLICKED, NULL);
     lv_obj_align(back_btn, LV_ALIGN_LEFT_MID, 10, 0);
     lv_obj_t* back_icon = lv_img_create(back_btn);
-    lv_img_set_src(back_icon, "A:" RES_ICON_PATH "/back-fill.png");
+    lv_img_set_src(back_icon, "A:" RES_ICON_PATH "/back-circle-white.png");
     lv_obj_align(back_icon, LV_ALIGN_CENTER, 0, 0);
 
     /* 标题文字 - 居中 */

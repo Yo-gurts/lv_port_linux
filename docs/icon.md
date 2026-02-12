@@ -1,6 +1,7 @@
 
 ## 图标获取
 
+- 推荐使用 ai 生成 svg 图片，再转为png，可以使用 claude 这类命令行工具。
 - https://icons.getbootstrap.com/
 - https://www.flaticon.com/
 

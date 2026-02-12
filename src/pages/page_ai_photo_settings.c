@@ -133,7 +133,7 @@ void page_ai_photo_settings_create(void)
     lv_obj_add_event_cb(back_btn, page_manager_back_cb, LV_EVENT_CLICKED, NULL);
     lv_obj_align(back_btn, LV_ALIGN_LEFT_MID, 10, 0);
     lv_obj_t* back_icon = lv_img_create(back_btn);
-    lv_img_set_src(back_icon, "A:" RES_ICON_PATH "/back-fill.png");
+    lv_img_set_src(back_icon, "A:" RES_ICON_PATH "/back-circle-white.png");
     lv_obj_align(back_icon, LV_ALIGN_CENTER, 0, 0);
 
     /* 标题文字 - 居中 */
