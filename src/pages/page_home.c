@@ -5,6 +5,7 @@
 #include "pages/page_home.h"
 #include "config.h"
 #include "core/font_manager.h"
+#include "core/intent.h"
 #include "core/style_manager.h"
 #include "mlog.h"
 #include <stdlib.h>
@@ -113,11 +114,11 @@ static void home_update_timer_cb(lv_timer_t* timer)
     strftime(time_str, sizeof(time_str), "%Y-%m-%d %H:%M:%S", tm_info);
     lv_label_set_text(data->lv_label_time, time_str);
 
-    /* TODO: 更新 WiFi 信号强度 */
+    /* TODO: 更新 WiFi 信号强度，改为 event callback 中处理 */
     // int wifi_level = get_wifi_level();
     // status_bar_set_wifi_icon(data->status_bar, wifi_level);
 
-    /* TODO: 更新电池电量 */
+    /* TODO: 更新电池电量，改为 event callback 中处理 */
     // int battery_level = get_battery_level();
     // status_bar_set_battery_icon(data->status_bar, battery_level);
 }
@@ -127,6 +128,7 @@ static void photo_button_cb(lv_event_t* e)
 {
     LV_UNUSED(e);
     MLOG_INFO("Photo button clicked");
+    intent_dispatch(INTENT_OPEN_PHOTO_PAGE);
     page_manager_navigate("photo");
 }
 

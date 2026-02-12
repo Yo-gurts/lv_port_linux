@@ -72,6 +72,7 @@ set(SOURCES
     src/core/page_manager.c
     src/core/font_manager.c
     src/core/style_manager.c
+    src/core/intent.c
     src/pages/page_home.c
     src/pages/page_ai_photo.c
     src/pages/page_ai_photo_settings.c

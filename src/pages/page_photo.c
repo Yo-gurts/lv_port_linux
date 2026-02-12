@@ -5,6 +5,7 @@
 #include "pages/page_photo.h"
 #include "config.h"
 #include "core/font_manager.h"
+#include "core/intent.h"
 #include "core/page_manager.h"
 #include "core/style_manager.h"
 #include "mlog.h"
@@ -50,6 +51,7 @@ static void mode_switch_cb(lv_event_t* e)
 {
     LV_UNUSED(e);
     MLOG_INFO("Switching to video page");
+    intent_dispatch(INTENT_OPEN_VIDEO_PAGE);
     page_manager_navigate("video");
 }
 

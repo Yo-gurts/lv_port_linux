@@ -5,6 +5,7 @@
 #include "pages/page_video.h"
 #include "config.h"
 #include "core/font_manager.h"
+#include "core/intent.h"
 #include "core/page_manager.h"
 #include "core/style_manager.h"
 #include "mlog.h"
@@ -50,6 +51,15 @@ static void mode_switch_cb(lv_event_t* e)
 {
     LV_UNUSED(e);
     MLOG_INFO("Back to photo page");
+    intent_dispatch(INTENT_OPEN_PHOTO_PAGE);
+    page_manager_back();
+}
+
+/* 顶部返回按钮回调：页面专用，避免使用通用 back_cb 丢失 intent */
+static void back_btn_cb(lv_event_t* e)
+{
+    LV_UNUSED(e);
+    intent_dispatch(INTENT_OPEN_PHOTO_PAGE);
     page_manager_back();
 }
 
@@ -102,7 +112,7 @@ void page_video_create(void)
     data->back_btn = lv_btn_create(data->top_bar);
     lv_obj_set_size(data->back_btn, 50, 50);
     lv_obj_add_style(data->back_btn, &style_noboarder, LV_PART_MAIN);
-    lv_obj_add_event_cb(data->back_btn, page_manager_back_cb, LV_EVENT_CLICKED, NULL);
+    lv_obj_add_event_cb(data->back_btn, back_btn_cb, LV_EVENT_CLICKED, NULL);
     lv_obj_align(data->back_btn, LV_ALIGN_TOP_LEFT, 10, 0);
     lv_obj_t* back_icon = lv_img_create(data->back_btn);
     lv_img_set_src(back_icon, "A:" RES_ICON_PATH "/back.png");
