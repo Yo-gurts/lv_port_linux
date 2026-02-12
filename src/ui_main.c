@@ -1,3 +1,8 @@
+/**
+ * @file    ui_main.c
+ * @brief   板端入口，提供 ui_main() 接口供外部调用
+ */
+#include "ui_main.h"
 #include "config.h"
 #include "core/font_manager.h"
 #include "core/page_manager.h"
@@ -169,11 +174,11 @@ static page_interface_t album_page_interface = {
     .update = page_album_update,
 };
 
-int main(void)
+int ui_main(void)
 {
     lv_init();
 
-    /*Linux display device init*/
+    /* Linux display device init */
     lv_linux_disp_init();
 
     /* Initialize fonts */
@@ -205,7 +210,7 @@ int main(void)
     /* Navigate to home page */
     page_manager_navigate(pm, "home");
 
-    /*Handle LVGL tasks*/
+    /* Handle LVGL tasks */
     while (1) {
         lv_timer_handler();
         usleep(5000);

@@ -9,6 +9,7 @@
 #include "core/style_manager.h"
 #include "mlog.h"
 #include <stdbool.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -54,7 +55,8 @@ static const ai_setting_config_t settings_config[] = {
 static void setting_item_cb(lv_event_t* e)
 {
     page_ai_photo_settings_data_t* data = (page_ai_photo_settings_data_t*)lv_event_get_user_data(e);
-    int index = (int)lv_obj_get_user_data(lv_event_get_current_target(e));
+    uintptr_t user_data = (uintptr_t)lv_obj_get_user_data(lv_event_get_current_target(e));
+    int index = (int)user_data;
 
     if (index < 0 || index >= data->settings_count) {
         return;

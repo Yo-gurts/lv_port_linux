@@ -8,6 +8,7 @@
 #include "core/page_manager.h"
 #include "core/style_manager.h"
 #include "mlog.h"
+#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -58,7 +59,8 @@ static void setting_item_cb(lv_event_t* e)
 {
     lv_obj_t* obj = lv_event_get_current_target(e);
     page_system_settings_data_t* data = (page_system_settings_data_t*)lv_event_get_user_data(e);
-    int index = (int)lv_obj_get_user_data(obj);
+    uintptr_t user_data = (uintptr_t)lv_obj_get_user_data(obj);
+    int index = (int)user_data;
     page_manager_t* pm = (page_manager_t*)lv_event_get_user_data(e);
 
     if (index < 0 || index >= SETTINGS_COUNT) {

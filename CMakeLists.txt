@@ -66,7 +66,8 @@ include_directories(${PROJECT_SOURCE_DIR}/include)
 
 # Source files
 set(SOURCES
-    src/main.c
+    src/ui_main.c
+    src/main_simulator.c
     src/mouse_cursor_icon.c
     src/core/page_manager.c
     src/core/font_manager.c
