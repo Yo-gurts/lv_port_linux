@@ -75,7 +75,7 @@ static void setting_item_cb(lv_event_t* e)
     if (config->type == SETTING_TYPE_TOGGLE) {
         /* 切换开关状态 */
         item->current_index = !item->current_index;
-        const char* new_value = item->current_index ? "开启" : "关闭";
+        const char* new_value = item->current_index ? "已开启" : "已关闭";
         lv_label_set_text(item->value_label, new_value);
         MLOG_INFO("Setting '%s' toggled to: %s", config->title, new_value);
     } else {

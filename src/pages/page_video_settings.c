@@ -140,7 +140,7 @@ static void setting_item_cb(lv_event_t* e)
     if (config->type == SETTING_TYPE_TOGGLE) {
         /* 切换开关状态 */
         item->current_index = !item->current_index;
-        const char* new_value = item->current_index ? "开启" : "关闭";
+        const char* new_value = item->current_index ? "已开启" : "已关闭";
         lv_label_set_text(item->value_label, new_value);
         MLOG_INFO("Setting '%s' toggled to: %s", config->title, new_value);
     } else {
@@ -283,9 +283,18 @@ void page_video_settings_create(void)
             lv_label_set_text(item->value_label, config->roller_options[item->current_index]);
         }
 
-        /* 点击事件 */
-        lv_obj_add_event_cb(item->container, setting_item_cb, LV_EVENT_CLICKED, data);
-        lv_obj_set_user_data(item->container, (void*)(intptr_t)i);
+        /* 点击事件：
+         * - 普通项：仅允许点击右侧参数值弹出 roller
+         * - 开关项：保持整行可点击切换 */
+        if (config->type == SETTING_TYPE_TOGGLE) {
+            lv_obj_add_event_cb(item->container, setting_item_cb, LV_EVENT_CLICKED, data);
+            lv_obj_set_user_data(item->container, (void*)(intptr_t)i);
+        } else {
+            lv_obj_add_flag(item->value_label, LV_OBJ_FLAG_CLICKABLE);
+            lv_obj_set_ext_click_area(item->value_label, 12);
+            lv_obj_add_event_cb(item->value_label, setting_item_cb, LV_EVENT_CLICKED, data);
+            lv_obj_set_user_data(item->value_label, (void*)(intptr_t)i);
+        }
     }
 
     /* =======================
