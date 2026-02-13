@@ -37,6 +37,10 @@ static void lv_linux_disp_init(void)
 
     lv_linux_fbdev_set_file(disp, device);
     lv_display_set_resolution(disp, H_RES, V_RES);
+    // 使用 ARGB，默认 XRGB 会有页面残留（与LVGL版本相关）
+    lv_display_set_color_format(disp, 0x10); // 0x10 ARGB, 0x11 XRGB
+    /* screen 设置为全透明，以便显示底层画面 */
+    lv_obj_set_style_bg_opa(lv_screen_active(), LV_OPA_TRANSP, LV_PART_MAIN);
 
     framebuffer_manager_t* fb_mgr = framebuffer_manager_create(FB_DEV_NAME, disp);
     if (!fb_mgr) {
@@ -65,6 +69,8 @@ static void lv_linux_disp_init(void)
     lv_indev_set_group(mouse, lv_group_get_default());
     lv_indev_set_display(mouse, disp);
     lv_display_set_default(disp);
+    // 使用 ARGB，默认 XRGB 会有页面残留（与LVGL版本相关）
+    lv_display_set_color_format(disp, 0x10); // 0x10 ARGB, 0x11 XRGB
 
     LV_IMAGE_DECLARE(mouse_cursor_icon); /*Declare the image file.*/
     lv_obj_t* cursor_obj;
