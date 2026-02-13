@@ -7,6 +7,7 @@
 #include "core/font_manager.h"
 #include "core/intent.h"
 #include "core/page_manager.h"
+#include "core/param_manager.h"
 #include "core/style_manager.h"
 #include "mlog.h"
 #include <stdlib.h>
@@ -26,10 +27,30 @@
 // ! #region 3. 全局变量 & 函数声明
 // #############################################################################
 
+/* 分辨率选项 - 与photo_settings保持一致 */
+static const char* resolution_options[] = {
+    "8M", "12M", "24M", "48M", "64M"
+};
+
 // #endregion
 // #############################################################################
 // ! #region 4. 内部工具函数（注意用static修饰）
 // #############################################################################
+
+/* 更新分辨率显示 */
+static void update_resolution_display(void)
+{
+    page_photo_data_t* data = page_get_private_data();
+    if (!data || !data->resolution_label) {
+        return;
+    }
+
+    int resolution_index = param_manager_get(PARAM_ID_RESOLUTION);
+    if (resolution_index < 0 || resolution_index >= 5) {
+        resolution_index = 0;
+    }
+    lv_label_set_text(data->resolution_label, resolution_options[resolution_index]);
+}
 
 // #endregion
 // #############################################################################
@@ -111,7 +132,11 @@ void page_photo_create(void)
 
     /* 分辨率 Label - 跟在返回按钮后面 */
     data->resolution_label = lv_label_create(data->top_bar);
-    lv_label_set_text(data->resolution_label, "8M");
+    int resolution_index = param_manager_get(PARAM_ID_RESOLUTION);
+    if (resolution_index < 0) {
+        resolution_index = 0;
+    }
+    lv_label_set_text(data->resolution_label, resolution_options[resolution_index]);
     lv_obj_add_style(data->resolution_label, &NORMAL_SIZE, LV_PART_MAIN);
     lv_obj_set_style_text_color(data->resolution_label, lv_color_black(), LV_PART_MAIN);
     lv_obj_align(data->resolution_label, LV_ALIGN_LEFT_MID, 70, 0);
@@ -211,6 +236,7 @@ void page_photo_show(void)
     }
 
     MLOG_INFO("Photo page show");
+
     /* 显示 UI */
     lv_obj_clear_flag(data->container, LV_OBJ_FLAG_HIDDEN);
 }
@@ -229,7 +255,7 @@ void page_photo_hide(void)
 
 void page_photo_update(void)
 {
-    /* no-op */
+    update_resolution_display();
 }
 
 // #endregion

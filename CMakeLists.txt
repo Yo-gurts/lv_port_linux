@@ -70,6 +70,7 @@ set(SOURCES
     src/main_simulator.c
     src/mouse_cursor_icon.c
     src/core/page_manager.c
+    src/core/param_manager.c
     src/core/font_manager.c
     src/core/style_manager.c
     src/core/intent.c

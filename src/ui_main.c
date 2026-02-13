@@ -6,6 +6,7 @@
 #include "config.h"
 #include "core/font_manager.h"
 #include "core/page_manager.h"
+#include "core/param_manager.h"
 #include "core/style_manager.h"
 #include "lvgl/lvgl.h"
 #include "mlog.h"
@@ -192,6 +193,9 @@ int ui_main(void)
 
     /* Initialize styles */
     style_common_init();
+
+    /* Initialize param manager */
+    param_manager_init();
 
     /* Create page manager */
     if (page_manager_create() != 0) {

@@ -6,6 +6,7 @@
 #include "config.h"
 #include "core/font_manager.h"
 #include "core/page_manager.h"
+#include "core/param_manager.h"
 #include "core/style_manager.h"
 #include "mlog.h"
 #include <stdlib.h>
@@ -14,6 +15,11 @@
 /* 布局常量 */
 #define TOP_BAR_HEIGHT 50
 #define BOTTOM_BAR_HEIGHT 50
+
+/* AI模式选项 - 与ai_photo_settings保持一致 */
+static const char* ai_mode_options[] = {
+    "风格变换", "AI识万物", "拍照翻译"
+};
 
 // #endregion
 // #############################################################################
@@ -221,7 +227,17 @@ void page_ai_photo_hide(void)
 
 void page_ai_photo_update(void)
 {
-    /* no-op */
+    page_ai_photo_data_t* data = page_get_private_data();
+    if (!data || !data->resolution_label) {
+        return;
+    }
+
+    /* 从param_manager更新AI模式显示 */
+    int ai_mode = param_manager_get(PARAM_ID_AI_MODE);
+    if (ai_mode < 0 || ai_mode >= 3) {
+        ai_mode = 0;
+    }
+    lv_label_set_text(data->resolution_label, ai_mode_options[ai_mode]);
 }
 
 // #endregion

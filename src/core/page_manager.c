@@ -75,6 +75,11 @@ static int page_manager_switch_to_index(int target_index, int record_history)
         target_page->is_created = 1;
     }
 
+    /* 在show之前调用update刷新UI状态 */
+    if (target_page->interface && target_page->interface->update) {
+        target_page->interface->update();
+    }
+
     if (target_page->interface && target_page->interface->show) {
         target_page->interface->show();
     }

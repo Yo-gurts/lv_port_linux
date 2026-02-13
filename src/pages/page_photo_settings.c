@@ -6,6 +6,7 @@
 #include "config.h"
 #include "core/font_manager.h"
 #include "core/page_manager.h"
+#include "core/param_manager.h"
 #include "core/style_manager.h"
 #include "mlog.h"
 #include <stdint.h>
@@ -43,6 +44,7 @@ static const setting_config_t configs[] = {
         .roller_options = resolution_options,
         .roller_count = 5,
         .type = SETTING_TYPE_NORMAL,
+        .param_id = PARAM_ID_RESOLUTION,
     },
     {
         .title = "白平衡",
@@ -51,6 +53,7 @@ static const setting_config_t configs[] = {
         .roller_options = white_balance_options,
         .roller_count = 5,
         .type = SETTING_TYPE_NORMAL,
+        .param_id = PARAM_ID_WHITE_BALANCE,
     },
     {
         .title = "感光度",
@@ -59,6 +62,7 @@ static const setting_config_t configs[] = {
         .roller_options = iso_options,
         .roller_count = 6,
         .type = SETTING_TYPE_NORMAL,
+        .param_id = PARAM_ID_ISO,
     },
     {
         .title = "曝光设置",
@@ -67,6 +71,7 @@ static const setting_config_t configs[] = {
         .roller_options = exposure_options,
         .roller_count = 9,
         .type = SETTING_TYPE_NORMAL,
+        .param_id = PARAM_ID_EXPOSURE,
     },
     {
         .title = "画质",
@@ -75,18 +80,21 @@ static const setting_config_t configs[] = {
         .roller_options = quality_options,
         .roller_count = 3,
         .type = SETTING_TYPE_NORMAL,
+        .param_id = PARAM_ID_QUALITY,
     },
     {
         .title = "人脸检测",
         .icon_path = "A" RES_ICON_PATH "/face-detection.png",
         .value = "已关闭",
         .type = SETTING_TYPE_TOGGLE,
+        .param_id = PARAM_ID_FACE_DETECTION,
     },
     {
         .title = "笑脸抓拍",
         .icon_path = "A" RES_ICON_PATH "/smile.png",
         .value = "已关闭",
         .type = SETTING_TYPE_TOGGLE,
+        .param_id = PARAM_ID_SMILE_CAPTURE,
     },
 };
 
@@ -122,6 +130,34 @@ static void build_roller_options(const char** options, int count, char* buf, int
     *buf = '\0';
 }
 
+/* 更新所有设置项显示值 */
+static void update_all_settings_value(void)
+{
+    page_photo_settings_data_t* data = page_get_private_data();
+    if (!data || !data->items) {
+        return;
+    }
+
+    for (int i = 0; i < SETTINGS_COUNT; i++) {
+        const setting_config_t* config = &data->configs[i];
+        setting_item_t* item = &data->items[i];
+
+        if (config->param_id != PARAM_ID_NONE) {
+            item->current_index = param_manager_get((param_id_t)config->param_id);
+        }
+
+        if (config->type == SETTING_TYPE_TOGGLE) {
+            const char* toggle_text = item->current_index ? "已开启" : "已关闭";
+            lv_label_set_text(item->value_label, toggle_text);
+        } else {
+            if (item->current_index >= config->roller_count || item->current_index < 0) {
+                item->current_index = 0;
+            }
+            lv_label_set_text(item->value_label, config->roller_options[item->current_index]);
+        }
+    }
+}
+
 /* 获取滚轮当前选中值并应用到UI */
 static void apply_roller_selection(page_photo_settings_data_t* data)
 {
@@ -137,6 +173,11 @@ static void apply_roller_selection(page_photo_settings_data_t* data)
     item->current_index = selected;
     lv_label_set_text(item->value_label, config->roller_options[selected]);
     lv_obj_add_flag(data->roller_popup, LV_OBJ_FLAG_HIDDEN);
+
+    /* 同步更新param_manager */
+    if (config->param_id != PARAM_ID_NONE) {
+        param_manager_set((param_id_t)config->param_id, selected);
+    }
 
     MLOG_INFO("Setting '%s' selected: %s", config->title, config->roller_options[selected]);
 }
@@ -194,6 +235,12 @@ static void setting_item_cb(lv_event_t* e)
         item->current_index = !item->current_index;
         const char* new_value = item->current_index ? "已开启" : "已关闭";
         lv_label_set_text(item->value_label, new_value);
+
+        /* 同步更新param_manager */
+        if (config->param_id != PARAM_ID_NONE) {
+            param_manager_set((param_id_t)config->param_id, item->current_index);
+        }
+
         MLOG_INFO("Setting '%s' toggled to: %s", config->title, new_value);
     } else {
         /* 普通设置，弹出滚轮 */
@@ -321,16 +368,15 @@ void page_photo_settings_create(void)
         lv_obj_align(item->value_label, LV_ALIGN_RIGHT_MID, -10, 0);
 
         if (config->type == SETTING_TYPE_TOGGLE) {
-            /* 开关类型 */
-            item->current_index = 0;
-            lv_label_set_text(item->value_label, config->value);
+            /* 开关类型：从param_manager读取当前值 */
+            item->current_index = (config->param_id != PARAM_ID_NONE) ? param_manager_get((param_id_t)config->param_id) : 0;
+            const char* toggle_text = item->current_index ? "已开启" : "已关闭";
+            lv_label_set_text(item->value_label, toggle_text);
         } else {
-            /* 滚轮类型：查找初始索引 */
-            for (int j = 0; j < config->roller_count; j++) {
-                if (strcmp(config->roller_options[j], config->value) == 0) {
-                    item->current_index = j;
-                    break;
-                }
+            /* 滚轮类型：从param_manager读取当前值 */
+            item->current_index = (config->param_id != PARAM_ID_NONE) ? param_manager_get((param_id_t)config->param_id) : 0;
+            if (item->current_index >= config->roller_count) {
+                item->current_index = 0;
             }
             lv_label_set_text(item->value_label, config->roller_options[item->current_index]);
         }
@@ -417,7 +463,7 @@ void page_photo_settings_hide(void)
 
 void page_photo_settings_update(void)
 {
-    /* no-op */
+    update_all_settings_value();
 }
 
 // #endregion

@@ -6,6 +6,7 @@
 #include "config.h"
 #include "core/font_manager.h"
 #include "core/page_manager.h"
+#include "core/param_manager.h"
 #include "core/style_manager.h"
 #include "mlog.h"
 #include <stdbool.h>
@@ -35,6 +36,33 @@ static const ai_setting_config_t settings_config[] = {
 // #############################################################################
 // ! #region 4. 内部工具函数（注意用static修饰）
 // #############################################################################
+
+/* 更新AI模式选中状态 */
+static void update_ai_mode_selection(void)
+{
+    page_ai_photo_settings_data_t* data = page_get_private_data();
+    if (!data || !data->items) {
+        return;
+    }
+
+    int current_mode = param_manager_get(PARAM_ID_AI_MODE);
+    if (current_mode < 0) {
+        current_mode = 0;
+    }
+    if (current_mode >= data->settings_count) {
+        current_mode = 0;
+    }
+
+    for (int i = 0; i < data->settings_count; i++) {
+        bool selected = (i == current_mode);
+        lv_obj_add_style(data->items[i].container, selected ? &style_settings_item_selected : &style_settings_item, LV_PART_MAIN);
+        if (selected) {
+            lv_obj_clear_flag(data->items[i].check_icon, LV_OBJ_FLAG_HIDDEN);
+        } else {
+            lv_obj_add_flag(data->items[i].check_icon, LV_OBJ_FLAG_HIDDEN);
+        }
+    }
+}
 
 // #endregion
 // #############################################################################
@@ -72,6 +100,9 @@ static void setting_item_cb(lv_event_t* e)
             lv_obj_add_flag(data->items[i].check_icon, LV_OBJ_FLAG_HIDDEN);
         }
     }
+
+    /* 同步更新param_manager */
+    param_manager_set(PARAM_ID_AI_MODE, index);
 
     MLOG_INFO("AI Setting '%s' selected", data->configs[index].title);
 }
@@ -222,6 +253,10 @@ void page_ai_photo_settings_show(void)
     }
 
     MLOG_INFO("AI photo settings page show");
+
+    /* 更新AI模式选中状态 */
+    update_ai_mode_selection();
+
     lv_obj_clear_flag(data->container, LV_OBJ_FLAG_HIDDEN);
 }
 
@@ -238,7 +273,7 @@ void page_ai_photo_settings_hide(void)
 
 void page_ai_photo_settings_update(void)
 {
-    /* no-op */
+    update_ai_mode_selection();
 }
 
 // #endregion

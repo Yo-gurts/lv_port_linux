@@ -7,6 +7,7 @@
 #include "core/font_manager.h"
 #include "core/intent.h"
 #include "core/page_manager.h"
+#include "core/param_manager.h"
 #include "core/style_manager.h"
 #include "mlog.h"
 #include <stdlib.h>
@@ -15,6 +16,14 @@
 /* 布局常量 */
 #define TOP_BAR_HEIGHT 50
 #define BOTTOM_BAR_HEIGHT 50
+
+/* 视频分辨率图标 - 与video_settings保持一致 */
+static const char* video_resolution_icons[] = {
+    "A" RES_ICON_PATH "/4k.png",
+    "A" RES_ICON_PATH "/2.7k.png",
+    "A" RES_ICON_PATH "/1080p.png",
+    "A" RES_ICON_PATH "/720p.png",
+};
 
 // #endregion
 // #############################################################################
@@ -30,6 +39,21 @@
 // #############################################################################
 // ! #region 4. 内部工具函数（注意用static修饰）
 // #############################################################################
+
+/* 更新分辨率显示 */
+static void update_resolution_display(void)
+{
+    page_video_data_t* data = page_get_private_data();
+    if (!data || !data->resolution_img) {
+        return;
+    }
+
+    int resolution_index = param_manager_get(PARAM_ID_VIDEO_RESOLUTION);
+    if (resolution_index < 0 || resolution_index >= 4) {
+        resolution_index = 0;
+    }
+    lv_img_set_src(data->resolution_img, video_resolution_icons[resolution_index]);
+}
 
 // #endregion
 // #############################################################################
@@ -236,7 +260,8 @@ void page_video_hide(void)
 
 void page_video_update(void)
 {
-    /* no-op */
+    /* 更新分辨率显示 */
+    update_resolution_display();
 }
 
 // #endregion

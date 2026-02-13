@@ -21,6 +21,7 @@ typedef struct {
     const char** roller_options; /* 滚轮选项数组 */
     int roller_count; /* 滚轮选项数量 */
     setting_type_t type; /* 设置类型 */
+    int param_id; /* param_manager中的参数ID，PARAM_ID_NONE表示不同步 */
 } setting_config_t;
 
 /* 设置项 - 运行时的控件 */
