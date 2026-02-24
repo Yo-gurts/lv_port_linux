@@ -23,6 +23,11 @@ extern lv_style_t style_settings_selected; /* 选中项高亮样式 */
 extern lv_style_t style_settings_value; /* 设置项参数样式 */
 extern lv_style_t style_roller_popup; /* 滚轮弹窗遮罩样式 */
 extern lv_style_t style_roller; /* 滚轮样式 */
+extern lv_style_t style_overlay_mask; /* 通用遮罩样式 */
+extern lv_style_t style_modal_panel; /* 通用弹层面板样式 */
+extern lv_style_t style_toast_popup; /* 通用 toast 样式 */
+extern lv_style_t style_list_row_even; /* 通用列表偶数行样式 */
+extern lv_style_t style_list_row_odd; /* 通用列表奇数行样式 */
 
 void style_common_init(void);
 

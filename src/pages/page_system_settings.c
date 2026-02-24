@@ -79,8 +79,12 @@ static void setting_item_cb(lv_event_t* e)
         lv_label_set_text(item->value_label, new_value);
         MLOG_INFO("Setting '%s' toggled to: %s", config->title, new_value);
     } else {
+        /* WiFi设置跳转 */
+        if (index == 1) {
+            page_manager_navigate("wifi_list");
+        }
         /* 版本信息跳转 */
-        if (index == SETTINGS_COUNT - 1) {
+        else if (index == SETTINGS_COUNT - 1) {
             page_manager_navigate("version_info");
         } else {
             MLOG_INFO("Setting '%s' clicked, value: %s", config->title, config->value);

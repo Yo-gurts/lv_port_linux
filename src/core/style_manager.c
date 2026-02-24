@@ -33,6 +33,16 @@ lv_style_t style_settings_value;
 lv_style_t style_roller_popup;
 /* 滚轮样式 - 深色背景、圆角 */
 lv_style_t style_roller;
+/* 通用遮罩样式 */
+lv_style_t style_overlay_mask;
+/* 通用弹层面板样式 */
+lv_style_t style_modal_panel;
+/* 通用 toast 样式 */
+lv_style_t style_toast_popup;
+/* 通用列表偶数行样式 */
+lv_style_t style_list_row_even;
+/* 通用列表奇数行样式 */
+lv_style_t style_list_row_odd;
 
 /**
  * @brief 初始化所有公共样式
@@ -177,4 +187,45 @@ void style_common_init(void)
     lv_style_set_bg_opa(&style_roller, LV_OPA_COVER);
     lv_style_set_bg_color(&style_roller, lv_color_hex(0x2A2A2A));
     lv_style_set_radius(&style_roller, 20);
+
+    /* 初始化通用遮罩样式 */
+    lv_style_init(&style_overlay_mask);
+    lv_style_set_bg_opa(&style_overlay_mask, LV_OPA_60);
+    lv_style_set_bg_color(&style_overlay_mask, lv_color_black());
+    lv_style_set_border_width(&style_overlay_mask, 0);
+    lv_style_set_radius(&style_overlay_mask, 0);
+
+    /* 初始化通用弹层面板样式 */
+    lv_style_init(&style_modal_panel);
+    lv_style_set_bg_opa(&style_modal_panel, LV_OPA_COVER);
+    lv_style_set_bg_color(&style_modal_panel, lv_color_hex(0x1E1E1E));
+    lv_style_set_border_width(&style_modal_panel, 0);
+    lv_style_set_radius(&style_modal_panel, 12);
+
+    /* 初始化通用 toast 样式 */
+    lv_style_init(&style_toast_popup);
+    lv_style_set_bg_opa(&style_toast_popup, LV_OPA_60);
+    lv_style_set_bg_color(&style_toast_popup, lv_color_black());
+    lv_style_set_border_width(&style_toast_popup, 0);
+    lv_style_set_radius(&style_toast_popup, 22);
+    lv_style_set_pad_hor(&style_toast_popup, 20);
+    lv_style_set_pad_ver(&style_toast_popup, 10);
+
+    /* 初始化通用列表行样式（偶数） */
+    lv_style_init(&style_list_row_even);
+    lv_style_set_radius(&style_list_row_even, 0);
+    lv_style_set_bg_opa(&style_list_row_even, LV_OPA_COVER);
+    lv_style_set_bg_color(&style_list_row_even, lv_color_hex(0x151515));
+    lv_style_set_border_side(&style_list_row_even, LV_BORDER_SIDE_BOTTOM);
+    lv_style_set_border_width(&style_list_row_even, 1);
+    lv_style_set_border_color(&style_list_row_even, lv_color_hex(0x2E2E2E));
+
+    /* 初始化通用列表行样式（奇数） */
+    lv_style_init(&style_list_row_odd);
+    lv_style_set_radius(&style_list_row_odd, 0);
+    lv_style_set_bg_opa(&style_list_row_odd, LV_OPA_COVER);
+    lv_style_set_bg_color(&style_list_row_odd, lv_color_hex(0x191919));
+    lv_style_set_border_side(&style_list_row_odd, LV_BORDER_SIDE_BOTTOM);
+    lv_style_set_border_width(&style_list_row_odd, 1);
+    lv_style_set_border_color(&style_list_row_odd, lv_color_hex(0x2E2E2E));
 }

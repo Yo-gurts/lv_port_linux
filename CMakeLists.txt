@@ -74,6 +74,7 @@ set(SOURCES
     src/core/font_manager.c
     src/core/style_manager.c
     src/core/intent.c
+    src/mock/wifi_manager.c
     src/ui/volume_bar.c
     src/pages/page_home.c
     src/pages/page_ai_photo.c
@@ -86,6 +87,7 @@ set(SOURCES
     src/pages/page_video_settings.c
     src/pages/page_system_settings.c
     src/pages/page_version_info.c
+    src/pages/page_wifi_list.c
 )
 
 # Framebuffer manager (only for FB mode)
