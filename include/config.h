@@ -8,6 +8,10 @@ extern "C" {
 /* =======================
  * 资源路径配置
  * ======================= */
+#ifndef PROJECT_PATH
+#define PROJECT_PATH "/mnt/data/bin"
+#endif
+
 #define RES_FONT_PATH PROJECT_PATH "/res/fonts"
 #define RES_ICON_PATH PROJECT_PATH "/res/icons"
 
