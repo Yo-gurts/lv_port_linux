@@ -21,6 +21,7 @@ static const int default_values[PARAM_ID_BUTT] = {
     [PARAM_ID_SMILE_CAPTURE] = 0, /* 关闭 */
     [PARAM_ID_VIDEO_RESOLUTION] = 0, /* 4K(3840x2160) */
     [PARAM_ID_AI_MODE] = 0, /* 风格变换 */
+    [PARAM_ID_VOLUME] = 50, /* 默认音量50% */
 };
 
 /* 参数当前值 */

@@ -18,6 +18,7 @@ typedef enum {
     PARAM_ID_SMILE_CAPTURE, /* 笑脸抓拍 */
     PARAM_ID_VIDEO_RESOLUTION, /* 视频分辨率 */
     PARAM_ID_AI_MODE, /* AI功能模式：风格变换/AI识万物/拍照翻译 */
+    PARAM_ID_VOLUME, /* 音量 (0-100) */
     PARAM_ID_BUTT,
     PARAM_ID_NONE = -1 /* 无效ID，不同步到param_manager */
 } param_id_t;

@@ -74,6 +74,7 @@ set(SOURCES
     src/core/font_manager.c
     src/core/style_manager.c
     src/core/intent.c
+    src/ui/volume_bar.c
     src/pages/page_home.c
     src/pages/page_ai_photo.c
     src/pages/page_ai_photo_settings.c

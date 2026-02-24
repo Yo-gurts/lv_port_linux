@@ -21,6 +21,8 @@
 #include "pages/page_version_info.h"
 #include "pages/page_video.h"
 #include "pages/page_video_settings.h"
+#include "pages/page_wifi_list.h"
+#include "ui/volume_bar.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -157,6 +159,14 @@ static page_interface_t version_info_page_interface = {
     .update = page_version_info_update,
 };
 
+static page_interface_t wifi_list_page_interface = {
+    .create = page_wifi_list_create,
+    .destroy = page_wifi_list_destroy,
+    .show = page_wifi_list_show,
+    .hide = page_wifi_list_hide,
+    .update = page_wifi_list_update,
+};
+
 static page_interface_t ai_photo_settings_page_interface = {
     .create = page_ai_photo_settings_create,
     .destroy = page_ai_photo_settings_destroy,
@@ -197,6 +207,9 @@ int ui_main(void)
     /* Initialize param manager */
     param_manager_init();
 
+    /* Initialize volume bar */
+    volume_bar_init();
+
     /* Create page manager */
     if (page_manager_create() != 0) {
         MLOG_ERR("Failed to create page manager");
@@ -212,12 +225,17 @@ int ui_main(void)
     page_manager_register("video_settings", &video_settings_page_interface, NULL);
     page_manager_register("system_settings", &system_settings_page_interface, NULL);
     page_manager_register("version_info", &version_info_page_interface, NULL);
+    page_manager_register("wifi_list", &wifi_list_page_interface, NULL);
     page_manager_register("ai_photo_settings", &ai_photo_settings_page_interface, NULL);
     page_manager_register("chat", &chat_page_interface, NULL);
     page_manager_register("album", &album_page_interface, NULL);
 
     /* Navigate to home page */
     page_manager_navigate("home");
+
+    /* Show volume bar for test */
+    // volume_bar_show();
+    // MLOG_INFO("Volume bar test shown");
 
     /* Handle LVGL tasks */
     while (1) {
