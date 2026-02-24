@@ -1,8 +1,8 @@
 /**
- * @file    ui_main.c
- * @brief   板端入口，提供 ui_main() 接口供外部调用
+ * @file    ui_common.c
+ * @brief   UI 共用主流程实现
  */
-#include "ui_main.h"
+#include "ui_common.h"
 #include "config.h"
 #include "core/font_manager.h"
 #include "core/key_manager.h"
@@ -192,7 +192,7 @@ static page_interface_t album_page_interface = {
     .update = page_album_update,
 };
 
-int ui_main(void)
+int32_t ui_main(void)
 {
     lv_init();
 

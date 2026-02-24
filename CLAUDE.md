@@ -73,6 +73,11 @@ src/
 - **Format**: `clang-format-12` with WebKit style (`.clang-format`)
 - **Auto-format on commit**: Pre-commit hook in `.git/hooks/` applies clang-format-diff-12
 
+## Git Commit Message
+
+- Use Chinese commit messages following existing history style (e.g. `feat: ...`, `refactor(ui): ...`).
+- Keep the commit body compact and readable; avoid too many blank lines between items.
+
 ## LVGL Development Guidelines
 
 Follow these rules from `Contributing.md` to ensure stability and performance:

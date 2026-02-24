@@ -66,9 +66,10 @@ include_directories(${PROJECT_SOURCE_DIR}/include)
 
 # Source files
 set(SOURCES
-    src/ui_main.c
-    src/main_simulator.c
-    src/mouse_cursor_icon.c
+    src/core/ui_common.c
+    src/main/simulator/main_simulator.c
+    src/main/simulator/mouse_cursor_icon.c
+    src/main/simulator/uiapp_start.c
     src/core/page_manager.c
     src/core/key_manager.c
     src/core/param_manager.c
