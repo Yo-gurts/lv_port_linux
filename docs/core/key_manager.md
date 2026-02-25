@@ -9,6 +9,12 @@ Key Manager 用于统一管理物理按键输入，提供：
 - 按键回调注册/注销
 - 非电源键临时屏蔽能力
 
+`key_manager_init()` 内置注册了音量键默认行为：
+
+- `KEY_ID_VOLUME_UP`：每次事件音量 `+10%`
+- `KEY_ID_VOLUME_DOWN`：每次事件音量 `-10%`
+- 生效事件：`KEY_EVENT_CLICK`、`KEY_EVENT_LONG_PRESS`、`KEY_EVENT_LONG_PRESS_REPEAT`
+
 当前实现采用**主线程轮询**模型，不额外创建线程，避免 LVGL 线程安全问题。
 
 ## 2. 按键来源与映射
@@ -141,10 +147,14 @@ static void on_key_event(key_id_t key, key_event_type_t type, void* user_data)
 void app_key_init(void)
 {
     key_manager_init();
-    key_manager_register_callback(KEY_ID_VOLUME_UP, KEY_EVENT_CLICK, on_key_event, NULL);
     key_manager_register_callback(KEY_ID_ANY, KEY_EVENT_LONG_PRESS, on_key_event, NULL);
 }
 ```
+
+说明：
+
+- 音量键（`KEY_ID_VOLUME_UP/DOWN`）默认逻辑已在 `key_manager_init()` 中注册。
+- 若业务要覆盖默认音量行为，可在初始化后对对应 `key+event` 重新注册或先注销再注册。
 
 ## 9. 相关文件
 

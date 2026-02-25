@@ -1,5 +1,6 @@
 #include "core/key_manager.h"
 #include "mlog.h"
+#include "ui/volume_bar.h"
 #include <errno.h>
 #include <fcntl.h>
 #include <linux/input.h>
@@ -62,6 +63,29 @@ static uint8_t g_inited = 0;
 static uint8_t g_block_non_power = 0;
 static uint32_t g_long_press_ms = KEY_MANAGER_DEFAULT_LONG_PRESS_MS;
 static uint32_t g_repeat_ms = KEY_MANAGER_DEFAULT_REPEAT_MS;
+
+static void key_manager_on_volume_key_event(key_id_t key, key_event_type_t event_type, void* user_data)
+{
+    int delta = 0;
+    int volume = 0;
+
+    (void)user_data;
+    if (event_type != KEY_EVENT_CLICK && event_type != KEY_EVENT_LONG_PRESS &&
+        event_type != KEY_EVENT_LONG_PRESS_REPEAT) {
+        return;
+    }
+
+    if (key == KEY_ID_VOLUME_UP) {
+        delta = 10;
+    } else if (key == KEY_ID_VOLUME_DOWN) {
+        delta = -10;
+    } else {
+        return;
+    }
+
+    volume = volume_bar_get_value();
+    volume_bar_set_value(volume + delta);
+}
 
 static int key_manager_is_valid_key(key_id_t key)
 {
@@ -251,6 +275,13 @@ int key_manager_init(void)
     }
 
     g_inited = 1;
+    key_manager_register_callback(KEY_ID_VOLUME_UP, KEY_EVENT_CLICK, key_manager_on_volume_key_event, NULL);
+    key_manager_register_callback(KEY_ID_VOLUME_UP, KEY_EVENT_LONG_PRESS, key_manager_on_volume_key_event, NULL);
+    key_manager_register_callback(KEY_ID_VOLUME_UP, KEY_EVENT_LONG_PRESS_REPEAT, key_manager_on_volume_key_event, NULL);
+    key_manager_register_callback(KEY_ID_VOLUME_DOWN, KEY_EVENT_CLICK, key_manager_on_volume_key_event, NULL);
+    key_manager_register_callback(KEY_ID_VOLUME_DOWN, KEY_EVENT_LONG_PRESS, key_manager_on_volume_key_event, NULL);
+    key_manager_register_callback(KEY_ID_VOLUME_DOWN, KEY_EVENT_LONG_PRESS_REPEAT, key_manager_on_volume_key_event, NULL);
+
     if (opened == 0) {
         MLOG_WARN("key_manager initialized but no input device is available");
     }
