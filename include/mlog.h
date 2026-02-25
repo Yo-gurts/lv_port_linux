@@ -24,13 +24,13 @@
  *
  * 使用 prctl 获取进程名，并传入 openlog，主要是因为 musl 中并没有默认使用进程名作为 ident。
  */
-#define CVI_LOG_OPEN()                                    \
+#define MLOG_OPEN()                                       \
     do {                                                  \
         char proc_name[32] = { 0 };                       \
         prctl(PR_GET_NAME, proc_name, 0, 0, 0);           \
         openlog(proc_name, LOG_PID | LOG_CONS, LOG_USER); \
     } while (0)
-#define CVI_LOG_CLOSE() closelog()
+#define MLOG_CLOSE() closelog()
 
 // - `LOG_EMERG`: system is unusable
 // - `LOG_ALERT`: action must be taken immediately
