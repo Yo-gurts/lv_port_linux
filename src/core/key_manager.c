@@ -24,6 +24,7 @@
 
 #define KEY_MANAGER_DEFAULT_LONG_PRESS_MS 700U
 #define KEY_MANAGER_DEFAULT_REPEAT_MS 200U
+#define KEY_MANAGER_LONG_PRESS_3S_MS 3000U
 #define KEY_MANAGER_ANY_BUCKET KEY_ID_BUTT
 #define KEY_MANAGER_EVENT_ANY_BUCKET KEY_EVENT_BUTT
 
@@ -35,6 +36,7 @@ typedef struct {
 typedef struct {
     uint8_t pressed;
     uint8_t long_fired;
+    uint8_t long_3s_fired;
     uint64_t pressed_ms;
     uint64_t next_repeat_ms;
 } key_state_t;
@@ -168,11 +170,15 @@ static void key_manager_handle_key_value(key_id_t key, int value, uint64_t now_m
     if (value == 1) {
         state->pressed = 1;
         state->long_fired = 0;
+        state->long_3s_fired = 0;
         state->pressed_ms = now_ms;
         state->next_repeat_ms = now_ms + g_long_press_ms;
     } else if (value == 0) {
         if (!state->pressed) {
             return;
+        }
+        if (state->long_3s_fired) {
+            key_manager_dispatch(key, KEY_EVENT_LONG_PRESS_3S_RELEASE);
         }
         if (!state->long_fired) {
             key_manager_dispatch(key, KEY_EVENT_CLICK);
@@ -194,6 +200,11 @@ static void key_manager_process_hold_state(uint64_t now_ms)
 
         if (!state->pressed) {
             continue;
+        }
+
+        if (!state->long_3s_fired && now_ms >= state->pressed_ms + KEY_MANAGER_LONG_PRESS_3S_MS) {
+            state->long_3s_fired = 1;
+            key_manager_dispatch((key_id_t)i, KEY_EVENT_LONG_PRESS_3S);
         }
 
         if (!state->long_fired) {

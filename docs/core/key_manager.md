@@ -29,16 +29,19 @@ Key Manager 用于统一管理物理按键输入，提供：
 
 ## 3. 事件模型
 
-支持三类业务事件：
+支持五类业务事件：
 
 - `KEY_EVENT_CLICK`：短按（按下后在长按阈值前抬起）
-- `KEY_EVENT_LONG_PRESS`：达到长按阈值触发一次
+- `KEY_EVENT_LONG_PRESS`：达到长按阈值触发一次，默认700ms
+- `KEY_EVENT_LONG_PRESS_3S`：按下持续达到 3 秒触发一次（支持所有按键）
+- `KEY_EVENT_LONG_PRESS_3S_RELEASE`：触发过 3 秒长按后，抬起时触发一次
 - `KEY_EVENT_LONG_PRESS_REPEAT`：长按后按固定周期持续触发
 
 默认参数：
 
 - 长按阈值：`700ms`
 - 连发间隔：`200ms`
+- `LONG_PRESS_3S` 阈值：固定 `3000ms`
 
 可通过接口动态调整：
 
