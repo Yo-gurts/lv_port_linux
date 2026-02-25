@@ -5,6 +5,7 @@
 #include "ui_main.h"
 #include "config.h"
 #include "core/font_manager.h"
+#include "core/key_manager.h"
 #include "core/page_manager.h"
 #include "core/param_manager.h"
 #include "core/style_manager.h"
@@ -210,6 +211,9 @@ int ui_main(void)
     /* Initialize volume bar */
     volume_bar_init();
 
+    /* Initialize key manager */
+    key_manager_init();
+
     /* Create page manager */
     if (page_manager_create() != 0) {
         MLOG_ERR("Failed to create page manager");
@@ -239,10 +243,12 @@ int ui_main(void)
 
     /* Handle LVGL tasks */
     while (1) {
+        key_manager_poll();
         lv_timer_handler();
         usleep(5000);
     }
 
+    key_manager_deinit();
     page_manager_destroy();
     return 0;
 }
