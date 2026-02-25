@@ -504,6 +504,7 @@ void page_wifi_list_create(void)
     data->wifi_list = lv_list_create(data->container);
     lv_obj_set_width(data->wifi_list, lv_pct(100));
     lv_obj_set_flex_grow(data->wifi_list, 1);
+    lv_obj_set_style_margin_all(data->wifi_list, 2, LV_PART_MAIN);
     lv_obj_set_style_border_width(data->wifi_list, 0, LV_PART_MAIN);
     lv_obj_set_style_bg_color(data->wifi_list, lv_color_hex(0x121212), LV_PART_MAIN);
     lv_obj_add_style(data->wifi_list, &NORMAL_SIZE, LV_PART_MAIN);
