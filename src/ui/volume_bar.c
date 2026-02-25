@@ -49,19 +49,6 @@ static int clamp_volume(int volume)
     return volume;
 }
 
-/* 从 param_manager 读取音量，失败时回退默认值。 */
-static int get_volume_from_param_manager_or_default(void)
-{
-    int volume = param_manager_get(PARAM_ID_VOLUME);
-    if (volume < 0) {
-        volume = param_manager_get_default(PARAM_ID_VOLUME);
-    }
-    if (volume < 0) {
-        volume = 50;
-    }
-    return clamp_volume(volume);
-}
-
 /**
  * @brief 根据音量值获取对应的图标路径
  * @param volume 音量值 (0-100)
@@ -195,7 +182,7 @@ static void volume_bar_create(void)
     lv_obj_add_style(g_volume_bar->container, &style_container, LV_PART_MAIN);
 
     /* 音量图标（顶部） */
-    int initial_volume = get_volume_from_param_manager_or_default();
+    int initial_volume = param_manager_get(PARAM_ID_VOLUME);
     g_volume_bar->icon = lv_img_create(g_volume_bar->container);
     lv_img_set_src(g_volume_bar->icon, get_volume_icon_path(initial_volume));
     lv_obj_align(g_volume_bar->icon, LV_ALIGN_TOP_MID, 0, 10);
@@ -262,8 +249,6 @@ void volume_bar_init(void)
  */
 void volume_bar_show(void)
 {
-    int volume = get_volume_from_param_manager_or_default();
-
     if (g_volume_bar == NULL) {
         volume_bar_create();
     }
@@ -271,18 +256,6 @@ void volume_bar_show(void)
     if (g_volume_bar == NULL) {
         return;
     }
-
-    /* 确保音量值在有效范围内 */
-    volume = clamp_volume(volume);
-
-    /* 设置音量值 */
-    lv_slider_set_value(g_volume_bar->slider, volume, LV_ANIM_ON);
-
-    /* 更新音量图标 */
-    update_volume_icon(g_volume_bar, volume);
-
-    /* 同步到param_manager */
-    param_manager_set(PARAM_ID_VOLUME, volume);
 
     /* 显示容器 */
     lv_obj_clear_flag(g_volume_bar->container, LV_OBJ_FLAG_HIDDEN);
@@ -297,7 +270,7 @@ void volume_bar_show(void)
 
     /* 创建新定时器 */
     g_volume_bar->timer = lv_timer_create(volume_bar_timer_cb, VOLUME_BAR_TIMEOUT_MS, g_volume_bar);
-    MLOG_DBG("Volume bar shown, volume: %d", volume);
+    MLOG_DBG("Volume bar shown");
 }
 
 /**
@@ -353,7 +326,7 @@ void volume_bar_set_value(int volume)
  */
 int volume_bar_get_value(void)
 {
-    return get_volume_from_param_manager_or_default();
+    return param_manager_get(PARAM_ID_VOLUME);
 }
 
 /**

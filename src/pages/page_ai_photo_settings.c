@@ -46,12 +46,6 @@ static void update_ai_mode_selection(void)
     }
 
     int current_mode = param_manager_get(PARAM_ID_AI_MODE);
-    if (current_mode < 0) {
-        current_mode = 0;
-    }
-    if (current_mode >= data->settings_count) {
-        current_mode = 0;
-    }
 
     for (int i = 0; i < data->settings_count; i++) {
         bool selected = (i == current_mode);

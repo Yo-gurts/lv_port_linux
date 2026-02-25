@@ -23,6 +23,69 @@ typedef enum {
     PARAM_ID_NONE = -1 /* 无效ID，不同步到param_manager */
 } param_id_t;
 
+typedef enum {
+    PHOTO_RESOLUTION_8M = 0,
+    PHOTO_RESOLUTION_12M,
+    PHOTO_RESOLUTION_24M,
+    PHOTO_RESOLUTION_48M,
+    PHOTO_RESOLUTION_64M,
+    PHOTO_RESOLUTION_BUTT
+} photo_resolution_t;
+
+typedef enum {
+    WHITE_BALANCE_AUTO = 0,
+    WHITE_BALANCE_SUNNY,
+    WHITE_BALANCE_CLOUDY,
+    WHITE_BALANCE_INCANDESCENT,
+    WHITE_BALANCE_FLUORESCENT,
+    WHITE_BALANCE_BUTT
+} white_balance_t;
+
+typedef enum {
+    ISO_AUTO = 0,
+    ISO_100,
+    ISO_400,
+    ISO_800,
+    ISO_1600,
+    ISO_3200,
+    ISO_BUTT
+} iso_t;
+
+typedef enum {
+    EXPOSURE_EV_NEG_2_0 = 0,
+    EXPOSURE_EV_NEG_1_5,
+    EXPOSURE_EV_NEG_1_0,
+    EXPOSURE_EV_NEG_0_5,
+    EXPOSURE_EV_0,
+    EXPOSURE_EV_POS_0_5,
+    EXPOSURE_EV_POS_1_0,
+    EXPOSURE_EV_POS_1_5,
+    EXPOSURE_EV_POS_2_0,
+    EXPOSURE_BUTT
+} exposure_t;
+
+typedef enum {
+    QUALITY_SUPER = 0,
+    QUALITY_HIGH,
+    QUALITY_NORMAL,
+    QUALITY_BUTT
+} quality_t;
+
+typedef enum {
+    VIDEO_RESOLUTION_4K = 0,
+    VIDEO_RESOLUTION_2_7K,
+    VIDEO_RESOLUTION_1080P,
+    VIDEO_RESOLUTION_720P,
+    VIDEO_RESOLUTION_BUTT
+} video_resolution_t;
+
+typedef enum {
+    AI_MODE_STYLE_TRANSFER = 0,
+    AI_MODE_OBJECT_RECOGNITION,
+    AI_MODE_TRANSLATION,
+    AI_MODE_BUTT
+} ai_mode_t;
+
 /* 参数管理器初始化 */
 int param_manager_init(void);
 

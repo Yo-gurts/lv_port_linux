@@ -234,9 +234,6 @@ void page_ai_photo_update(void)
 
     /* 从param_manager更新AI模式显示 */
     int ai_mode = param_manager_get(PARAM_ID_AI_MODE);
-    if (ai_mode < 0 || ai_mode >= 3) {
-        ai_mode = 0;
-    }
     lv_label_set_text(data->resolution_label, ai_mode_options[ai_mode]);
 }
 

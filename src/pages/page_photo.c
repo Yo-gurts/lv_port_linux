@@ -46,9 +46,6 @@ static void update_resolution_display(void)
     }
 
     int resolution_index = param_manager_get(PARAM_ID_RESOLUTION);
-    if (resolution_index < 0 || resolution_index >= 5) {
-        resolution_index = 0;
-    }
     lv_label_set_text(data->resolution_label, resolution_options[resolution_index]);
 }
 
@@ -133,9 +130,6 @@ void page_photo_create(void)
     /* 分辨率 Label - 跟在返回按钮后面 */
     data->resolution_label = lv_label_create(data->top_bar);
     int resolution_index = param_manager_get(PARAM_ID_RESOLUTION);
-    if (resolution_index < 0) {
-        resolution_index = 0;
-    }
     lv_label_set_text(data->resolution_label, resolution_options[resolution_index]);
     lv_obj_add_style(data->resolution_label, &NORMAL_SIZE, LV_PART_MAIN);
     lv_obj_set_style_text_color(data->resolution_label, lv_color_black(), LV_PART_MAIN);

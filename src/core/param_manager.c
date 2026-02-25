@@ -10,18 +10,38 @@
 /* 最大回调数量 */
 #define MAX_CALLBACKS 4
 
+typedef struct {
+    int min_value;
+    int max_value;
+    uint8_t validate_enabled;
+} param_rule_t;
+
 /* 参数默认值 - 与configs数组的value字段对应 */
 static const int default_values[PARAM_ID_BUTT] = {
-    [PARAM_ID_RESOLUTION] = 0, /* 8M(3840x2160) */
-    [PARAM_ID_WHITE_BALANCE] = 0, /* 自动 */
-    [PARAM_ID_ISO] = 0, /* 自动 */
-    [PARAM_ID_EXPOSURE] = 4, /* EV0 (中间值) */
-    [PARAM_ID_QUALITY] = 0, /* 超高画质 */
+    [PARAM_ID_RESOLUTION] = PHOTO_RESOLUTION_8M,
+    [PARAM_ID_WHITE_BALANCE] = WHITE_BALANCE_AUTO,
+    [PARAM_ID_ISO] = ISO_AUTO,
+    [PARAM_ID_EXPOSURE] = EXPOSURE_EV_0,
+    [PARAM_ID_QUALITY] = QUALITY_SUPER,
     [PARAM_ID_FACE_DETECTION] = 0, /* 关闭 */
     [PARAM_ID_SMILE_CAPTURE] = 0, /* 关闭 */
-    [PARAM_ID_VIDEO_RESOLUTION] = 0, /* 4K(3840x2160) */
-    [PARAM_ID_AI_MODE] = 0, /* 风格变换 */
+    [PARAM_ID_VIDEO_RESOLUTION] = VIDEO_RESOLUTION_4K,
+    [PARAM_ID_AI_MODE] = AI_MODE_STYLE_TRANSFER,
     [PARAM_ID_VOLUME] = 50, /* 默认音量50% */
+};
+
+/* 参数合法性规则：set 时按规则校验；get 不做合法性修正。 */
+static const param_rule_t param_rules[PARAM_ID_BUTT] = {
+    [PARAM_ID_RESOLUTION] = { .min_value = PHOTO_RESOLUTION_8M, .max_value = PHOTO_RESOLUTION_BUTT - 1, .validate_enabled = 1 },
+    [PARAM_ID_WHITE_BALANCE] = { .min_value = WHITE_BALANCE_AUTO, .max_value = WHITE_BALANCE_BUTT - 1, .validate_enabled = 1 },
+    [PARAM_ID_ISO] = { .min_value = ISO_AUTO, .max_value = ISO_BUTT - 1, .validate_enabled = 1 },
+    [PARAM_ID_EXPOSURE] = { .min_value = EXPOSURE_EV_NEG_2_0, .max_value = EXPOSURE_BUTT - 1, .validate_enabled = 1 },
+    [PARAM_ID_QUALITY] = { .min_value = QUALITY_SUPER, .max_value = QUALITY_BUTT - 1, .validate_enabled = 1 },
+    [PARAM_ID_FACE_DETECTION] = { .min_value = 0, .max_value = 1, .validate_enabled = 1 },
+    [PARAM_ID_SMILE_CAPTURE] = { .min_value = 0, .max_value = 1, .validate_enabled = 1 },
+    [PARAM_ID_VIDEO_RESOLUTION] = { .min_value = VIDEO_RESOLUTION_4K, .max_value = VIDEO_RESOLUTION_BUTT - 1, .validate_enabled = 1 },
+    [PARAM_ID_AI_MODE] = { .min_value = AI_MODE_STYLE_TRANSFER, .max_value = AI_MODE_BUTT - 1, .validate_enabled = 1 },
+    [PARAM_ID_VOLUME] = { .min_value = 0, .max_value = 100, .validate_enabled = 1 },
 };
 
 /* 参数当前值 */
@@ -40,6 +60,32 @@ static callback_entry_t callbacks[MAX_CALLBACKS];
 /* 是否已初始化 */
 static int g_initialized = 0;
 
+static int is_valid_param_id(param_id_t id)
+{
+    return id >= PARAM_ID_RESOLUTION && id < PARAM_ID_BUTT;
+}
+
+static int validate_param_value(param_id_t id, int value)
+{
+    const param_rule_t* rule = NULL;
+
+    if (!is_valid_param_id(id)) {
+        return -1;
+    }
+
+    rule = &param_rules[id];
+    if (!rule->validate_enabled) {
+        return 0;
+    }
+
+    if (value < rule->min_value || value > rule->max_value) {
+        MLOG_WARN("param[%d] value %d out of range [%d, %d]\n", id, value, rule->min_value, rule->max_value);
+        return -1;
+    }
+
+    return 0;
+}
+
 int param_manager_init(void)
 {
     if (g_initialized) {
@@ -52,7 +98,12 @@ int param_manager_init(void)
 
     /* 加载默认值 */
     for (int i = 0; i < PARAM_ID_BUTT; i++) {
-        current_values[i] = default_values[i];
+        int value = default_values[i];
+        if (validate_param_value((param_id_t)i, value) != 0) {
+            MLOG_WARN("invalid default value for param[%d]: %d, fallback to min=%d\n", i, value, param_rules[i].min_value);
+            value = param_rules[i].min_value;
+        }
+        current_values[i] = value;
     }
 
     g_initialized = 1;
@@ -73,7 +124,7 @@ void param_manager_deinit(void)
 
 int param_manager_get(param_id_t id)
 {
-    if (!g_initialized || id >= PARAM_ID_BUTT) {
+    if (!g_initialized || !is_valid_param_id(id)) {
         MLOG_ERR("param_manager not initialized or invalid id: %d\n", id);
         return -1;
     }
@@ -83,8 +134,12 @@ int param_manager_get(param_id_t id)
 
 int param_manager_set(param_id_t id, int value)
 {
-    if (!g_initialized || id >= PARAM_ID_BUTT) {
+    if (!g_initialized || !is_valid_param_id(id)) {
         MLOG_ERR("param_manager not initialized or invalid id: %d\n", id);
+        return -1;
+    }
+    if (validate_param_value(id, value) != 0) {
+        MLOG_ERR("invalid value for param[%d]: %d\n", id, value);
         return -1;
     }
 
@@ -108,7 +163,7 @@ int param_manager_set(param_id_t id, int value)
 
 int param_manager_get_default(param_id_t id)
 {
-    if (id >= PARAM_ID_BUTT) {
+    if (!is_valid_param_id(id)) {
         MLOG_ERR("invalid param id: %d\n", id);
         return -1;
     }

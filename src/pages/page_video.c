@@ -49,9 +49,6 @@ static void update_resolution_display(void)
     }
 
     int resolution_index = param_manager_get(PARAM_ID_VIDEO_RESOLUTION);
-    if (resolution_index < 0 || resolution_index >= 4) {
-        resolution_index = 0;
-    }
     lv_img_set_src(data->resolution_img, video_resolution_icons[resolution_index]);
 }
 

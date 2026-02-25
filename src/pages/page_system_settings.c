@@ -54,16 +54,6 @@ static void update_volume_setting_value(page_system_settings_data_t* data)
     }
 
     volume = param_manager_get(PARAM_ID_VOLUME);
-    if (volume < 0) {
-        volume = param_manager_get_default(PARAM_ID_VOLUME);
-    }
-    if (volume < 0) {
-        volume = 50;
-    }
-    if (volume > 100) {
-        volume = 100;
-    }
-
     lv_snprintf(text, sizeof(text), "%d%%", volume);
     lv_label_set_text(data->settings[SETTINGS_INDEX_VOLUME].value_label, text);
 }

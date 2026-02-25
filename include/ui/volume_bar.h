@@ -15,7 +15,7 @@ void volume_bar_init(void);
 
 /**
  * @brief 显示音量控制条
- * @note 按当前音量参数显示，2秒后自动淡出
+ * @note 仅显示音量控制条，2秒后自动淡出
  */
 void volume_bar_show(void);
 
