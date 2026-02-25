@@ -132,6 +132,28 @@ static void volume_bar_press_cb(lv_event_t* e)
     volume_bar_reset_timer();
 }
 
+static void volume_bar_param_cb(param_id_t id, int value, void* user_data)
+{
+    int clamped = 0;
+
+    (void)user_data;
+    if (id != PARAM_ID_VOLUME || g_volume_bar == NULL || g_volume_bar->slider == NULL) {
+        return;
+    }
+
+    clamped = clamp_volume(value);
+    lv_slider_set_value(g_volume_bar->slider, clamped, LV_ANIM_ON);
+    update_volume_icon(g_volume_bar, clamped);
+
+    if (g_volume_bar->is_visible == 0) {
+        volume_bar_show();
+        return;
+    }
+
+    volume_bar_reset_timer();
+    MLOG_DBG("Volume set to: %d", clamped);
+}
+
 // #endregion
 // #############################################################################
 // ! #region 8. 初始化、去初始化、资源管理
@@ -229,6 +251,7 @@ static void volume_bar_create(void)
     lv_obj_add_event_cb(g_volume_bar->slider, volume_bar_press_cb, LV_EVENT_PRESSED, g_volume_bar);
     lv_obj_add_event_cb(g_volume_bar->container, volume_bar_press_cb, LV_EVENT_CLICKED, g_volume_bar);
 
+    param_manager_register_callback(volume_bar_param_cb, NULL);
     MLOG_INFO("Vertical volume bar created successfully");
 }
 
@@ -292,41 +315,6 @@ void volume_bar_hide(void)
     lv_obj_fade_out(g_volume_bar->container, VOLUME_BAR_FADE_MS, 0);
     g_volume_bar->is_visible = 0;
     MLOG_DBG("Volume bar hidden");
-}
-
-/**
- * @brief 设置音量值
- */
-void volume_bar_set_value(int volume)
-{
-    if (g_volume_bar == NULL) {
-        volume_bar_create();
-    }
-
-    if (g_volume_bar == NULL) {
-        return;
-    }
-
-    volume = clamp_volume(volume);
-    param_manager_set(PARAM_ID_VOLUME, volume);
-
-    if (g_volume_bar->is_visible == 0) {
-        volume_bar_show();
-        return;
-    }
-
-    lv_slider_set_value(g_volume_bar->slider, volume, LV_ANIM_ON);
-    update_volume_icon(g_volume_bar, volume);
-    volume_bar_reset_timer();
-    MLOG_DBG("Volume set to: %d", volume);
-}
-
-/**
- * @brief 获取当前音量值
- */
-int volume_bar_get_value(void)
-{
-    return param_manager_get(PARAM_ID_VOLUME);
 }
 
 /**

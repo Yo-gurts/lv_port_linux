@@ -244,6 +244,7 @@ int32_t ui_main(void)
     /* Handle LVGL tasks */
     while (1) {
         key_manager_poll();
+        param_manager_poll();
         lv_timer_handler();
         usleep(5000);
     }

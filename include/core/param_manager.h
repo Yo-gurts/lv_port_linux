@@ -92,6 +92,9 @@ int param_manager_init(void);
 /* 参数管理器反初始化 */
 void param_manager_deinit(void);
 
+/* 在主线程周期调用，派发参数变化回调（适合回调里操作 LVGL）。 */
+void param_manager_poll(void);
+
 /* 获取参数值（返回索引） */
 int param_manager_get(param_id_t id);
 

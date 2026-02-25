@@ -26,19 +26,6 @@ void volume_bar_show(void);
 void volume_bar_hide(void);
 
 /**
- * @brief 设置音量值
- * @param volume 音量值 (0-100)
- * @note 更新音量值并确保可见，2秒后自动淡出
- */
-void volume_bar_set_value(int volume);
-
-/**
- * @brief 获取当前音量值
- * @return 当前音量值 (0-100)
- */
-int volume_bar_get_value(void);
-
-/**
  * @brief 重置自动隐藏计时器
  * @note 用户交互后调用，重置2秒计时器
  */
