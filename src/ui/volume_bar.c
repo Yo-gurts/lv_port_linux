@@ -181,6 +181,7 @@ static void volume_bar_create(void)
     lv_obj_set_pos(g_volume_bar->container, bar_x, bar_y);
     lv_obj_set_size(g_volume_bar->container, 60, 320);
     lv_obj_set_scrollbar_mode(g_volume_bar->container, LV_SCROLLBAR_MODE_OFF);
+    lv_obj_clear_flag(g_volume_bar->container, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_add_flag(g_volume_bar->container, LV_OBJ_FLAG_HIDDEN);
     lv_obj_add_flag(g_volume_bar->container, LV_OBJ_FLAG_CLICKABLE);
 
@@ -197,11 +198,12 @@ static void volume_bar_create(void)
     int initial_volume = get_volume_from_param_manager_or_default();
     g_volume_bar->icon = lv_img_create(g_volume_bar->container);
     lv_img_set_src(g_volume_bar->icon, get_volume_icon_path(initial_volume));
-    lv_obj_align(g_volume_bar->icon, LV_ALIGN_TOP_MID, 0, 15);
+    lv_obj_align(g_volume_bar->icon, LV_ALIGN_TOP_MID, 0, 10);
 
     /* 创建竖直滑块 */
     g_volume_bar->slider = lv_slider_create(g_volume_bar->container);
     lv_obj_set_size(g_volume_bar->slider, 16, 200);
+    lv_obj_clear_flag(g_volume_bar->slider, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_align(g_volume_bar->slider, LV_ALIGN_BOTTOM_MID, 0, -16);
     lv_slider_set_range(g_volume_bar->slider, 0, 100);
     lv_slider_set_value(g_volume_bar->slider, initial_volume, LV_ANIM_OFF);
