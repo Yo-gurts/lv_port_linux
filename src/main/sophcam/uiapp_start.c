@@ -4,6 +4,7 @@
  */
 
 #include "ui_common.h"
+#include "core/message_manager.h"
 #include "mlog.h"
 #include "osal.h"
 #include <stdbool.h>
@@ -27,6 +28,12 @@ int32_t UIAPP_Start(void)
         return 0;
     }
 
+    rc = message_manager_create();
+    if (rc != 0) {
+        MLOG_ERR("message manager create failed, %d", rc);
+        return -1;
+    }
+
     ta.name = "aicam_ui";
     ta.entry = ui_thread_entry;
     ta.param = NULL;
@@ -37,6 +44,7 @@ int32_t UIAPP_Start(void)
     rc = OSAL_TASK_Create(&ta, &s_ui_task);
     if (rc != OSAL_SUCCESS) {
         MLOG_ERR("aicam_ui task create failed, %d", rc);
+        message_manager_destroy();
         return -1;
     }
 
