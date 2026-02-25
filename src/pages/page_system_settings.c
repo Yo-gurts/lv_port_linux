@@ -6,9 +6,12 @@
 #include "config.h"
 #include "core/font_manager.h"
 #include "core/page_manager.h"
+#include "core/param_manager.h"
 #include "core/style_manager.h"
 #include "mlog.h"
+#include "ui/volume_bar.h"
 #include <stdint.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -26,18 +29,56 @@ static const setting_config_t settings_config[] = {
     { .icon_path = "A" RES_ICON_PATH "/language.png", .title = "语言", .value = "简体中文", .type = SETTING_TYPE_NORMAL },
     { .icon_path = "A" RES_ICON_PATH "/sys-wifi.png", .title = "WiFi设置", .value = "未连接", .type = SETTING_TYPE_NORMAL },
     { .icon_path = "A" RES_ICON_PATH "/datetime.png", .title = "时间和日期", .value = "2026-02-07 12:00", .type = SETTING_TYPE_NORMAL },
-    { .icon_path = "A" RES_ICON_PATH "/sys-volume.png", .title = "音量设置", .value = "80%", .type = SETTING_TYPE_NORMAL },
+    { .icon_path = "A" RES_ICON_PATH "/sys-volume.png", .title = "音量设置", .value = "xx%", .type = SETTING_TYPE_NORMAL },
     { .icon_path = "A" RES_ICON_PATH "/format.png", .title = "格式化", .value = "请确认", .type = SETTING_TYPE_NORMAL },
     { .icon_path = "A" RES_ICON_PATH "/factory.png", .title = "出厂设置", .value = "请确认", .type = SETTING_TYPE_NORMAL },
     { .icon_path = "A" RES_ICON_PATH "/info.png", .title = "版本信息", .value = "V1.0.0", .type = SETTING_TYPE_NORMAL },
 };
 
 #define SETTINGS_COUNT (int)(sizeof(settings_config) / sizeof(settings_config[0]))
+#define SETTINGS_INDEX_VOLUME 3
 
 // #endregion
 // #############################################################################
 // ! #region 4. 内部工具函数（注意用static修饰）
 // #############################################################################
+
+/* 更新“音量设置”行的右侧文本。 */
+static void update_volume_setting_value(page_system_settings_data_t* data)
+{
+    char text[16];
+    int volume;
+
+    if (data == NULL || data->settings[SETTINGS_INDEX_VOLUME].value_label == NULL) {
+        return;
+    }
+
+    volume = param_manager_get(PARAM_ID_VOLUME);
+    if (volume < 0) {
+        volume = param_manager_get_default(PARAM_ID_VOLUME);
+    }
+    if (volume < 0) {
+        volume = 50;
+    }
+    if (volume > 100) {
+        volume = 100;
+    }
+
+    lv_snprintf(text, sizeof(text), "%d%%", volume);
+    lv_label_set_text(data->settings[SETTINGS_INDEX_VOLUME].value_label, text);
+}
+
+/* 参数更新回调：音量变化时同步系统设置页显示。 */
+static void system_settings_param_cb(param_id_t id, int value, void* user_data)
+{
+    page_system_settings_data_t* data = (page_system_settings_data_t*)user_data;
+    LV_UNUSED(value);
+
+    if (id != PARAM_ID_VOLUME) {
+        return;
+    }
+    update_volume_setting_value(data);
+}
 
 // #endregion
 // #############################################################################
@@ -86,6 +127,8 @@ static void setting_item_cb(lv_event_t* e)
         /* 版本信息跳转 */
         else if (index == SETTINGS_COUNT - 1) {
             page_manager_navigate("version_info");
+        } else if (index == SETTINGS_INDEX_VOLUME) {
+            volume_bar_show();
         } else {
             MLOG_INFO("Setting '%s' clicked, value: %s", config->title, config->value);
         }
@@ -198,6 +241,10 @@ void page_system_settings_create(void)
 
     /* 保存 private_data */
     page_set_private_data(data);
+
+    /* 监听参数变化，保持“音量设置”与 param_manager 同步。 */
+    param_manager_register_callback(system_settings_param_cb, data);
+    update_volume_setting_value(data);
 }
 
 void page_system_settings_destroy(void)
@@ -212,6 +259,7 @@ void page_system_settings_destroy(void)
         data->container = NULL;
     }
 
+    param_manager_unregister_callback(system_settings_param_cb);
     free(data);
 }
 
@@ -223,6 +271,7 @@ void page_system_settings_show(void)
     }
 
     MLOG_INFO("System settings page show");
+    update_volume_setting_value(data);
     lv_obj_clear_flag(data->container, LV_OBJ_FLAG_HIDDEN);
 }
 
