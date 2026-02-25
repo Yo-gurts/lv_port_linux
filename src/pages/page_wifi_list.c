@@ -349,6 +349,7 @@ void page_wifi_list_create(void)
     lv_obj_set_layout(data->container, LV_LAYOUT_FLEX);
     lv_obj_set_flex_flow(data->container, LV_FLEX_FLOW_COLUMN);
     lv_obj_set_scrollbar_mode(data->container, LV_SCROLLBAR_MODE_OFF);
+    lv_obj_clear_flag(data->container, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_clear_flag(data->container, LV_OBJ_FLAG_GESTURE_BUBBLE);
     lv_obj_add_event_cb(data->container, page_manager_swipe_right_cb, LV_EVENT_GESTURE, NULL);
 
@@ -466,10 +467,12 @@ void page_wifi_list_create(void)
     lv_obj_set_style_bg_opa(data->password_kb, LV_OPA_COVER, LV_PART_MAIN);
     lv_obj_set_style_bg_color(data->password_kb, lv_color_hex(0x121212), LV_PART_MAIN);
     lv_obj_set_style_border_width(data->password_kb, 0, LV_PART_MAIN);
-    lv_obj_set_style_pad_top(data->password_kb, 8, LV_PART_MAIN);
-    lv_obj_set_style_pad_bottom(data->password_kb, 8, LV_PART_MAIN);
-    lv_obj_set_style_pad_left(data->password_kb, 8, LV_PART_MAIN);
-    lv_obj_set_style_pad_right(data->password_kb, 8, LV_PART_MAIN);
+    lv_obj_set_style_pad_top(data->password_kb, 4, LV_PART_MAIN);
+    lv_obj_set_style_pad_bottom(data->password_kb, 4, LV_PART_MAIN);
+    lv_obj_set_style_pad_left(data->password_kb, 4, LV_PART_MAIN);
+    lv_obj_set_style_pad_right(data->password_kb, 4, LV_PART_MAIN);
+    lv_obj_set_style_pad_row(data->password_kb, 3, LV_PART_MAIN);
+    lv_obj_set_style_pad_column(data->password_kb, 3, LV_PART_MAIN);
     lv_obj_set_style_bg_opa(data->password_kb, LV_OPA_COVER, LV_PART_ITEMS);
     lv_obj_set_style_bg_color(data->password_kb, lv_color_hex(0x2A2A2A), LV_PART_ITEMS);
     lv_obj_set_style_bg_color(data->password_kb, lv_color_hex(0x3A3A3A), LV_PART_ITEMS | LV_STATE_PRESSED);
@@ -479,7 +482,7 @@ void page_wifi_list_create(void)
     lv_obj_set_style_radius(data->password_kb, 8, LV_PART_ITEMS);
     lv_obj_set_style_text_color(data->password_kb, lv_color_white(), LV_PART_ITEMS);
     lv_obj_set_style_text_color(data->password_kb, lv_color_white(), LV_PART_ITEMS | LV_STATE_CHECKED);
-    lv_obj_set_style_text_font(data->password_kb, &lv_font_montserrat_24, LV_PART_ITEMS);
+    lv_obj_set_style_text_font(data->password_kb, &lv_font_montserrat_28, LV_PART_ITEMS);
     lv_keyboard_set_mode(data->password_kb, LV_KEYBOARD_MODE_TEXT_LOWER);
     lv_keyboard_set_textarea(data->password_kb, data->password_ta);
     lv_obj_add_event_cb(data->password_kb, password_keyboard_event_cb, LV_EVENT_ALL, data);
