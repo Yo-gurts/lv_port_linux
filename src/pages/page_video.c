@@ -148,7 +148,6 @@ void page_video_create(void)
     data->time_label = lv_label_create(data->top_bar);
     lv_label_set_text(data->time_label, "00:00:00");
     lv_obj_add_style(data->time_label, &NORMAL_SIZE, LV_PART_MAIN);
-    lv_obj_set_style_text_color(data->time_label, lv_color_black(), LV_PART_MAIN);
     lv_obj_align(data->time_label, LV_ALIGN_RIGHT_MID, -110, 0);
 
     /* SD卡图标 - 右上角 */

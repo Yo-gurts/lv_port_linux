@@ -159,14 +159,12 @@ void page_photo_create(void)
     int resolution_index = param_manager_get(PARAM_ID_RESOLUTION);
     lv_label_set_text(data->resolution_label, resolution_options[resolution_index]);
     lv_obj_add_style(data->resolution_label, &NORMAL_SIZE, LV_PART_MAIN);
-    lv_obj_set_style_text_color(data->resolution_label, lv_color_black(), LV_PART_MAIN);
     lv_obj_align(data->resolution_label, LV_ALIGN_LEFT_MID, 70, 0);
 
     /* 剩余照片数量 Label - 右上角 */
     data->photo_count_label = lv_label_create(data->top_bar);
     lv_label_set_text(data->photo_count_label, "100");
     lv_obj_add_style(data->photo_count_label, &NORMAL_SIZE, LV_PART_MAIN);
-    lv_obj_set_style_text_color(data->photo_count_label, lv_color_black(), LV_PART_MAIN);
     lv_obj_align(data->photo_count_label, LV_ALIGN_RIGHT_MID, -110, 0);
 
     /* SD卡图标 - 右上角 */
