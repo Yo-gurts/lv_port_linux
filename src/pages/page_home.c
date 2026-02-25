@@ -5,7 +5,7 @@
 #include "pages/page_home.h"
 #include "config.h"
 #include "core/font_manager.h"
-#include "core/intent.h"
+#include "core/media_manager.h"
 #include "core/style_manager.h"
 #include "mlog.h"
 #include <stdlib.h>
@@ -128,7 +128,7 @@ static void photo_button_cb(lv_event_t* e)
 {
     LV_UNUSED(e);
     MLOG_INFO("Photo button clicked");
-    intent_dispatch(INTENT_OPEN_PHOTO_PAGE);
+    (void)media_manager_execute(MEDIA_OP_SWITCH_TO_PHOTO_MODE, 0);
     page_manager_navigate("photo");
 }
 

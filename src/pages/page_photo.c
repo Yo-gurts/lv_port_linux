@@ -5,7 +5,7 @@
 #include "pages/page_photo.h"
 #include "config.h"
 #include "core/font_manager.h"
-#include "core/intent.h"
+#include "core/media_manager.h"
 #include "core/page_manager.h"
 #include "core/param_manager.h"
 #include "core/style_manager.h"
@@ -69,7 +69,7 @@ static void mode_switch_cb(lv_event_t* e)
 {
     LV_UNUSED(e);
     MLOG_INFO("Switching to video page");
-    intent_dispatch(INTENT_OPEN_VIDEO_PAGE);
+    (void)media_manager_execute(MEDIA_OP_SWITCH_TO_VIDEO_MODE, 0);
     page_manager_navigate("video");
 }
 
@@ -79,6 +79,33 @@ static void menu_back_cb(lv_event_t* e)
     LV_UNUSED(e);
     MLOG_INFO("Menu clicked, navigate to photo_settings");
     page_manager_navigate("photo_settings");
+}
+
+/* 顶部返回按钮回调：返回时切换到 boot mode */
+static void back_btn_cb(lv_event_t* e)
+{
+    LV_UNUSED(e);
+    (void)media_manager_execute(MEDIA_OP_SWITCH_TO_BOOT_MODE, 0);
+    page_manager_back();
+}
+
+/* 当检测到滑动时，调用 lv_indev_set_wait_until_release() 避免释放时触发点击 */
+static void swipe_right_cb(lv_event_t* e)
+{
+    lv_event_code_t code = lv_event_get_code(e);
+    if (code == LV_EVENT_GESTURE) {
+        lv_dir_t dir = lv_indev_get_gesture_dir(lv_indev_get_act());
+        if (dir == LV_DIR_RIGHT) {
+            MLOG_INFO("Swipe right, back to previous page");
+            back_btn_cb(NULL);
+        }
+
+        /* 检测到滑动，忽略后续的点击事件 */
+        lv_indev_t* indev = lv_indev_get_act();
+        if (indev) {
+            lv_indev_wait_release(indev);
+        }
+    }
 }
 
 // #endregion
@@ -106,7 +133,7 @@ void page_photo_create(void)
     lv_obj_clear_flag(data->container, LV_OBJ_FLAG_GESTURE_BUBBLE);
 
     /* 添加滑动手势回调：从左往右滑返回上一页 */
-    lv_obj_add_event_cb(data->container, page_manager_swipe_right_cb, LV_EVENT_GESTURE, NULL);
+    lv_obj_add_event_cb(data->container, swipe_right_cb, LV_EVENT_GESTURE, NULL);
 
     /* =======================
      * 顶部状态栏：[back][8M] 在左边，剩余拍照数 [SD][battery] 在右边
@@ -121,7 +148,7 @@ void page_photo_create(void)
     data->back_btn = lv_btn_create(data->top_bar);
     lv_obj_set_size(data->back_btn, 50, 50);
     lv_obj_add_style(data->back_btn, &style_noboarder, LV_PART_MAIN);
-    lv_obj_add_event_cb(data->back_btn, page_manager_back_cb, LV_EVENT_CLICKED, NULL);
+    lv_obj_add_event_cb(data->back_btn, back_btn_cb, LV_EVENT_CLICKED, NULL);
     lv_obj_align(data->back_btn, LV_ALIGN_TOP_LEFT, 10, 0);
     lv_obj_t* back_icon = lv_img_create(data->back_btn);
     lv_img_set_src(back_icon, "A:" RES_ICON_PATH "/back-circle.png");

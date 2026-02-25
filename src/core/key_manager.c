@@ -1,4 +1,5 @@
 #include "core/key_manager.h"
+#include "core/media_manager.h"
 #include "mlog.h"
 #include "ui/volume_bar.h"
 #include <errno.h>
@@ -67,7 +68,6 @@ static uint32_t g_repeat_ms = KEY_MANAGER_DEFAULT_REPEAT_MS;
 static void key_manager_on_volume_key_event(key_id_t key, key_event_type_t event_type, void* user_data)
 {
     int delta = 0;
-    int volume = 0;
 
     (void)user_data;
     if (event_type != KEY_EVENT_CLICK && event_type != KEY_EVENT_LONG_PRESS &&
@@ -83,8 +83,7 @@ static void key_manager_on_volume_key_event(key_id_t key, key_event_type_t event
         return;
     }
 
-    volume = volume_bar_get_value();
-    volume_bar_set_value(volume + delta);
+    media_manager_execute(MEDIA_OP_ADJUST_SYSTEM_VOLUME, delta);
 }
 
 static int key_manager_is_valid_key(key_id_t key)

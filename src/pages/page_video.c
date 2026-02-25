@@ -5,7 +5,7 @@
 #include "pages/page_video.h"
 #include "config.h"
 #include "core/font_manager.h"
-#include "core/intent.h"
+#include "core/media_manager.h"
 #include "core/page_manager.h"
 #include "core/param_manager.h"
 #include "core/style_manager.h"
@@ -72,7 +72,7 @@ static void mode_switch_cb(lv_event_t* e)
 {
     LV_UNUSED(e);
     MLOG_INFO("Back to photo page");
-    intent_dispatch(INTENT_OPEN_PHOTO_PAGE);
+    (void)media_manager_execute(MEDIA_OP_SWITCH_TO_PHOTO_MODE, 0);
     page_manager_back();
 }
 
@@ -80,7 +80,7 @@ static void mode_switch_cb(lv_event_t* e)
 static void back_btn_cb(lv_event_t* e)
 {
     LV_UNUSED(e);
-    intent_dispatch(INTENT_OPEN_PHOTO_PAGE);
+    (void)media_manager_execute(MEDIA_OP_SWITCH_TO_PHOTO_MODE, 0);
     page_manager_back();
 }
 

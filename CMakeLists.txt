@@ -66,31 +66,31 @@ include_directories(${PROJECT_SOURCE_DIR}/include)
 
 # Source files
 set(SOURCES
+    src/core/font_manager.c
+    src/core/key_manager.c
+    src/core/page_manager.c
+    src/core/param_manager.c
+    src/core/style_manager.c
     src/core/ui_common.c
-    src/mock/message_manager.c
     src/main/simulator/main_simulator.c
     src/main/simulator/mouse_cursor_icon.c
     src/main/simulator/uiapp_start.c
-    src/core/page_manager.c
-    src/core/key_manager.c
-    src/core/param_manager.c
-    src/core/font_manager.c
-    src/core/style_manager.c
-    src/core/intent.c
+    src/mock/media_manager.c
+    src/mock/message_manager.c
     src/mock/wifi_manager.c
-    src/ui/volume_bar.c
-    src/pages/page_home.c
-    src/pages/page_ai_photo.c
     src/pages/page_ai_photo_settings.c
+    src/pages/page_ai_photo.c
     src/pages/page_album.c
     src/pages/page_chat.c
-    src/pages/page_photo.c
-    src/pages/page_video.c
+    src/pages/page_home.c
     src/pages/page_photo_settings.c
-    src/pages/page_video_settings.c
+    src/pages/page_photo.c
     src/pages/page_system_settings.c
     src/pages/page_version_info.c
+    src/pages/page_video_settings.c
+    src/pages/page_video.c
     src/pages/page_wifi_list.c
+    src/ui/volume_bar.c
 )
 
 # Framebuffer manager (only for FB mode)
