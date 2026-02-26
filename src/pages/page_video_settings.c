@@ -5,6 +5,7 @@
 #include "pages/page_video_settings.h"
 #include "config.h"
 #include "core/font_manager.h"
+#include "core/media_manager.h"
 #include "core/page_manager.h"
 #include "core/param_manager.h"
 #include "core/style_manager.h"
@@ -103,6 +104,7 @@ static void update_all_settings_value(void)
 static void apply_roller_selection(page_video_settings_data_t* data)
 {
     int index = data->current_setting_index;
+    int ret = 0;
     if (index < 0 || index >= SETTINGS_COUNT) {
         return;
     }
@@ -111,14 +113,19 @@ static void apply_roller_selection(page_video_settings_data_t* data)
     setting_item_t* item = &data->items[index];
     int selected = lv_roller_get_selected(data->roller);
 
+    if (config->param_id == PARAM_ID_VIDEO_RESOLUTION) {
+        ret = media_manager_execute(MEDIA_OP_SET_VIDEO_RESOLUTION, selected);
+    } else if (config->param_id != PARAM_ID_NONE) {
+        ret = param_manager_set((param_id_t)config->param_id, selected);
+    }
+    if (ret != 0) {
+        MLOG_ERR("设置'%s'失败: selected=%d ret=%d", config->title, selected, ret);
+        return;
+    }
+
     item->current_index = selected;
     lv_label_set_text(item->value_label, config->roller_options[selected]);
     lv_obj_add_flag(data->roller_popup, LV_OBJ_FLAG_HIDDEN);
-
-    /* 同步更新param_manager */
-    if (config->param_id != PARAM_ID_NONE) {
-        param_manager_set((param_id_t)config->param_id, selected);
-    }
 
     MLOG_INFO("Setting '%s' selected: %s", config->title, config->roller_options[selected]);
 }

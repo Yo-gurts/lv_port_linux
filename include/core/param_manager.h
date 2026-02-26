@@ -25,6 +25,7 @@ typedef enum {
     PARAM_ID_NONE = -1 /* 无效ID，不同步到param_manager */
 } param_id_t;
 
+/* 这个顺序、默认值需要和 profiles/config_menu.ini 中定义的一致 */
 typedef enum {
     PHOTO_RESOLUTION_8M = 0,
     PHOTO_RESOLUTION_12M,
@@ -66,6 +67,7 @@ typedef enum {
     EXPOSURE_BUTT
 } exposure_t;
 
+/* 这个顺序、默认值需要和 profiles/config_menu.ini 中定义的一致 */
 typedef enum {
     QUALITY_SUPER = 0,
     QUALITY_HIGH,
@@ -73,6 +75,7 @@ typedef enum {
     QUALITY_BUTT
 } quality_t;
 
+/* 这个顺序、默认值需要和 profiles/config_menu.ini 中定义的一致 */
 typedef enum {
     VIDEO_RESOLUTION_4K = 0,
     VIDEO_RESOLUTION_2_7K,

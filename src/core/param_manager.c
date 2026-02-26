@@ -33,7 +33,8 @@ static const int default_values[PARAM_ID_BUTT] = {
     [PARAM_ID_VOLUME] = 50, /* 默认音量50% */
 };
 
-/* 参数合法性规则：set 时按规则校验；get 不做合法性修正。 */
+/* 参数合法性规则：set 时按规则校验；get 不做合法性修正。
+ * ❗❗❗ 注意：部分默认值要和 profiles/config_menu.ini 中定义的一致 */
 static const param_rule_t param_rules[PARAM_ID_BUTT] = {
     [PARAM_ID_RESOLUTION] = { .min_value = PHOTO_RESOLUTION_8M, .max_value = PHOTO_RESOLUTION_BUTT - 1, .validate_enabled = 1 },
     [PARAM_ID_WHITE_BALANCE] = { .min_value = WHITE_BALANCE_AUTO, .max_value = WHITE_BALANCE_BUTT - 1, .validate_enabled = 1 },
