@@ -43,6 +43,14 @@ lv_style_t style_toast_popup;
 lv_style_t style_list_row_even;
 /* 通用列表奇数行样式 */
 lv_style_t style_list_row_odd;
+/* 拍照页滤镜面板样式 */
+lv_style_t style_photo_filter_panel;
+/* 拍照页滤镜选中框样式 */
+lv_style_t style_photo_filter_focus_frame;
+/* 拍照页滤镜条目样式 */
+lv_style_t style_photo_filter_item;
+/* 拍照页滤镜缩略图底样式 */
+lv_style_t style_photo_filter_thumb;
 
 /**
  * @brief 初始化所有公共样式
@@ -228,4 +236,41 @@ void style_common_init(void)
     lv_style_set_border_side(&style_list_row_odd, LV_BORDER_SIDE_BOTTOM);
     lv_style_set_border_width(&style_list_row_odd, 1);
     lv_style_set_border_color(&style_list_row_odd, lv_color_hex(0x2E2E2E));
+
+    /* 初始化拍照页滤镜面板样式 */
+    lv_style_init(&style_photo_filter_panel);
+    lv_style_set_bg_opa(&style_photo_filter_panel, LV_OPA_40);
+    lv_style_set_bg_color(&style_photo_filter_panel, lv_color_hex(0xFFFFFF));
+    lv_style_set_bg_grad_color(&style_photo_filter_panel, lv_color_hex(0xEDEDED));
+    lv_style_set_bg_grad_dir(&style_photo_filter_panel, LV_GRAD_DIR_VER);
+    lv_style_set_border_width(&style_photo_filter_panel, 1);
+    lv_style_set_border_color(&style_photo_filter_panel, lv_color_hex(0xF6F6F6));
+    lv_style_set_border_side(&style_photo_filter_panel, LV_BORDER_SIDE_TOP);
+    lv_style_set_radius(&style_photo_filter_panel, 10);
+    lv_style_set_pad_all(&style_photo_filter_panel, 0);
+
+    /* 初始化拍照页滤镜选中框样式 */
+    lv_style_init(&style_photo_filter_focus_frame);
+    lv_style_set_bg_opa(&style_photo_filter_focus_frame, LV_OPA_TRANSP);
+    lv_style_set_border_width(&style_photo_filter_focus_frame, 4);
+    lv_style_set_border_color(&style_photo_filter_focus_frame, lv_color_hex(0xF09F20));
+    lv_style_set_radius(&style_photo_filter_focus_frame, 12);
+    lv_style_set_shadow_width(&style_photo_filter_focus_frame, 10);
+    lv_style_set_shadow_color(&style_photo_filter_focus_frame, lv_color_hex(0xF09F20));
+    lv_style_set_shadow_opa(&style_photo_filter_focus_frame, LV_OPA_30);
+
+    /* 初始化拍照页滤镜条目样式 */
+    lv_style_init(&style_photo_filter_item);
+    lv_style_set_bg_opa(&style_photo_filter_item, LV_OPA_TRANSP);
+    lv_style_set_border_width(&style_photo_filter_item, 0);
+    lv_style_set_pad_all(&style_photo_filter_item, 0);
+    lv_style_set_radius(&style_photo_filter_item, 14);
+
+    /* 初始化拍照页滤镜缩略图底样式 */
+    lv_style_init(&style_photo_filter_thumb);
+    lv_style_set_bg_opa(&style_photo_filter_thumb, LV_OPA_COVER);
+    lv_style_set_bg_color(&style_photo_filter_thumb, lv_color_hex(0x1A1A1A));
+    lv_style_set_border_width(&style_photo_filter_thumb, 0);
+    lv_style_set_radius(&style_photo_filter_thumb, 12);
+    lv_style_set_pad_all(&style_photo_filter_thumb, 0);
 }

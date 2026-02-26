@@ -10,12 +10,21 @@
 #include "core/param_manager.h"
 #include "core/style_manager.h"
 #include "mlog.h"
+#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 
 /* 布局常量 */
 #define TOP_BAR_HEIGHT 50
 #define BOTTOM_BAR_HEIGHT 50
+#define FILTER_PANEL_HEIGHT 116
+#define FILTER_THUMB_WIDTH 80
+#define FILTER_THUMB_HEIGHT 60
+#define FILTER_ITEM_HEIGHT 100
+#define FILTER_ITEM_GAP 12
+#define FILTER_PANEL_TOP_PAD 8
+#define FILTER_PANEL_BOTTOM_PAD 2
+#define FILTER_FOCUS_Y_OFFSET -1
 
 // #endregion
 // #############################################################################
@@ -32,6 +41,29 @@ static const char* resolution_options[] = {
     "8M", "12M", "24M", "48M", "64M"
 };
 
+typedef struct {
+    const char* name;
+    const char* icon_path;
+} photo_filter_config_t;
+
+static const photo_filter_config_t photo_filter_configs[] = {
+    { "原图", "A:" RES_ICON_PATH "/filter.png" },
+    { "美味", "A:" RES_ICON_PATH "/filter.png" },
+    { "冷调", "A:" RES_ICON_PATH "/filter.png" },
+    { "暖调", "A:" RES_ICON_PATH "/filter.png" },
+    { "浓郁", "A:" RES_ICON_PATH "/filter.png" },
+    { "高级", "A:" RES_ICON_PATH "/filter.png" },
+};
+
+#define PHOTO_FILTER_COUNT ((int)(sizeof(photo_filter_configs) / sizeof(photo_filter_configs[0])))
+
+static void update_filter_selection_style(page_photo_data_t* data);
+static void scroll_to_filter_index(page_photo_data_t* data, int index, lv_anim_enable_t anim_en);
+static void snap_filter_to_center(page_photo_data_t* data, lv_anim_enable_t anim_en);
+static void show_filter_overlay(page_photo_data_t* data);
+static void hide_filter_overlay(page_photo_data_t* data);
+static void set_selected_filter_index(page_photo_data_t* data, int index, const char* source);
+
 // #endregion
 // #############################################################################
 // ! #region 4. 内部工具函数（注意用static修饰）
@@ -47,6 +79,147 @@ static void update_resolution_display(void)
 
     int resolution_index = param_manager_get(PARAM_ID_RESOLUTION);
     lv_label_set_text(data->resolution_label, resolution_options[resolution_index]);
+}
+
+/* 更新滤镜选中态样式。 */
+static void update_filter_selection_style(page_photo_data_t* data)
+{
+    int i;
+
+    if (data == NULL) {
+        return;
+    }
+
+    for (i = 0; i < data->filter_count; i++) {
+        lv_obj_t* item = data->filter_items[i];
+        lv_obj_t* label = data->filter_labels[i];
+        if (item == NULL || label == NULL) {
+            continue;
+        }
+
+        if (i == data->selected_filter_index) {
+            lv_obj_set_style_text_color(label, lv_color_hex(0xF09F20), LV_PART_MAIN);
+            lv_obj_set_style_opa(item, LV_OPA_COVER, LV_PART_MAIN);
+        } else {
+            lv_obj_set_style_text_color(label, lv_color_white(), LV_PART_MAIN);
+            lv_obj_set_style_opa(item, LV_OPA_80, LV_PART_MAIN);
+        }
+    }
+}
+
+/* 统一更新选中滤镜并打印日志，便于后续接入真实滤镜切换。 */
+static void set_selected_filter_index(page_photo_data_t* data, int index, const char* source)
+{
+    if (data == NULL || index < 0 || index >= data->filter_count) {
+        return;
+    }
+    if (data->selected_filter_index == index) {
+        return;
+    }
+
+    data->selected_filter_index = index;
+    MLOG_INFO("Filter selected [%s]: index=%d, name=%s",
+        (source == NULL) ? "unknown" : source,
+        index,
+        photo_filter_configs[index].name);
+}
+
+/* 根据选中下标滚动列表，让条目中心对齐中间选中框。 */
+static void scroll_to_filter_index(page_photo_data_t* data, int index, lv_anim_enable_t anim_en)
+{
+    int32_t step;
+    int32_t target_x;
+    int32_t max_scroll_x;
+
+    if (data == NULL || data->filter_list == NULL || index < 0 || index >= data->filter_count) {
+        return;
+    }
+
+    step = FILTER_THUMB_WIDTH + FILTER_ITEM_GAP;
+    target_x = index * step;
+    if (target_x < 0) {
+        target_x = 0;
+    }
+
+    max_scroll_x = lv_obj_get_scroll_left(data->filter_list) + lv_obj_get_scroll_right(data->filter_list);
+    if (target_x > max_scroll_x) {
+        target_x = max_scroll_x;
+    }
+
+    lv_obj_scroll_to_x(data->filter_list, target_x, anim_en);
+}
+
+/* 滚动结束后吸附到最近滤镜，并刷新选中态。 */
+static void snap_filter_to_center(page_photo_data_t* data, lv_anim_enable_t anim_en)
+{
+    int32_t scroll_x;
+    int32_t step;
+    int nearest_index;
+
+    if (data == NULL || data->filter_list == NULL || data->filter_count <= 0) {
+        return;
+    }
+
+    step = FILTER_THUMB_WIDTH + FILTER_ITEM_GAP;
+    scroll_x = lv_obj_get_scroll_left(data->filter_list);
+    nearest_index = (scroll_x + step / 2) / step;
+    if (nearest_index < 0) {
+        nearest_index = 0;
+    }
+    if (nearest_index >= data->filter_count) {
+        nearest_index = data->filter_count - 1;
+    }
+
+    set_selected_filter_index(data, nearest_index, "scroll_snap");
+    update_filter_selection_style(data);
+    scroll_to_filter_index(data, nearest_index, anim_en);
+}
+
+/* 让中间选中框和任意缩略图容器严格上下对齐。 */
+static void align_filter_focus_frame(page_photo_data_t* data)
+{
+    lv_obj_t* ref_thumb;
+    lv_area_t thumb_coords;
+    lv_area_t panel_coords;
+    int32_t y_in_panel;
+
+    if (data == NULL || data->filter_focus_frame == NULL || data->filter_panel == NULL || data->filter_list == NULL) {
+        return;
+    }
+    if (data->filter_count <= 0) {
+        return;
+    }
+    ref_thumb = data->filter_thumbs[0];
+    if (ref_thumb == NULL) {
+        return;
+    }
+
+    lv_obj_update_layout(data->filter_list);
+    lv_obj_get_coords(ref_thumb, &thumb_coords);
+    lv_obj_get_coords(data->filter_panel, &panel_coords);
+    y_in_panel = thumb_coords.y1 - panel_coords.y1;
+    lv_obj_align(data->filter_focus_frame, LV_ALIGN_TOP_MID, 0, y_in_panel + FILTER_FOCUS_Y_OFFSET);
+}
+
+/* 显示滤镜全屏层。 */
+static void show_filter_overlay(page_photo_data_t* data)
+{
+    if (data == NULL || data->filter_overlay == NULL) {
+        return;
+    }
+    lv_obj_clear_flag(data->filter_overlay, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_move_foreground(data->filter_overlay);
+    align_filter_focus_frame(data);
+    snap_filter_to_center(data, LV_ANIM_OFF);
+}
+
+/* 隐藏滤镜全屏层。 */
+static void hide_filter_overlay(page_photo_data_t* data)
+{
+    if (data == NULL || data->filter_overlay == NULL) {
+        return;
+    }
+    lv_obj_add_flag(data->filter_overlay, LV_OBJ_FLAG_HIDDEN);
 }
 
 // #endregion
@@ -106,6 +279,63 @@ static void swipe_right_cb(lv_event_t* e)
             lv_indev_wait_release(indev);
         }
     }
+}
+
+/* 滤镜按钮回调：显示/隐藏滤镜面板。 */
+static void filter_btn_cb(lv_event_t* e)
+{
+    page_photo_data_t* data = (page_photo_data_t*)lv_event_get_user_data(e);
+
+    if (data == NULL || data->filter_overlay == NULL) {
+        return;
+    }
+
+    if (lv_obj_has_flag(data->filter_overlay, LV_OBJ_FLAG_HIDDEN)) {
+        show_filter_overlay(data);
+    } else {
+        hide_filter_overlay(data);
+    }
+}
+
+/* 滤镜条目点击回调：切换选中项（滤镜实际效果后续接入）。 */
+static void filter_item_cb(lv_event_t* e)
+{
+    page_photo_data_t* data = (page_photo_data_t*)lv_event_get_user_data(e);
+    lv_obj_t* target = lv_event_get_current_target(e);
+    int index;
+
+    if (data == NULL || target == NULL) {
+        return;
+    }
+
+    index = (int)(intptr_t)lv_obj_get_user_data(target);
+    if (index < 0 || index >= data->filter_count) {
+        return;
+    }
+
+    set_selected_filter_index(data, index, "item_click");
+    update_filter_selection_style(data);
+    scroll_to_filter_index(data, index, LV_ANIM_ON);
+}
+
+/* 滤镜列表滚动结束回调：自动吸附到中间框。 */
+static void filter_list_scroll_end_cb(lv_event_t* e)
+{
+    page_photo_data_t* data = (page_photo_data_t*)lv_event_get_user_data(e);
+    if (data == NULL) {
+        return;
+    }
+    snap_filter_to_center(data, LV_ANIM_ON);
+}
+
+/* 点击滤镜面板外区域时关闭滤镜层。 */
+static void filter_overlay_click_cb(lv_event_t* e)
+{
+    page_photo_data_t* data = (page_photo_data_t*)lv_event_get_user_data(e);
+    if (data == NULL) {
+        return;
+    }
+    hide_filter_overlay(data);
 }
 
 // #endregion
@@ -201,7 +431,7 @@ void page_photo_create(void)
     data->filter_btn = lv_btn_create(data->bottom_bar);
     lv_obj_set_size(data->filter_btn, 50, 50);
     lv_obj_add_style(data->filter_btn, &style_noboarder, LV_PART_MAIN);
-    lv_obj_add_event_cb(data->filter_btn, NULL, LV_EVENT_CLICKED, NULL);
+    lv_obj_add_event_cb(data->filter_btn, filter_btn_cb, LV_EVENT_CLICKED, data);
     lv_obj_align(data->filter_btn, LV_ALIGN_LEFT_MID, 70, 0);
     lv_obj_t* filter_icon = lv_img_create(data->filter_btn);
     lv_img_set_src(filter_icon, "A:" RES_ICON_PATH "/filter_default.png");
@@ -226,6 +456,94 @@ void page_photo_create(void)
     lv_obj_t* menu_icon = lv_img_create(data->menu_btn);
     lv_img_set_src(menu_icon, "A:" RES_ICON_PATH "/menu.png");
     lv_obj_align(menu_icon, LV_ALIGN_CENTER, 0, 0);
+
+    /* 滤镜全屏点击层：点击空白处关闭。 */
+    data->filter_overlay = lv_obj_create(data->container);
+    lv_obj_set_size(data->filter_overlay, lv_pct(100), lv_pct(100));
+    lv_obj_set_style_bg_opa(data->filter_overlay, LV_OPA_TRANSP, LV_PART_MAIN);
+    lv_obj_set_style_border_width(data->filter_overlay, 0, LV_PART_MAIN);
+    lv_obj_set_style_radius(data->filter_overlay, 0, LV_PART_MAIN);
+    lv_obj_set_style_pad_all(data->filter_overlay, 0, LV_PART_MAIN);
+    lv_obj_set_scrollbar_mode(data->filter_overlay, LV_SCROLLBAR_MODE_OFF);
+    lv_obj_clear_flag(data->filter_overlay, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_add_flag(data->filter_overlay, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_add_event_cb(data->filter_overlay, filter_overlay_click_cb, LV_EVENT_CLICKED, data);
+
+    /* 滤镜横向选择面板（作为 overlay 子容器）。 */
+    data->filter_panel = lv_obj_create(data->filter_overlay);
+    lv_obj_set_width(data->filter_panel, lv_pct(100));
+    lv_obj_set_height(data->filter_panel, FILTER_PANEL_HEIGHT);
+    lv_obj_align(data->filter_panel, LV_ALIGN_BOTTOM_MID, 0, -63);
+    lv_obj_set_scrollbar_mode(data->filter_panel, LV_SCROLLBAR_MODE_OFF);
+    lv_obj_clear_flag(data->filter_panel, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_add_style(data->filter_panel, &style_photo_filter_panel, LV_PART_MAIN);
+    lv_obj_add_flag(data->filter_panel, LV_OBJ_FLAG_CLICKABLE);
+
+    data->filter_list = lv_obj_create(data->filter_panel);
+    lv_obj_set_size(data->filter_list, lv_pct(100), lv_pct(100));
+    lv_obj_set_scroll_dir(data->filter_list, LV_DIR_HOR);
+    lv_obj_set_scrollbar_mode(data->filter_list, LV_SCROLLBAR_MODE_OFF);
+    lv_obj_set_layout(data->filter_list, LV_LAYOUT_FLEX);
+    lv_obj_set_flex_flow(data->filter_list, LV_FLEX_FLOW_ROW);
+    lv_obj_set_flex_align(data->filter_list, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+    lv_obj_set_style_bg_opa(data->filter_list, LV_OPA_TRANSP, LV_PART_MAIN);
+    lv_obj_set_style_border_width(data->filter_list, 0, LV_PART_MAIN);
+    lv_obj_set_style_radius(data->filter_list, 0, LV_PART_MAIN);
+    lv_obj_set_style_pad_left(data->filter_list, (H_RES - FILTER_THUMB_WIDTH) / 2, LV_PART_MAIN);
+    lv_obj_set_style_pad_right(data->filter_list, (H_RES - FILTER_THUMB_WIDTH) / 2, LV_PART_MAIN);
+    lv_obj_set_style_pad_top(data->filter_list, FILTER_PANEL_TOP_PAD, LV_PART_MAIN);
+    lv_obj_set_style_pad_bottom(data->filter_list, FILTER_PANEL_BOTTOM_PAD, LV_PART_MAIN);
+    lv_obj_set_style_pad_column(data->filter_list, FILTER_ITEM_GAP, LV_PART_MAIN);
+    lv_obj_set_style_pad_row(data->filter_list, 0, LV_PART_MAIN);
+    lv_obj_add_event_cb(data->filter_list, filter_list_scroll_end_cb, LV_EVENT_SCROLL_END, data);
+
+    data->filter_focus_frame = lv_obj_create(data->filter_panel);
+    lv_obj_add_flag(data->filter_focus_frame, LV_OBJ_FLAG_IGNORE_LAYOUT);
+    lv_obj_clear_flag(data->filter_focus_frame, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_set_size(data->filter_focus_frame, FILTER_THUMB_WIDTH, FILTER_THUMB_HEIGHT);
+    lv_obj_align(data->filter_focus_frame, LV_ALIGN_TOP_MID, 0, FILTER_PANEL_TOP_PAD);
+    lv_obj_add_style(data->filter_focus_frame, &style_photo_filter_focus_frame, LV_PART_MAIN);
+
+    data->filter_count = (PHOTO_FILTER_COUNT > PHOTO_FILTER_MAX_COUNT) ? PHOTO_FILTER_MAX_COUNT : PHOTO_FILTER_COUNT;
+    data->selected_filter_index = 0;
+
+    for (int i = 0; i < data->filter_count; i++) {
+        lv_obj_t* item = lv_obj_create(data->filter_list);
+        lv_obj_set_size(item, FILTER_THUMB_WIDTH, FILTER_ITEM_HEIGHT);
+        lv_obj_set_scrollbar_mode(item, LV_SCROLLBAR_MODE_OFF);
+        lv_obj_clear_flag(item, LV_OBJ_FLAG_SCROLLABLE);
+        lv_obj_add_style(item, &style_photo_filter_item, LV_PART_MAIN);
+        lv_obj_set_layout(item, LV_LAYOUT_FLEX);
+        lv_obj_set_flex_flow(item, LV_FLEX_FLOW_COLUMN);
+        lv_obj_set_flex_align(item, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+        lv_obj_set_style_pad_row(item, 8, LV_PART_MAIN);
+        lv_obj_add_event_cb(item, filter_item_cb, LV_EVENT_CLICKED, data);
+        lv_obj_set_user_data(item, (void*)(intptr_t)i);
+
+        lv_obj_t* thumb = lv_obj_create(item);
+        lv_obj_set_size(thumb, FILTER_THUMB_WIDTH, FILTER_THUMB_HEIGHT);
+        lv_obj_clear_flag(thumb, LV_OBJ_FLAG_SCROLLABLE);
+        lv_obj_add_flag(thumb, LV_OBJ_FLAG_EVENT_BUBBLE);
+        lv_obj_add_style(thumb, &style_photo_filter_thumb, LV_PART_MAIN);
+
+        lv_obj_t* thumb_img = lv_img_create(thumb);
+        lv_img_set_src(thumb_img, photo_filter_configs[i].icon_path);
+        lv_obj_add_flag(thumb_img, LV_OBJ_FLAG_EVENT_BUBBLE);
+        lv_obj_align(thumb_img, LV_ALIGN_CENTER, 0, 0);
+
+        lv_obj_t* label = lv_label_create(item);
+        lv_label_set_text(label, photo_filter_configs[i].name);
+        lv_obj_add_style(label, &SMALL_SIZE, LV_PART_MAIN);
+        lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
+        lv_obj_add_flag(label, LV_OBJ_FLAG_EVENT_BUBBLE);
+
+        data->filter_items[i] = item;
+        data->filter_thumbs[i] = thumb;
+        data->filter_labels[i] = label;
+    }
+    update_filter_selection_style(data);
+    align_filter_focus_frame(data);
+    scroll_to_filter_index(data, data->selected_filter_index, LV_ANIM_OFF);
 
     /* 保存 private_data，供 show/hide/destroy 使用 */
     page_set_private_data(data);
@@ -256,6 +574,8 @@ void page_photo_show(void)
 
     MLOG_INFO("Photo page show");
 
+    hide_filter_overlay(data);
+
     /* 显示 UI */
     lv_obj_clear_flag(data->container, LV_OBJ_FLAG_HIDDEN);
 }
@@ -268,6 +588,7 @@ void page_photo_hide(void)
     }
 
     MLOG_INFO("Photo page hide");
+    hide_filter_overlay(data);
     /* 隐藏 UI */
     lv_obj_add_flag(data->container, LV_OBJ_FLAG_HIDDEN);
 }

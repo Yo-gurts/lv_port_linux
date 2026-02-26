@@ -28,6 +28,10 @@ extern lv_style_t style_modal_panel; /* 通用弹层面板样式 */
 extern lv_style_t style_toast_popup; /* 通用 toast 样式 */
 extern lv_style_t style_list_row_even; /* 通用列表偶数行样式 */
 extern lv_style_t style_list_row_odd; /* 通用列表奇数行样式 */
+extern lv_style_t style_photo_filter_panel; /* 拍照页滤镜面板样式 */
+extern lv_style_t style_photo_filter_focus_frame; /* 拍照页滤镜选中框样式 */
+extern lv_style_t style_photo_filter_item; /* 拍照页滤镜条目样式 */
+extern lv_style_t style_photo_filter_thumb; /* 拍照页滤镜缩略图底样式 */
 
 void style_common_init(void);
 
