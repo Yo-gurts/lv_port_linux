@@ -7,7 +7,7 @@ Key Manager 用于统一管理物理按键输入，提供：
 - 多输入设备采集（`/dev/input/power-key`、`/dev/input/adc-key2`）
 - 按键事件抽象（短按、长按、长按连发）
 - 按键回调注册/注销
-- 非电源键临时屏蔽能力
+- 输入源按位屏蔽能力（TP / power-key / adc-key2）
 
 `key_manager_init()` 内置注册了音量键默认行为：
 
@@ -85,14 +85,21 @@ Key Manager 用于统一管理物理按键输入，提供：
 
 当前每个 `key+event` 仅允许注册一个回调，避免分发顺序不确定。
 
-## 5. 屏蔽策略（非电源键）
+## 5. 屏蔽策略（位图）
 
-提供 `key_manager_set_block_non_power(uint8_t blocked)`：
+提供 `key_manager_set_block_non_power(uint8_t block_mask)`，参数为位图：
 
-- `blocked=1`：屏蔽除 `KEY_ID_POWER` 外所有按键事件
-- `blocked=0`：恢复非电源键事件
+- `KEY_INPUT_BLOCK_TP`：屏蔽 TP 输入（通过 `lv_indev_enable(indev, false)`）
+- `KEY_INPUT_BLOCK_POWER_KEY`：屏蔽 `power-key`（`KEY_ID_POWER`）
+- `KEY_INPUT_BLOCK_ADC_KEY2`：屏蔽 `adc-key2`（AI/音量/对焦/拍照等）
 
-为避免“补发旧事件”，在屏蔽状态切换时会清空非电源键状态机（按下状态、长按计时、连发计时）。
+支持按位组合：
+
+- 仅屏蔽 TP：`KEY_INPUT_BLOCK_TP`
+- 仅屏蔽 ADC：`KEY_INPUT_BLOCK_ADC_KEY2`
+- 屏蔽 TP + ADC：`KEY_INPUT_BLOCK_TP | KEY_INPUT_BLOCK_ADC_KEY2`
+
+为避免“补发旧事件”，在屏蔽状态切换到开启时会清空对应按键状态机（按下状态、长按计时、连发计时）。
 
 ## 6. 线程与时序
 
@@ -119,6 +126,7 @@ while (1) {
 ```c
 int key_manager_init(void);
 void key_manager_deinit(void);
+void key_manager_bind_touch_indev(struct _lv_indev_t* indev);
 void key_manager_poll(void);
 
 int key_manager_register_callback(key_id_t key, key_event_type_t event_type,
@@ -129,7 +137,8 @@ int key_manager_unregister_callback(key_id_t key, key_event_type_t event_type,
 void key_manager_set_long_press_ms(uint32_t long_press_ms);
 void key_manager_set_repeat_ms(uint32_t repeat_ms);
 
-void key_manager_set_block_non_power(uint8_t blocked);
+/* KEY_INPUT_BLOCK_TP / KEY_INPUT_BLOCK_POWER_KEY / KEY_INPUT_BLOCK_ADC_KEY2 */
+void key_manager_set_block_non_power(uint8_t block_mask);
 uint8_t key_manager_get_block_non_power(void);
 ```
 

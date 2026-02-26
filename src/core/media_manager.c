@@ -95,7 +95,7 @@ static int handle_take_photo(int32_t args)
 
     msg.topic = EVENT_MODEMNG_START_PIV;
     blocked_prev = key_manager_get_block_non_power();
-    key_manager_set_block_non_power(1);
+    key_manager_set_block_non_power((uint8_t)(blocked_prev | KEY_INPUT_BLOCK_TP | KEY_INPUT_BLOCK_ADC_KEY2));
     ret = message_manager_send_sync_timeout(&msg, MEDIA_MANAGER_TAKE_PHOTO_TIMEOUT_MS);
     key_manager_set_block_non_power(blocked_prev);
     if (ret != 0) {

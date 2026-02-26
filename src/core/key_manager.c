@@ -1,5 +1,6 @@
 #include "core/key_manager.h"
 #include "core/media_manager.h"
+#include "lvgl/lvgl.h"
 #include "mlog.h"
 #include "ui/volume_bar.h"
 #include <errno.h>
@@ -61,9 +62,10 @@ static key_state_t g_key_states[KEY_ID_BUTT];
  * 每个 bucket 仅保存一个回调入口。 */
 static key_callback_entry_t g_callback_map[KEY_ID_BUTT + 1][KEY_EVENT_BUTT + 1];
 static uint8_t g_inited = 0;
-static uint8_t g_block_non_power = 0;
+static uint8_t g_input_block_mask = 0;
 static uint32_t g_long_press_ms = KEY_MANAGER_DEFAULT_LONG_PRESS_MS;
 static uint32_t g_repeat_ms = KEY_MANAGER_DEFAULT_REPEAT_MS;
+static lv_indev_t* g_touch_indev = NULL;
 
 #define ENUM_CASE(x) \
     case x:          \
@@ -143,13 +145,40 @@ static int key_manager_event_bucket(key_event_type_t event_type)
     return (event_type == KEY_EVENT_ANY) ? KEY_MANAGER_EVENT_ANY_BUCKET : (int)event_type;
 }
 
-/* 清空非电源键状态，避免后续产生遗留 click/long_press。 */
-static void key_manager_clear_non_power_states(void)
+static uint8_t key_manager_mask_normalize(uint8_t mask)
+{
+    return (uint8_t)(mask & (KEY_INPUT_BLOCK_TP | KEY_INPUT_BLOCK_POWER_KEY | KEY_INPUT_BLOCK_ADC_KEY2));
+}
+
+static void key_manager_apply_touch_block(uint8_t block_mask)
+{
+    if (g_touch_indev == NULL) {
+        return;
+    }
+    lv_indev_enable(g_touch_indev, (block_mask & KEY_INPUT_BLOCK_TP) == 0);
+}
+
+/* 清空按键状态，避免后续产生遗留 click/long_press。 */
+static void key_manager_clear_key_states(uint8_t include_power, uint8_t include_non_power)
 {
     int i;
-    for (i = KEY_ID_POWER + 1; i < KEY_ID_BUTT; i++) {
-        memset(&g_key_states[i], 0, sizeof(g_key_states[i]));
+
+    if (include_power) {
+        memset(&g_key_states[KEY_ID_POWER], 0, sizeof(g_key_states[KEY_ID_POWER]));
     }
+    if (include_non_power) {
+        for (i = KEY_ID_POWER + 1; i < KEY_ID_BUTT; i++) {
+            memset(&g_key_states[i], 0, sizeof(g_key_states[i]));
+        }
+    }
+}
+
+static uint8_t key_manager_is_key_blocked(key_id_t key)
+{
+    if (key == KEY_ID_POWER) {
+        return (g_input_block_mask & KEY_INPUT_BLOCK_POWER_KEY) != 0;
+    }
+    return (g_input_block_mask & KEY_INPUT_BLOCK_ADC_KEY2) != 0;
 }
 
 /* 获取单调时钟毫秒时间戳，用于长按与连发判定。 */
@@ -223,7 +252,7 @@ static void key_manager_handle_key_value(key_id_t key, int value, uint64_t now_m
     if (key < 0 || key >= KEY_ID_BUTT) {
         return;
     }
-    if (g_block_non_power && key != KEY_ID_POWER) {
+    if (key_manager_is_key_blocked(key)) {
         memset(&g_key_states[key], 0, sizeof(g_key_states[key]));
         return;
     }
@@ -256,7 +285,7 @@ static void key_manager_process_hold_state(uint64_t now_ms)
 
     for (i = 0; i < KEY_ID_BUTT; i++) {
         key_state_t* state = &g_key_states[i];
-        if (g_block_non_power && i != KEY_ID_POWER) {
+        if (key_manager_is_key_blocked((key_id_t)i)) {
             continue;
         }
 
@@ -300,7 +329,8 @@ int key_manager_init(void)
 
     memset(g_key_states, 0, sizeof(g_key_states));
     memset(g_callback_map, 0, sizeof(g_callback_map));
-    g_block_non_power = 0;
+    g_input_block_mask = 0;
+    key_manager_apply_touch_block(g_input_block_mask);
 
     for (i = 0; i < sizeof(g_devices) / sizeof(g_devices[0]); i++) {
         g_devices[i].fd = open(g_devices[i].path, O_RDONLY | O_NONBLOCK | O_CLOEXEC);
@@ -342,7 +372,8 @@ void key_manager_deinit(void)
     }
     memset(g_key_states, 0, sizeof(g_key_states));
     memset(g_callback_map, 0, sizeof(g_callback_map));
-    g_block_non_power = 0;
+    g_input_block_mask = 0;
+    g_touch_indev = NULL;
     g_inited = 0;
 }
 
@@ -478,17 +509,37 @@ void key_manager_set_repeat_ms(uint32_t repeat_ms)
     g_repeat_ms = repeat_ms;
 }
 
-void key_manager_set_block_non_power(uint8_t blocked)
+void key_manager_bind_touch_indev(struct _lv_indev_t* indev)
 {
-    uint8_t new_state = blocked ? 1 : 0;
-    if (g_block_non_power == new_state) {
+    g_touch_indev = (lv_indev_t*)indev;
+    key_manager_apply_touch_block(g_input_block_mask);
+}
+
+void key_manager_set_block_non_power(uint8_t block_mask)
+{
+    uint8_t old_mask = g_input_block_mask;
+    uint8_t new_mask = key_manager_mask_normalize(block_mask);
+    uint8_t block_power_new = (new_mask & KEY_INPUT_BLOCK_POWER_KEY) != 0;
+    uint8_t block_power_old = (old_mask & KEY_INPUT_BLOCK_POWER_KEY) != 0;
+    uint8_t block_adc_new = (new_mask & KEY_INPUT_BLOCK_ADC_KEY2) != 0;
+    uint8_t block_adc_old = (old_mask & KEY_INPUT_BLOCK_ADC_KEY2) != 0;
+
+    if (old_mask == new_mask) {
         return;
     }
-    g_block_non_power = new_state;
-    key_manager_clear_non_power_states();
+    g_input_block_mask = new_mask;
+
+    if (!block_power_old && block_power_new) {
+        key_manager_clear_key_states(1, 0);
+    }
+    if (!block_adc_old && block_adc_new) {
+        key_manager_clear_key_states(0, 1);
+    }
+
+    key_manager_apply_touch_block(new_mask);
 }
 
 uint8_t key_manager_get_block_non_power(void)
 {
-    return g_block_non_power;
+    return g_input_block_mask;
 }

@@ -56,6 +56,9 @@ static void lv_linux_disp_init(void)
     lv_indev_t* indev = lv_evdev_create(LV_INDEV_TYPE_POINTER, TOUCH_PANEL_EVENT_PATH);
     if (!indev) {
         MLOG_ERR("Failed to create touchscreen input: %s", TOUCH_PANEL_EVENT_PATH);
+    } else {
+        // 将输入设备交给 key manager 管理，统一处理输入屏蔽逻辑
+        key_manager_bind_touch_indev(indev);
     }
 #endif
 }
