@@ -67,9 +67,12 @@ static int32_t message_manager_process_result_locked(EVENT_S* evt)
 static int32_t message_manager_dispatch_event(EVENT_S* evt)
 {
     switch (evt->topic) {
+    case EVENT_MODEMNG_RESET:
     case EVENT_MODEMNG_MODEOPEN:
     case EVENT_MODEMNG_MODECLOSE:
     case EVENT_MODEMNG_MODESWITCH:
+    case EVENT_MODEMNG_START_PIV:
+    case EVENT_MODEMNG_SETTING:
     case EVENT_MODEMNG_CARD_REMOVE:
     case EVENT_MODEMNG_CARD_AVAILABLE:
     case EVENT_MODEMNG_CARD_UNAVAILABLE:
@@ -79,6 +82,7 @@ static int32_t message_manager_dispatch_event(EVENT_S* evt)
     case EVENT_MODEMNG_CARD_CHECKING:
     case EVENT_MODEMNG_CARD_READ_ONLY:
     case EVENT_MODEMNG_CARD_MOUNT_FAILED:
+    case EVENT_MODEMNG_CARD_FORMAT:
     case EVENT_MODEMNG_CARD_FORMATING:
     case EVENT_MODEMNG_CARD_FORMAT_SUCCESSED:
     case EVENT_MODEMNG_CARD_FORMAT_FAILED:
@@ -91,7 +95,7 @@ static int32_t message_manager_dispatch_event(EVENT_S* evt)
     case EVENT_MODEMNG_RECODER_STOPEMRSTAUE:
     case EVENT_MODEMNG_RECODER_STARTPIVSTAUE:
     case EVENT_MODEMNG_RECODER_STOPPIVSTAUE:
-        MLOG_DBG("message_manager handled topic=0x%x result=%d", evt->topic, evt->s32Result);
+        MLOG_DBG("处理 topic=%s(0x%x) result=%d", event_topic_get_name(evt->topic), evt->topic, evt->s32Result);
         break;
     default:
         break;
@@ -325,6 +329,8 @@ int32_t message_manager_send_sync_timeout(const MESSAGE_S* msg, uint32_t timeout
             g_msg_ctx.msg_processed = true;
             g_msg_ctx.result_cb = NULL;
             MUTEX_UNLOCK(g_msg_ctx.msg_mutex);
+            MLOG_WARN("通过发送消息超时: topic=%s(0x%x) arg1=%d arg2=%d",
+                event_topic_get_name(msg->topic), msg->topic, msg->arg1, msg->arg2);
             return MESSAGE_MANAGER_ETIMEOUT;
         }
     }

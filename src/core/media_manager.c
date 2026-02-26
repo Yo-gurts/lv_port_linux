@@ -7,6 +7,8 @@
 #include "param.h"
 
 #define MEDIA_MANAGER_TAKE_PHOTO_TIMEOUT_MS 2000U
+#define MEDIA_MANAGER_MODE_SWITCH_TIMEOUT_MS 3000U
+#define MEDIA_MANAGER_SETTING_TIMEOUT_MS 3000U
 
 typedef int (*media_op_handler_t)(int32_t args);
 
@@ -25,7 +27,7 @@ static int media_manager_set_param_checked(param_id_t id, int value, const char*
 {
     int ret = param_manager_set(id, value);
     if (ret != 0) {
-        MLOG_ERR("media_manager %s失败: value=%d ret=%d", what, value, ret);
+        MLOG_ERR("%s失败: value=%d ret=%d", what, value, ret);
         return MEDIA_MANAGER_ESTATE;
     }
     return MEDIA_MANAGER_OK;
@@ -36,16 +38,20 @@ static int handle_switch_to_photo_mode(int32_t args)
     (void)args;
     MESSAGE_S msg = { 0 };
     int32_t ret = 0;
+    uint8_t blocked_prev = 0;
 
     msg.topic = EVENT_MODEMNG_MODESWITCH;
     msg.arg1 = WORK_MODE_PHOTO;
-    ret = message_manager_send_async(&msg, NULL);
+    blocked_prev = key_manager_get_block_non_power();
+    key_manager_set_block_non_power((uint8_t)(blocked_prev | KEY_INPUT_BLOCK_TP | KEY_INPUT_BLOCK_ADC_KEY2));
+    ret = message_manager_send_sync_timeout(&msg, MEDIA_MANAGER_MODE_SWITCH_TIMEOUT_MS);
+    key_manager_set_block_non_power(blocked_prev);
     if (ret != 0) {
-        MLOG_ERR("media_manager 切换到拍照模式失败: ret=%d", (int)ret);
+        MLOG_ERR("切换到拍照模式失败: ret=%d", (int)ret);
         return MEDIA_MANAGER_ESTATE;
     }
 
-    MLOG_INFO("media_manager 已请求切换到拍照模式");
+    MLOG_INFO("已请求切换到拍照模式");
     return MEDIA_MANAGER_OK;
 }
 
@@ -54,16 +60,20 @@ static int handle_switch_to_boot_mode(int32_t args)
     (void)args;
     MESSAGE_S msg = { 0 };
     int32_t ret = 0;
+    uint8_t blocked_prev = 0;
 
     msg.topic = EVENT_MODEMNG_MODESWITCH;
     msg.arg1 = WORK_MODE_BOOT;
-    ret = message_manager_send_async(&msg, NULL);
+    blocked_prev = key_manager_get_block_non_power();
+    key_manager_set_block_non_power((uint8_t)(blocked_prev | KEY_INPUT_BLOCK_TP | KEY_INPUT_BLOCK_ADC_KEY2));
+    ret = message_manager_send_sync_timeout(&msg, MEDIA_MANAGER_MODE_SWITCH_TIMEOUT_MS);
+    key_manager_set_block_non_power(blocked_prev);
     if (ret != 0) {
-        MLOG_ERR("media_manager 切换到boot模式失败: ret=%d", (int)ret);
+        MLOG_ERR("切换到boot模式失败: ret=%d", (int)ret);
         return MEDIA_MANAGER_ESTATE;
     }
 
-    MLOG_INFO("media_manager 已请求切换到boot模式");
+    MLOG_INFO("已请求切换到boot模式");
     return MEDIA_MANAGER_OK;
 }
 
@@ -72,16 +82,20 @@ static int handle_switch_to_video_mode(int32_t args)
     (void)args;
     MESSAGE_S msg = { 0 };
     int32_t ret = 0;
+    uint8_t blocked_prev = 0;
 
     msg.topic = EVENT_MODEMNG_MODESWITCH;
     msg.arg1 = WORK_MODE_MOVIE;
-    ret = message_manager_send_async(&msg, NULL);
+    blocked_prev = key_manager_get_block_non_power();
+    key_manager_set_block_non_power((uint8_t)(blocked_prev | KEY_INPUT_BLOCK_TP | KEY_INPUT_BLOCK_ADC_KEY2));
+    ret = message_manager_send_sync_timeout(&msg, MEDIA_MANAGER_MODE_SWITCH_TIMEOUT_MS);
+    key_manager_set_block_non_power(blocked_prev);
     if (ret != 0) {
-        MLOG_ERR("media_manager 切换到录像模式失败: ret=%d", (int)ret);
+        MLOG_ERR("切换到录像模式失败: ret=%d", (int)ret);
         return MEDIA_MANAGER_ESTATE;
     }
 
-    MLOG_INFO("media_manager 已请求切换到录像模式");
+    MLOG_INFO("已请求切换到录像模式");
     return MEDIA_MANAGER_OK;
 }
 
@@ -99,18 +113,18 @@ static int handle_take_photo(int32_t args)
     ret = message_manager_send_sync_timeout(&msg, MEDIA_MANAGER_TAKE_PHOTO_TIMEOUT_MS);
     key_manager_set_block_non_power(blocked_prev);
     if (ret != 0) {
-        MLOG_ERR("media_manager 拍照失败: ret=%d", (int)ret);
+        MLOG_ERR("拍照失败: ret=%d", (int)ret);
         return MEDIA_MANAGER_ESTATE;
     }
 
-    MLOG_INFO("media_manager 已触发拍照");
+    MLOG_INFO("已触发拍照");
     return MEDIA_MANAGER_OK;
 }
 
 static int handle_focus(int32_t args)
 {
     (void)args;
-    MLOG_INFO("media_manager 对焦(占位实现)");
+    MLOG_INFO("对焦(占位实现)");
     return MEDIA_MANAGER_OK;
 }
 
@@ -128,13 +142,13 @@ static int handle_adjust_system_volume(int32_t args)
 
     current_volume = param_manager_get(PARAM_ID_VOLUME);
     if (current_volume < 0) {
-        MLOG_ERR("media_manager 获取当前音量失败: ret=%d", current_volume);
+        MLOG_ERR("获取当前音量失败: ret=%d", current_volume);
         return MEDIA_MANAGER_ESTATE;
     }
     target_volume = media_manager_clamp_volume(current_volume + (int)args);
     ret = media_manager_set_param_checked(PARAM_ID_VOLUME, target_volume, "调整系统音量");
     if (ret != MEDIA_MANAGER_OK) {
-        MLOG_ERR("media_manager 调整音量失败: current=%d delta=%d target=%d",
+        MLOG_ERR("调整音量失败: current=%d delta=%d target=%d",
             current_volume, (int)args, target_volume);
     }
     return ret;
@@ -143,7 +157,7 @@ static int handle_adjust_system_volume(int32_t args)
 static int handle_format_storage(int32_t args)
 {
     (void)args;
-    MLOG_INFO("media_manager 格式化存储(占位实现)");
+    MLOG_INFO("格式化存储(占位实现)");
     return MEDIA_MANAGER_OK;
 }
 
@@ -159,6 +173,7 @@ static int handle_set_photo_resolution(int32_t args)
     int value = (int)args;
     int ret = MEDIA_MANAGER_OK;
     MESSAGE_S msg = { 0 };
+    uint8_t blocked_prev = 0;
 
     ret = media_manager_set_param_checked(PARAM_ID_RESOLUTION, value, "设置拍照分辨率");
     if (ret != MEDIA_MANAGER_OK) {
@@ -168,13 +183,16 @@ static int handle_set_photo_resolution(int32_t args)
     msg.topic = EVENT_MODEMNG_SETTING;
     msg.arg1 = PARAM_MENU_PHOTO_SIZE;
     msg.arg2 = (uint32_t)value;
-    ret = message_manager_send_async(&msg, NULL);
-    if (ret != MEDIA_MANAGER_OK) {
-        MLOG_ERR("media_manager 设置拍照分辨率消息发送失败: value=%d ret=%d", value, ret);
-        return ret;
+    blocked_prev = key_manager_get_block_non_power();
+    key_manager_set_block_non_power((uint8_t)(blocked_prev | KEY_INPUT_BLOCK_TP | KEY_INPUT_BLOCK_ADC_KEY2));
+    ret = message_manager_send_sync_timeout(&msg, MEDIA_MANAGER_SETTING_TIMEOUT_MS);
+    key_manager_set_block_non_power(blocked_prev);
+    if (ret != 0) {
+        MLOG_ERR("设置拍照分辨率消息发送失败: value=%d ret=%d", value, ret);
+        return MEDIA_MANAGER_ESTATE;
     }
 
-    MLOG_INFO("media_manager 已设置拍照分辨率: index=%d", value);
+    MLOG_INFO("已设置拍照分辨率: index=%d", value);
     return MEDIA_MANAGER_OK;
 }
 
@@ -213,6 +231,7 @@ static int handle_set_video_resolution(int32_t args)
     int value = (int)args;
     int ret = MEDIA_MANAGER_OK;
     MESSAGE_S msg = { 0 };
+    uint8_t blocked_prev = 0;
 
     ret = media_manager_set_param_checked(PARAM_ID_VIDEO_RESOLUTION, value, "设置录像分辨率");
     if (ret != MEDIA_MANAGER_OK) {
@@ -222,12 +241,15 @@ static int handle_set_video_resolution(int32_t args)
     msg.topic = EVENT_MODEMNG_SETTING;
     msg.arg1 = PARAM_MENU_VIDEO_SIZE;
     msg.arg2 = (uint32_t)value;
-    ret = message_manager_send_async(&msg, NULL);
+    blocked_prev = key_manager_get_block_non_power();
+    key_manager_set_block_non_power((uint8_t)(blocked_prev | KEY_INPUT_BLOCK_TP | KEY_INPUT_BLOCK_ADC_KEY2));
+    ret = message_manager_send_sync_timeout(&msg, MEDIA_MANAGER_SETTING_TIMEOUT_MS);
+    key_manager_set_block_non_power(blocked_prev);
     if (ret != 0) {
-        MLOG_ERR("media_manager 设置录像分辨率消息发送失败: value=%d ret=%d", value, ret);
+        MLOG_ERR("设置录像分辨率消息发送失败: value=%d ret=%d", value, ret);
         return MEDIA_MANAGER_ESTATE;
     }
-    MLOG_INFO("media_manager 已设置录像分辨率: index=%d", value);
+    MLOG_INFO("已设置录像分辨率: index=%d", value);
     return MEDIA_MANAGER_OK;
 }
 
@@ -256,13 +278,13 @@ int media_manager_execute(media_operation_t op, int32_t args)
     media_op_handler_t handler = NULL;
 
     if (op < 0 || op >= MEDIA_OP_BUTT) {
-        MLOG_WARN("media_manager 非法操作: %d", op);
+        MLOG_WARN("非法操作: %d", op);
         return MEDIA_MANAGER_EINVAL;
     }
 
     handler = g_media_handlers[op];
     if (handler == NULL) {
-        MLOG_WARN("media_manager 不支持的操作: %d", op);
+        MLOG_WARN("不支持的操作: %d", op);
         return MEDIA_MANAGER_EUNSUP;
     }
 
