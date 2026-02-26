@@ -5,6 +5,7 @@
 #include "pages/page_photo.h"
 #include "config.h"
 #include "core/font_manager.h"
+#include "core/key_manager.h"
 #include "core/media_manager.h"
 #include "core/page_manager.h"
 #include "core/param_manager.h"
@@ -91,6 +92,28 @@ static void menu_back_cb(lv_event_t* e)
     filter_panel_hide();
     MLOG_INFO("Menu clicked, navigate to photo_settings");
     page_manager_navigate("photo_settings");
+}
+
+/* 拍照键回调：在拍照页触发拍照动作 */
+static void take_photo_key_cb(key_id_t key, key_event_type_t event_type, void* user_data)
+{
+    page_photo_data_t* data = (page_photo_data_t*)user_data;
+    int ret = 0;
+
+    if (key != KEY_ID_CAMERA || event_type != KEY_EVENT_CLICK) {
+        return;
+    }
+    if (!data || !data->container) {
+        return;
+    }
+    if (lv_obj_has_flag(data->container, LV_OBJ_FLAG_HIDDEN)) {
+        return;
+    }
+
+    ret = media_manager_execute(MEDIA_OP_TAKE_PHOTO, 0);
+    if (ret != 0) {
+        MLOG_ERR("Take photo by key failed: ret=%d", ret);
+    }
 }
 
 /* 顶部返回按钮回调：返回时切换到 boot mode */
@@ -265,6 +288,8 @@ void page_photo_destroy(void)
         return;
     }
 
+    (void)key_manager_unregister_callback(KEY_ID_CAMERA, KEY_EVENT_CLICK, take_photo_key_cb, data);
+
     filter_panel_hide();
 
     if (data->container != NULL) {
@@ -286,6 +311,10 @@ void page_photo_show(void)
     filter_panel_hide();
     update_resolution_display();
     lv_obj_clear_flag(data->container, LV_OBJ_FLAG_HIDDEN);
+
+    if (key_manager_register_callback(KEY_ID_CAMERA, KEY_EVENT_CLICK, take_photo_key_cb, data) != 0) {
+        MLOG_WARN("register photo key callback failed");
+    }
 }
 
 void page_photo_hide(void)
@@ -298,6 +327,7 @@ void page_photo_hide(void)
     MLOG_INFO("Photo page hide");
     filter_panel_hide();
     lv_obj_add_flag(data->container, LV_OBJ_FLAG_HIDDEN);
+    (void)key_manager_unregister_callback(KEY_ID_CAMERA, KEY_EVENT_CLICK, take_photo_key_cb, data);
 }
 
 void page_photo_update(void)

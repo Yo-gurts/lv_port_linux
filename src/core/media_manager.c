@@ -1,9 +1,12 @@
 #include "core/media_manager.h"
+#include "core/key_manager.h"
 #include "core/message_manager.h"
 #include "core/param_manager.h"
 #include "mlog.h"
 #include "mode.h"
 #include "param.h"
+
+#define MEDIA_MANAGER_TAKE_PHOTO_TIMEOUT_MS 2000U
 
 typedef int (*media_op_handler_t)(int32_t args);
 
@@ -84,8 +87,23 @@ static int handle_switch_to_video_mode(int32_t args)
 
 static int handle_take_photo(int32_t args)
 {
+    MESSAGE_S msg = { 0 };
+    int32_t ret = 0;
+    uint8_t blocked_prev = 0;
+
     (void)args;
-    MLOG_INFO("media_manager 拍照(占位实现)");
+
+    msg.topic = EVENT_MODEMNG_START_PIV;
+    blocked_prev = key_manager_get_block_non_power();
+    key_manager_set_block_non_power(1);
+    ret = message_manager_send_sync_timeout(&msg, MEDIA_MANAGER_TAKE_PHOTO_TIMEOUT_MS);
+    key_manager_set_block_non_power(blocked_prev);
+    if (ret != 0) {
+        MLOG_ERR("media_manager 拍照失败: ret=%d", (int)ret);
+        return MEDIA_MANAGER_ESTATE;
+    }
+
+    MLOG_INFO("media_manager 已触发拍照");
     return MEDIA_MANAGER_OK;
 }
 

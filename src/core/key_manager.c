@@ -65,6 +65,41 @@ static uint8_t g_block_non_power = 0;
 static uint32_t g_long_press_ms = KEY_MANAGER_DEFAULT_LONG_PRESS_MS;
 static uint32_t g_repeat_ms = KEY_MANAGER_DEFAULT_REPEAT_MS;
 
+#define ENUM_CASE(x) \
+    case x:          \
+        return #x
+
+static const char* key_manager_key_to_string(key_id_t key)
+{
+    switch (key) {
+        ENUM_CASE(KEY_ID_POWER);
+        ENUM_CASE(KEY_ID_AI);
+        ENUM_CASE(KEY_ID_VOLUME_UP);
+        ENUM_CASE(KEY_ID_VOLUME_DOWN);
+        ENUM_CASE(KEY_ID_FOCUS);
+        ENUM_CASE(KEY_ID_CAMERA);
+        ENUM_CASE(KEY_ID_ANY);
+    default:
+        return "UNKNOWN";
+    }
+}
+
+static const char* key_manager_event_to_string(key_event_type_t event_type)
+{
+    switch (event_type) {
+        ENUM_CASE(KEY_EVENT_CLICK);
+        ENUM_CASE(KEY_EVENT_LONG_PRESS);
+        ENUM_CASE(KEY_EVENT_LONG_PRESS_REPEAT);
+        ENUM_CASE(KEY_EVENT_LONG_PRESS_3S);
+        ENUM_CASE(KEY_EVENT_LONG_PRESS_3S_RELEASE);
+        ENUM_CASE(KEY_EVENT_ANY);
+    default:
+        return "UNKNOWN";
+    }
+}
+
+#undef ENUM_CASE
+
 static void key_manager_on_volume_key_event(key_id_t key, key_event_type_t event_type, void* user_data)
 {
     int delta = 0;
@@ -155,6 +190,10 @@ static void key_manager_dispatch(key_id_t key, key_event_type_t event_type)
     int event_buckets[2];
     int kb;
     int eb;
+
+    MLOG_INFO("key event: key=%s(%d), event=%s(%d)",
+        key_manager_key_to_string(key), key,
+        key_manager_event_to_string(event_type), event_type);
 
     key_buckets[0] = key_manager_key_bucket(key);
     key_buckets[1] = KEY_MANAGER_ANY_BUCKET;
