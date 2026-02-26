@@ -126,7 +126,7 @@ void page_ai_photo_create(void)
 
     /* SD卡图标 - 右上角 */
     data->sd_icon = lv_img_create(data->top_bar);
-    lv_img_set_src(data->sd_icon, "A:" RES_ICON_PATH "/sd-card.png");
+    lv_img_set_src(data->sd_icon, "A:" RES_ICON_PATH "/sd_online.png");
     lv_obj_align(data->sd_icon, LV_ALIGN_RIGHT_MID, -120, 0);
 
     /* WiFi图标 - SD卡和电池之间 */
@@ -136,7 +136,7 @@ void page_ai_photo_create(void)
 
     /* 电池图标 - 最右上角 */
     data->battery_icon = lv_img_create(data->top_bar);
-    lv_img_set_src(data->battery_icon, "A:" RES_ICON_PATH "/battery33%.png");
+    lv_img_set_src(data->battery_icon, "A:" RES_ICON_PATH "/battery-full.png");
     lv_obj_align(data->battery_icon, LV_ALIGN_RIGHT_MID, -10, 0);
 
     /* =======================

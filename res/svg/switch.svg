@@ -1,0 +1,13 @@
+<svg width="45" height="45" xmlns="http://www.w3.org/2000/svg" fill="#FFFFFF" class="bi bi-camera">
+ <g>
+  <title>Layer 1</title>
+  <path d="m41.04998,32.49999a2.65,2.5 0 0 1 -2.65,2.5l-31.79997,0a2.65,2.5 0 0 1 -2.65,-2.5l0,-14.99999a2.65,2.5 0 0 1 2.65,-2.5l3.1058,0a7.94999,7.49999 0 0 0 5.618,-2.1975l2.1995,-2.07a2.65,2.5 0 0 1 1.86825,-0.7325l6.21159,0a2.65,2.5 0 0 1 1.87355,0.7325l2.1942,2.07a7.94999,7.49999 0 0 0 5.6233,2.1975l3.1058,0a2.65,2.5 0 0 1 2.65,2.5l0,14.99999l-0.00002,0zm-34.44997,-19.99998a5.3,5 0 0 0 -5.3,5l0,14.99999a5.3,5 0 0 0 5.3,5l31.79997,0a5.3,5 0 0 0 5.3,-5l0,-14.99999a5.3,5 0 0 0 -5.3,-5l-3.1058,0a5.3,5 0 0 1 -3.7471,-1.465l-2.1942,-2.07a5.3,5 0 0 0 -3.7471,-1.465l-6.21159,0a5.3,5 0 0 0 -3.7471,1.465l-2.1942,2.07a5.3,5 0 0 1 -3.7471,1.465l-3.1058,0l0.00002,0z" id="svg_1" stroke="null"/>
+  <g id="svg_6" stroke="null" stroke-width="5">
+   <path d="m31.69565,15.99823l0,6.14278l-6.29076,0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" id="svg_2" stroke="#FFFFFF"/>
+   <path d="m11.56522,30.7409l0,-6.14278l6.29076,0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" id="svg_3" stroke="#FFFFFF"/>
+   <path d="m14.7106,19.92961a8.80706,8.5999 0 0 1 15.22364,-2.70282" stroke-width="2" stroke-linecap="round" id="svg_4" stroke="#FFFFFF"/>
+   <path d="m28.55027,26.80952a8.80706,8.5999 0 0 1 -15.22364,2.70282" stroke-width="2" stroke-linecap="round" id="svg_5" stroke="#FFFFFF"/>
+  </g>
+ </g>
+
+</svg>

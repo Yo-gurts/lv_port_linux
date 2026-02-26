@@ -520,7 +520,7 @@ void page_album_create(void)
     lv_obj_add_event_cb(data->photo_btn, photo_btn_cb, LV_EVENT_CLICKED, NULL);
     lv_obj_align(data->photo_btn, LV_ALIGN_CENTER, -50, 0);
     lv_obj_t* photo_icon = lv_img_create(data->photo_btn);
-    lv_img_set_src(photo_icon, "A:" RES_ICON_PATH "/photo-white.png");
+    lv_img_set_src(photo_icon, "A:" RES_ICON_PATH "/camera.png");
     lv_obj_align(photo_icon, LV_ALIGN_CENTER, 0, 0);
 
     /* 录像按钮 */

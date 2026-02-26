@@ -169,12 +169,12 @@ void page_photo_create(void)
 
     /* SD卡图标 - 右上角 */
     data->sd_icon = lv_img_create(data->top_bar);
-    lv_img_set_src(data->sd_icon, "A:" RES_ICON_PATH "/sd-card.png");
+    lv_img_set_src(data->sd_icon, "A:" RES_ICON_PATH "/sd_online.png");
     lv_obj_align(data->sd_icon, LV_ALIGN_RIGHT_MID, -60, 0);
 
     /* 电池图标 - 最右上角 */
     data->battery_icon = lv_img_create(data->top_bar);
-    lv_img_set_src(data->battery_icon, "A:" RES_ICON_PATH "/battery33%.png");
+    lv_img_set_src(data->battery_icon, "A:" RES_ICON_PATH "/battery-charging.png");
     lv_obj_align(data->battery_icon, LV_ALIGN_RIGHT_MID, -10, 0);
 
     /* =======================
@@ -194,7 +194,7 @@ void page_photo_create(void)
     lv_obj_add_event_cb(data->mode_btn, mode_switch_cb, LV_EVENT_CLICKED, NULL);
     lv_obj_align(data->mode_btn, LV_ALIGN_LEFT_MID, 10, 0);
     data->mode_img = lv_img_create(data->mode_btn);
-    lv_img_set_src(data->mode_img, "A:" RES_ICON_PATH "/photo.png");
+    lv_img_set_src(data->mode_img, "A:" RES_ICON_PATH "/camera.png");
     lv_obj_align(data->mode_img, LV_ALIGN_CENTER, 0, 0);
 
     /* 滤镜按钮 - 紧随拍照按钮 */

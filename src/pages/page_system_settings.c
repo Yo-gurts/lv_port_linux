@@ -30,7 +30,7 @@ static const setting_config_t settings_config[] = {
     { .icon_path = "A" RES_ICON_PATH "/sys-wifi.png", .title = "WiFi设置", .value = "未连接", .type = SETTING_TYPE_NORMAL },
     { .icon_path = "A" RES_ICON_PATH "/datetime.png", .title = "时间和日期", .value = "2026-02-07 12:00", .type = SETTING_TYPE_NORMAL },
     { .icon_path = "A" RES_ICON_PATH "/sys-volume.png", .title = "音量设置", .value = "xx%", .type = SETTING_TYPE_NORMAL },
-    { .icon_path = "A" RES_ICON_PATH "/format.png", .title = "格式化", .value = "请确认", .type = SETTING_TYPE_NORMAL },
+    { .icon_path = "A" RES_ICON_PATH "/delete.png", .title = "格式化", .value = "请确认", .type = SETTING_TYPE_NORMAL },
     { .icon_path = "A" RES_ICON_PATH "/factory.png", .title = "出厂设置", .value = "请确认", .type = SETTING_TYPE_NORMAL },
     { .icon_path = "A" RES_ICON_PATH "/info.png", .title = "版本信息", .value = "V1.0.0", .type = SETTING_TYPE_NORMAL },
 };
