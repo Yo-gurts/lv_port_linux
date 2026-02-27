@@ -3,8 +3,6 @@
 
 #include "core/page_manager.h"
 
-#define PHOTO_FILTER_MAX_COUNT 12
-
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -23,15 +21,6 @@ typedef struct {
     lv_obj_t* menu_btn; /* 菜单按钮 */
     lv_obj_t* filter_btn; /* 滤镜按钮 */
     lv_obj_t* switch_btn; /* 摄像头切换按钮 */
-    lv_obj_t* filter_overlay; /* 滤镜全屏点击层（点击空白关闭） */
-    lv_obj_t* filter_panel; /* 滤镜选择面板 */
-    lv_obj_t* filter_list; /* 滤镜横向滚动列表 */
-    lv_obj_t* filter_focus_frame; /* 中间固定选中框 */
-    lv_obj_t* filter_items[PHOTO_FILTER_MAX_COUNT]; /* 滤镜条目容器 */
-    lv_obj_t* filter_thumbs[PHOTO_FILTER_MAX_COUNT]; /* 滤镜缩略图容器 */
-    lv_obj_t* filter_labels[PHOTO_FILTER_MAX_COUNT]; /* 滤镜名称标签 */
-    int filter_count; /* 滤镜数量 */
-    int selected_filter_index; /* 当前选中的滤镜下标 */
 } page_photo_data_t;
 
 void page_photo_create(void);

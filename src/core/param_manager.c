@@ -28,6 +28,8 @@ static const int default_values[PARAM_ID_BUTT] = {
     [PARAM_ID_SMILE_CAPTURE] = 0, /* 关闭 */
     [PARAM_ID_VIDEO_RESOLUTION] = VIDEO_RESOLUTION_4K,
     [PARAM_ID_AI_MODE] = AI_MODE_STYLE_TRANSFER,
+    [PARAM_ID_FILTER_INDEX] = 0, /* 默认“原图” */
+    [PARAM_ID_FILTER_RESET_ON_MODE_SWITCH] = 0, /* 默认切模式不重置滤镜 */
     [PARAM_ID_VOLUME] = 50, /* 默认音量50% */
 };
 
@@ -42,6 +44,8 @@ static const param_rule_t param_rules[PARAM_ID_BUTT] = {
     [PARAM_ID_SMILE_CAPTURE] = { .min_value = 0, .max_value = 1, .validate_enabled = 1 },
     [PARAM_ID_VIDEO_RESOLUTION] = { .min_value = VIDEO_RESOLUTION_4K, .max_value = VIDEO_RESOLUTION_BUTT - 1, .validate_enabled = 1 },
     [PARAM_ID_AI_MODE] = { .min_value = AI_MODE_STYLE_TRANSFER, .max_value = AI_MODE_BUTT - 1, .validate_enabled = 1 },
+    [PARAM_ID_FILTER_INDEX] = { .min_value = 0, .max_value = 5, .validate_enabled = 1 },
+    [PARAM_ID_FILTER_RESET_ON_MODE_SWITCH] = { .min_value = 0, .max_value = 1, .validate_enabled = 1 },
     [PARAM_ID_VOLUME] = { .min_value = 0, .max_value = 100, .validate_enabled = 1 },
 };
 

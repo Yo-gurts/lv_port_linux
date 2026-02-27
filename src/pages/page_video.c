@@ -10,6 +10,7 @@
 #include "core/param_manager.h"
 #include "core/style_manager.h"
 #include "mlog.h"
+#include "ui/filter_panel.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -44,11 +45,13 @@ static const char* video_resolution_icons[] = {
 static void update_resolution_display(void)
 {
     page_video_data_t* data = page_get_private_data();
-    if (!data || !data->resolution_img) {
+    int resolution_index;
+
+    if (data == NULL || data->resolution_img == NULL) {
         return;
     }
 
-    int resolution_index = param_manager_get(PARAM_ID_VIDEO_RESOLUTION);
+    resolution_index = param_manager_get(PARAM_ID_VIDEO_RESOLUTION);
     lv_img_set_src(data->resolution_img, video_resolution_icons[resolution_index]);
 }
 
@@ -67,10 +70,18 @@ static void update_resolution_display(void)
 // ! #region 7. 按键、手势、定时器 等事件回调函数
 // #############################################################################
 
-/* 返回按钮回调：返回上一页 */
+/* 录像/拍照切换回调。 */
 static void mode_switch_cb(lv_event_t* e)
 {
+    int reset_filter;
+
     LV_UNUSED(e);
+    reset_filter = param_manager_get(PARAM_ID_FILTER_RESET_ON_MODE_SWITCH);
+    if (reset_filter == 1) {
+        (void)param_manager_set(PARAM_ID_FILTER_INDEX, 0);
+    }
+
+    filter_panel_hide();
     MLOG_INFO("Back to photo page");
     (void)media_manager_execute(MEDIA_OP_SWITCH_TO_PHOTO_MODE, 0);
     page_manager_back();
@@ -80,6 +91,7 @@ static void mode_switch_cb(lv_event_t* e)
 static void back_btn_cb(lv_event_t* e)
 {
     LV_UNUSED(e);
+    filter_panel_hide();
     (void)media_manager_execute(MEDIA_OP_SWITCH_TO_PHOTO_MODE, 0);
     page_manager_back();
 }
@@ -88,8 +100,22 @@ static void back_btn_cb(lv_event_t* e)
 static void menu_back_cb(lv_event_t* e)
 {
     LV_UNUSED(e);
+    filter_panel_hide();
     MLOG_INFO("Menu clicked, navigate to video_settings");
     page_manager_navigate("video_settings");
+}
+
+/* 滤镜按钮回调：显示/隐藏全局滤镜面板。 */
+static void filter_btn_cb(lv_event_t* e)
+{
+    LV_UNUSED(e);
+
+    if (filter_panel_is_visible()) {
+        filter_panel_hide();
+        return;
+    }
+
+    filter_panel_show();
 }
 
 // #endregion
@@ -100,12 +126,15 @@ static void menu_back_cb(lv_event_t* e)
 void page_video_create(void)
 {
     page_video_data_t* data = (page_video_data_t*)malloc(sizeof(page_video_data_t));
-    if (!data) {
+    if (data == NULL) {
         return;
     }
 
     memset(data, 0, sizeof(page_video_data_t));
     data->is_recording = 0; /* 默认未录像 */
+
+    /* 初始化全局滤镜面板（单例）。 */
+    filter_panel_init();
 
     /* 创建页面容器 */
     data->container = lv_obj_create(lv_screen_active());
@@ -141,8 +170,8 @@ void page_video_create(void)
 
     /* 分辨率图标 - 跟在返回按钮后面 */
     data->resolution_img = lv_img_create(data->top_bar);
-    lv_img_set_src(data->resolution_img, "A:" RES_ICON_PATH "/4k.png");
     lv_obj_align(data->resolution_img, LV_ALIGN_LEFT_MID, 65, 0);
+    update_resolution_display();
 
     /* 录像时长 Label - 右上角 */
     data->time_label = lv_label_create(data->top_bar);
@@ -184,7 +213,7 @@ void page_video_create(void)
     data->filter_btn = lv_btn_create(data->bottom_bar);
     lv_obj_set_size(data->filter_btn, 50, 50);
     lv_obj_add_style(data->filter_btn, &style_noboarder, LV_PART_MAIN);
-    lv_obj_add_event_cb(data->filter_btn, NULL, LV_EVENT_CLICKED, NULL);
+    lv_obj_add_event_cb(data->filter_btn, filter_btn_cb, LV_EVENT_CLICKED, NULL);
     lv_obj_align(data->filter_btn, LV_ALIGN_LEFT_MID, 70, 0);
     lv_obj_t* filter_icon = lv_img_create(data->filter_btn);
     lv_img_set_src(filter_icon, "A:" RES_ICON_PATH "/filter_default.png");
@@ -217,12 +246,13 @@ void page_video_create(void)
 void page_video_destroy(void)
 {
     page_video_data_t* data = page_get_private_data();
-    if (!data) {
+    if (data == NULL) {
         return;
     }
 
+    filter_panel_hide();
     /* 删除容器（子元素会自动删除） */
-    if (data->container) {
+    if (data->container != NULL) {
         lv_obj_del(data->container);
         data->container = NULL;
     }
@@ -233,24 +263,25 @@ void page_video_destroy(void)
 void page_video_show(void)
 {
     page_video_data_t* data = page_get_private_data();
-    if (!data || !data->container) {
+    if (data == NULL || data->container == NULL) {
         return;
     }
 
     MLOG_INFO("Video page show");
-    /* 显示 UI */
+    filter_panel_hide();
+    update_resolution_display();
     lv_obj_clear_flag(data->container, LV_OBJ_FLAG_HIDDEN);
 }
 
 void page_video_hide(void)
 {
     page_video_data_t* data = page_get_private_data();
-    if (!data || !data->container) {
+    if (data == NULL || data->container == NULL) {
         return;
     }
 
     MLOG_INFO("Video page hide");
-    /* 隐藏 UI */
+    filter_panel_hide();
     lv_obj_add_flag(data->container, LV_OBJ_FLAG_HIDDEN);
 }
 
