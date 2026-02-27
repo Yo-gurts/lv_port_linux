@@ -16,6 +16,17 @@ extern "C" {
 #define RES_ICON_PATH PROJECT_PATH "/res/icons"
 
 /* =======================
+ * 相册路径配置
+ * ======================= */
+#ifndef PHOTO_ALBUM_IMAGE_PATH
+#define PHOTO_ALBUM_IMAGE_PATH "A:/mnt/sd/DCIM/PHOTO/"
+#endif
+
+#ifndef PHOTO_ALBUM_IMAGE_THUMB_PATH
+#define PHOTO_ALBUM_IMAGE_THUMB_PATH "A:/mnt/sd/.thumb/PHOTO_SMALL/"
+#endif
+
+/* =======================
  * 字体配置
  * ======================= */
 #define CHINESE_FONT_PATH RES_FONT_PATH "/HarmonyOS_Sans_SC_Regular.ttf"
