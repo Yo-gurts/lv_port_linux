@@ -111,6 +111,7 @@ void param_manager_poll(void);
 2. UI 页面 callback 中先判断 `id`，只处理关心参数。  
 3. callback 中不要做重逻辑，保持短小，避免阻塞 UI。  
 4. 需要参数与业务动作一致性时，建议由 `media_manager` 编排后再写参。  
+5. 在 callback 中不要调用 `page_get_private_data()` 获取页面上下文，应使用 `param_manager_register_callback()` 传入的 `user_data`；否则页面切换后可能拿到错误类型指针并导致 LVGL 崩溃。  
 
 ---
 

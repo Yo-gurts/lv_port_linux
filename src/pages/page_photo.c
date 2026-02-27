@@ -44,9 +44,8 @@ static const char* resolution_options[] = {
 // #############################################################################
 
 /* 更新分辨率显示。 */
-static void update_resolution_display(void)
+static void update_resolution_display(page_photo_data_t* data)
 {
-    page_photo_data_t* data = page_get_private_data();
     int resolution_index;
 
     if (data == NULL || data->resolution_label == NULL) {
@@ -86,9 +85,13 @@ static void photo_param_cb(param_id_t id, int value, void* user_data)
 {
     page_photo_data_t* data = (page_photo_data_t*)user_data;
 
+    if (data == NULL) {
+        return;
+    }
+
     if (id == PARAM_ID_RESOLUTION) {
         LV_UNUSED(value);
-        update_resolution_display();
+        update_resolution_display(data);
         return;
     }
 
@@ -331,7 +334,7 @@ void page_photo_create(void)
     data->resolution_label = lv_label_create(data->top_bar);
     lv_obj_add_style(data->resolution_label, &NORMAL_SIZE, LV_PART_MAIN);
     lv_obj_align(data->resolution_label, LV_ALIGN_LEFT_MID, 70, 0);
-    update_resolution_display();
+    update_resolution_display(data);
 
     /* 剩余照片数量 Label - 右上角 */
     data->photo_count_label = lv_label_create(data->top_bar);
@@ -436,7 +439,7 @@ void page_photo_show(void)
 
     MLOG_INFO("Photo page show");
     filter_panel_hide();
-    update_resolution_display();
+    update_resolution_display(data);
     lv_obj_clear_flag(data->container, LV_OBJ_FLAG_HIDDEN);
 
     if (key_manager_register_callback(KEY_ID_CAMERA, KEY_EVENT_CLICK, take_photo_key_cb, data) != 0) {
@@ -473,7 +476,8 @@ void page_photo_hide(void)
 
 void page_photo_update(void)
 {
-    update_resolution_display();
+    page_photo_data_t* data = page_get_private_data();
+    update_resolution_display(data);
 }
 
 // #endregion
