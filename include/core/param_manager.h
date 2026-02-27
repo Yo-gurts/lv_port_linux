@@ -119,6 +119,9 @@ int param_manager_get_default(param_id_t id);
 /* 重置所有参数到默认值 */
 void param_manager_reset_all(void);
 
+/* 恢复出厂设置（mock: 延时后重置所有参数） */
+int param_manager_factory_reset(void);
+
 /* 参数变化回调类型 */
 typedef void (*param_change_callback_t)(param_id_t id, int value, void* user_data);
 

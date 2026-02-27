@@ -4,11 +4,13 @@
 
 #include "pages/page_system_settings.h"
 #include "config.h"
+#include "core/file_manager.h"
 #include "core/font_manager.h"
 #include "core/page_manager.h"
 #include "core/param_manager.h"
 #include "core/style_manager.h"
 #include "mlog.h"
+#include "ui/top_notice.h"
 #include "ui/volume_bar.h"
 #include <stdint.h>
 #include <stdio.h>
@@ -36,7 +38,15 @@ static const setting_config_t settings_config[] = {
 };
 
 #define SETTINGS_COUNT (int)(sizeof(settings_config) / sizeof(settings_config[0]))
+#define SETTINGS_INDEX_FORMAT 4
+#define SETTINGS_INDEX_FACTORY_RESET 5
 #define SETTINGS_INDEX_VOLUME 3
+
+typedef enum {
+    SYSTEM_ACTION_NONE = 0,
+    SYSTEM_ACTION_FORMAT_SDCARD,
+    SYSTEM_ACTION_FACTORY_RESET
+} system_action_t;
 
 // #endregion
 // #############################################################################
@@ -56,6 +66,44 @@ static void update_volume_setting_value(page_system_settings_data_t* data)
     volume = param_manager_get(PARAM_ID_VOLUME);
     lv_snprintf(text, sizeof(text), "%d%%", volume);
     lv_label_set_text(data->settings[SETTINGS_INDEX_VOLUME].value_label, text);
+}
+
+static void show_confirm_dialog(page_system_settings_data_t* data, system_action_t action)
+{
+    const char* title = "请确认操作";
+    const char* message = "";
+
+    if (data == NULL || data->confirm_mask == NULL || data->confirm_msg_label == NULL || data->confirm_title_label == NULL) {
+        return;
+    }
+
+    data->pending_action = action;
+    switch (action) {
+    case SYSTEM_ACTION_FORMAT_SDCARD:
+        message = "格式化将删除SD卡上的所有数据，是否继续？";
+        break;
+    case SYSTEM_ACTION_FACTORY_RESET:
+        message = "恢复出厂设置将重置所有参数设置，是否继续？";
+        break;
+    case SYSTEM_ACTION_NONE:
+    default:
+        message = "未知操作";
+        break;
+    }
+
+    lv_label_set_text(data->confirm_title_label, title);
+    lv_label_set_text(data->confirm_msg_label, message);
+    lv_obj_clear_flag(data->confirm_mask, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_move_foreground(data->confirm_mask);
+}
+
+static void hide_confirm_dialog(page_system_settings_data_t* data)
+{
+    if (data == NULL || data->confirm_mask == NULL) {
+        return;
+    }
+
+    lv_obj_add_flag(data->confirm_mask, LV_OBJ_FLAG_HIDDEN);
 }
 
 /* 参数更新回调：音量变化时同步系统设置页显示。 */
@@ -84,6 +132,90 @@ static void system_settings_param_cb(param_id_t id, int value, void* user_data)
 // #############################################################################
 // ! #region 7. 按键、手势、定时器 等事件回调函数
 // #############################################################################
+
+static void system_action_timer_cb(lv_timer_t* timer)
+{
+    page_system_settings_data_t* data;
+    int ret = -1;
+
+    if (timer == NULL) {
+        return;
+    }
+
+    data = (page_system_settings_data_t*)lv_timer_get_user_data(timer);
+    if (data == NULL) {
+        lv_timer_del(timer);
+        return;
+    }
+
+    if (data->pending_action == SYSTEM_ACTION_FORMAT_SDCARD) {
+        ret = file_manager_format_sdcard();
+        if (ret == 0) {
+            top_notice_show("SD卡格式化完成", TOP_NOTICE_TYPE_SUCCESS);
+        } else {
+            top_notice_show("SD卡格式化失败", TOP_NOTICE_TYPE_ERROR);
+        }
+    } else if (data->pending_action == SYSTEM_ACTION_FACTORY_RESET) {
+        ret = param_manager_factory_reset();
+        if (ret == 0) {
+            top_notice_show("恢复出厂设置完成", TOP_NOTICE_TYPE_SUCCESS);
+        } else {
+            top_notice_show("恢复出厂设置失败", TOP_NOTICE_TYPE_ERROR);
+        }
+    }
+
+    update_volume_setting_value(data);
+    data->pending_action = SYSTEM_ACTION_NONE;
+    data->action_processing = 0;
+    data->action_timer = NULL;
+    lv_timer_del(timer);
+}
+
+static void confirm_cancel_btn_cb(lv_event_t* e)
+{
+    page_system_settings_data_t* data = (page_system_settings_data_t*)lv_event_get_user_data(e);
+    if (data == NULL) {
+        return;
+    }
+
+    data->pending_action = SYSTEM_ACTION_NONE;
+    hide_confirm_dialog(data);
+}
+
+static void confirm_ok_btn_cb(lv_event_t* e)
+{
+    page_system_settings_data_t* data = (page_system_settings_data_t*)lv_event_get_user_data(e);
+
+    if (data == NULL) {
+        return;
+    }
+    if (data->action_processing) {
+        top_notice_show("正在处理，请稍候...", TOP_NOTICE_TYPE_WARNING);
+        return;
+    }
+    if (data->pending_action == SYSTEM_ACTION_NONE) {
+        hide_confirm_dialog(data);
+        return;
+    }
+
+    if (data->pending_action == SYSTEM_ACTION_FORMAT_SDCARD) {
+        top_notice_update("正在格式化SD卡...", TOP_NOTICE_TYPE_BLOCKING);
+    } else if (data->pending_action == SYSTEM_ACTION_FACTORY_RESET) {
+        top_notice_update("正在恢复出厂设置...", TOP_NOTICE_TYPE_BLOCKING);
+    }
+
+    data->action_processing = 1;
+    hide_confirm_dialog(data);
+
+    if (data->action_timer != NULL) {
+        lv_timer_del(data->action_timer);
+        data->action_timer = NULL;
+    }
+    data->action_timer = lv_timer_create(system_action_timer_cb, 10, data);
+    if (data->action_timer != NULL) {
+        lv_timer_set_repeat_count(data->action_timer, 1);
+    }
+}
 
 /* 设置项点击回调 */
 static void setting_item_cb(lv_event_t* e)
@@ -119,6 +251,10 @@ static void setting_item_cb(lv_event_t* e)
             page_manager_navigate("version_info");
         } else if (index == SETTINGS_INDEX_VOLUME) {
             volume_bar_show();
+        } else if (index == SETTINGS_INDEX_FORMAT) {
+            show_confirm_dialog(data, SYSTEM_ACTION_FORMAT_SDCARD);
+        } else if (index == SETTINGS_INDEX_FACTORY_RESET) {
+            show_confirm_dialog(data, SYSTEM_ACTION_FACTORY_RESET);
         } else {
             MLOG_INFO("Setting '%s' clicked, value: %s", config->title, config->value);
         }
@@ -229,6 +365,57 @@ void page_system_settings_create(void)
         lv_obj_set_user_data(item->container, (void*)(intptr_t)i);
     }
 
+    /* 确认弹框全屏遮罩 */
+    data->confirm_mask = lv_obj_create(data->container);
+    lv_obj_add_flag(data->confirm_mask, LV_OBJ_FLAG_IGNORE_LAYOUT);
+    lv_obj_set_size(data->confirm_mask, LV_PCT(100), LV_PCT(100));
+    lv_obj_add_style(data->confirm_mask, &style_overlay_mask, LV_PART_MAIN);
+    lv_obj_add_flag(data->confirm_mask, LV_OBJ_FLAG_HIDDEN);
+
+    /* 确认弹框面板 */
+    data->confirm_panel = lv_obj_create(data->confirm_mask);
+    lv_obj_set_width(data->confirm_panel, LV_PCT(88));
+    lv_obj_set_height(data->confirm_panel, 190);
+    lv_obj_add_style(data->confirm_panel, &style_modal_panel, LV_PART_MAIN);
+    lv_obj_clear_flag(data->confirm_panel, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_scrollbar_mode(data->confirm_panel, LV_SCROLLBAR_MODE_OFF);
+    lv_obj_align(data->confirm_panel, LV_ALIGN_CENTER, 0, 0);
+
+    data->confirm_title_label = lv_label_create(data->confirm_panel);
+    lv_label_set_text(data->confirm_title_label, "请确认操作");
+    lv_obj_add_style(data->confirm_title_label, &NORMAL_SIZE, LV_PART_MAIN);
+    lv_obj_align(data->confirm_title_label, LV_ALIGN_TOP_MID, 0, 14);
+
+    data->confirm_msg_label = lv_label_create(data->confirm_panel);
+    lv_label_set_text(data->confirm_msg_label, "");
+    lv_label_set_long_mode(data->confirm_msg_label, LV_LABEL_LONG_WRAP);
+    lv_obj_set_width(data->confirm_msg_label, LV_PCT(90));
+    lv_obj_add_style(data->confirm_msg_label, &SMALL_SIZE, LV_PART_MAIN);
+    lv_obj_set_style_text_align(data->confirm_msg_label, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
+    lv_obj_align(data->confirm_msg_label, LV_ALIGN_TOP_MID, 0, 56);
+
+    data->confirm_cancel_btn = lv_btn_create(data->confirm_panel);
+    lv_obj_set_size(data->confirm_cancel_btn, 112, 40);
+    lv_obj_align(data->confirm_cancel_btn, LV_ALIGN_BOTTOM_LEFT, 12, -10);
+    lv_obj_add_event_cb(data->confirm_cancel_btn, confirm_cancel_btn_cb, LV_EVENT_CLICKED, data);
+    {
+        lv_obj_t* cancel_label = lv_label_create(data->confirm_cancel_btn);
+        lv_label_set_text(cancel_label, "取消");
+        lv_obj_add_style(cancel_label, &SMALL_SIZE, LV_PART_MAIN);
+        lv_obj_center(cancel_label);
+    }
+
+    data->confirm_ok_btn = lv_btn_create(data->confirm_panel);
+    lv_obj_set_size(data->confirm_ok_btn, 112, 40);
+    lv_obj_align(data->confirm_ok_btn, LV_ALIGN_BOTTOM_RIGHT, -12, -10);
+    lv_obj_add_event_cb(data->confirm_ok_btn, confirm_ok_btn_cb, LV_EVENT_CLICKED, data);
+    {
+        lv_obj_t* ok_label = lv_label_create(data->confirm_ok_btn);
+        lv_label_set_text(ok_label, "确认");
+        lv_obj_add_style(ok_label, &SMALL_SIZE, LV_PART_MAIN);
+        lv_obj_center(ok_label);
+    }
+
     /* 保存 private_data */
     page_set_private_data(data);
 
@@ -242,6 +429,11 @@ void page_system_settings_destroy(void)
     page_system_settings_data_t* data = page_get_private_data();
     if (!data) {
         return;
+    }
+
+    if (data->action_timer != NULL) {
+        lv_timer_del(data->action_timer);
+        data->action_timer = NULL;
     }
 
     if (data->container) {

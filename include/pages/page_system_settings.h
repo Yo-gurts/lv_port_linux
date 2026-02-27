@@ -20,6 +20,15 @@ typedef struct {
     lv_obj_t* container; /* 页面容器 */
     lv_obj_t* nav_bar; /* 顶部导航栏 */
     lv_obj_t* settings_container; /* 设置列表容器 */
+    lv_obj_t* confirm_mask; /* 确认弹框遮罩 */
+    lv_obj_t* confirm_panel; /* 确认弹框面板 */
+    lv_obj_t* confirm_title_label; /* 确认标题 */
+    lv_obj_t* confirm_msg_label; /* 确认文案 */
+    lv_obj_t* confirm_cancel_btn; /* 取消按钮 */
+    lv_obj_t* confirm_ok_btn; /* 确认按钮 */
+    lv_timer_t* action_timer; /* 延迟触发处理的定时器 */
+    int pending_action; /* 待确认操作 */
+    int action_processing; /* 是否正在处理 */
     system_setting_item_t settings[7]; /* 7个设置项 */
 } page_system_settings_data_t;
 

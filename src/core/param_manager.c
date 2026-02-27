@@ -3,6 +3,7 @@
 #include <pthread.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 #include "mlog.h"
 
@@ -222,6 +223,15 @@ void param_manager_reset_all(void)
     pthread_mutex_unlock(&g_param_mutex);
 
     MLOG_INFO("param_manager reset to defaults\n");
+}
+
+int param_manager_factory_reset(void)
+{
+    MLOG_INFO("param_manager factory reset start (mock)\n");
+    usleep(1000 * 1000);
+    param_manager_reset_all();
+    MLOG_INFO("param_manager factory reset done (mock)\n");
+    return 0;
 }
 
 int param_manager_register_callback(param_change_callback_t callback, void* user_data)

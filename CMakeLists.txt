@@ -77,6 +77,7 @@ set(SOURCES
     src/main/simulator/uiapp_start.c
     src/mock/media_manager.c
     src/mock/message_manager.c
+    src/mock/file_manager.c
     src/mock/wifi_manager.c
     src/pages/page_ai_photo_settings.c
     src/pages/page_ai_photo.c
