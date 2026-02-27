@@ -91,6 +91,7 @@ set(SOURCES
     src/pages/page_video.c
     src/pages/page_wifi_list.c
     src/ui/filter_panel.c
+    src/ui/top_notice.c
     src/ui/volume_bar.c
 )
 

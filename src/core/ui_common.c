@@ -23,6 +23,7 @@
 #include "pages/page_video.h"
 #include "pages/page_video_settings.h"
 #include "pages/page_wifi_list.h"
+#include "ui/top_notice.h"
 #include "ui/volume_bar.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -213,6 +214,7 @@ int32_t ui_main(void)
 
     /* Initialize volume bar */
     volume_bar_init();
+    top_notice_init();
 
     /* Initialize key manager */
     key_manager_init();

@@ -17,9 +17,23 @@
 - 组件：音量条（`volume bar`）
 - 实现位置：`src/ui/volume_bar.c`
 - 挂载方式：`lv_obj_create(lv_layer_top())`
-- 说明：当前唯一放入 `top layer` 的组件。
+- 说明：用于全局音量提示。
 
-放入 `top layer` 的原因：
+### 2.2 Top Notice
+
+- 组件：全局提示通知（`top notice`）
+- 实现位置：`src/ui/top_notice.c`
+- 挂载方式：`lv_obj_create(lv_layer_top())`
+- 触发场景：WiFi 连接状态、网络异常、云端超时、模式切换阻塞等跨页面短时提示
+- 生命周期策略：在 `ui_main()` 启动时初始化（`top_notice_init()`）；通过通用接口按类型更新文本并显示（`top_notice_show/top_notice_show_for/top_notice_update`）；超时自动隐藏，或通过 `top_notice_hide()` 主动隐藏
+
+Top Notice 放入 `top layer` 的原因：
+
+- 提示是跨页面共享能力，不属于单个页面。
+- 页面切换时提示需要保持可见，避免被页面容器销毁或遮挡。
+- 统一入口可保证提示风格与时序一致，页面只关心业务语义（信息/警告/错误等）。
+
+Volume Bar 放入 `top layer` 的原因：
 
 - 音量条是跨页面触发的全局浮层，不属于某一个具体页面。
 - 音量调节过程中需要始终显示在最上层，避免被当前页面 UI 元素覆盖。

@@ -8,11 +8,10 @@
 #include "core/page_manager.h"
 #include "core/style_manager.h"
 #include "mlog.h"
+#include "ui/top_notice.h"
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
-
-#define WIFI_NOTICE_HIDE_MS 1000
 
 // #endregion
 // #############################################################################
@@ -25,8 +24,6 @@
 // #############################################################################
 
 static void rebuild_wifi_list(page_wifi_list_data_t* data);
-static void show_notice(page_wifi_list_data_t* data, const char* text, lv_color_t text_color);
-static void notice_timer_cb(lv_timer_t* timer);
 static void wifi_item_click_cb(lv_event_t* e);
 static void refresh_btn_click_cb(lv_event_t* e);
 static void wifi_switch_change_cb(lv_event_t* e);
@@ -49,39 +46,6 @@ static const char* get_wifi_icon_path(const wifi_ap_info_t* ap)
         return "A:" RES_ICON_PATH "/sys-wifi-lock.png";
     }
     return "A:" RES_ICON_PATH "/sys-wifi.png";
-}
-
-/* 弹出提示并启动自动隐藏。 */
-static void show_notice(page_wifi_list_data_t* data, const char* text, lv_color_t text_color)
-{
-    lv_timer_t* timer;
-
-    if (data == NULL || data->notice_popup == NULL || data->notice_label == NULL) {
-        return;
-    }
-
-    lv_label_set_text(data->notice_label, text);
-    lv_obj_set_style_text_color(data->notice_label, text_color, LV_PART_MAIN);
-    lv_obj_clear_flag(data->notice_popup, LV_OBJ_FLAG_HIDDEN);
-    lv_obj_move_foreground(data->notice_popup);
-    lv_obj_align(data->notice_popup, LV_ALIGN_BOTTOM_MID, 0, -24);
-
-    if (data->notice_timer != NULL) {
-        lv_timer_del(data->notice_timer);
-        data->notice_timer = NULL;
-    }
-
-    timer = lv_timer_create_basic();
-    if (timer == NULL) {
-        return;
-    }
-
-    data->notice_timer = timer;
-    lv_timer_set_user_data(timer, data);
-    lv_timer_set_period(timer, WIFI_NOTICE_HIDE_MS);
-    lv_timer_set_repeat_count(timer, 1);
-    lv_timer_set_cb(timer, notice_timer_cb);
-    lv_timer_resume(timer);
 }
 
 /* 显示密码输入弹层并绑定目标 SSID。 */
@@ -127,12 +91,12 @@ static void connect_wifi_and_refresh(page_wifi_list_data_t* data, const char* ss
         return;
     }
 
-    show_notice(data, "正在连接...", lv_color_hex(0xFFD700));
+    top_notice_show_for("正在连接...", TOP_NOTICE_TYPE_WARNING, 1200);
     ret = wifi_manager_connect(ssid, password);
     if (ret == 0) {
-        show_notice(data, "连接成功", lv_color_hex(0x7CFC00));
+        top_notice_show("连接成功", TOP_NOTICE_TYPE_SUCCESS);
     } else {
-        show_notice(data, "连接失败", lv_palette_main(LV_PALETTE_RED));
+        top_notice_show("连接失败", TOP_NOTICE_TYPE_ERROR);
     }
 
     rebuild_wifi_list(data);
@@ -197,25 +161,6 @@ static void rebuild_wifi_list(page_wifi_list_data_t* data)
 // ! #region 7. 按键、手势、定时器 等事件回调函数
 // #############################################################################
 
-static void notice_timer_cb(lv_timer_t* timer)
-{
-    page_wifi_list_data_t* data;
-
-    if (timer == NULL) {
-        return;
-    }
-
-    data = (page_wifi_list_data_t*)lv_timer_get_user_data(timer);
-    if (data != NULL && data->notice_popup != NULL) {
-        lv_obj_add_flag(data->notice_popup, LV_OBJ_FLAG_HIDDEN);
-    }
-
-    if (data != NULL) {
-        data->notice_timer = NULL;
-    }
-    lv_timer_del(timer);
-}
-
 static void wifi_item_click_cb(lv_event_t* e)
 {
     page_wifi_list_data_t* data = (page_wifi_list_data_t*)lv_event_get_user_data(e);
@@ -231,7 +176,7 @@ static void wifi_item_click_cb(lv_event_t* e)
         return;
     }
     if (ap->is_connected) {
-        show_notice(data, "该网络已连接", lv_color_hex(0x7CFC00));
+        top_notice_show("该网络已连接", TOP_NOTICE_TYPE_SUCCESS);
         return;
     }
 
@@ -263,7 +208,7 @@ static void password_confirm_btn_cb(lv_event_t* e)
 
     password = lv_textarea_get_text(data->password_ta);
     if (password == NULL || password[0] == '\0') {
-        show_notice(data, "请输入密码", lv_palette_main(LV_PALETTE_RED));
+        top_notice_show("请输入密码", TOP_NOTICE_TYPE_ERROR);
         return;
     }
 
@@ -295,12 +240,12 @@ static void refresh_btn_click_cb(lv_event_t* e)
     }
 
     if (data->wifi_enabled == 0) {
-        show_notice(data, "WiFi已关闭", lv_palette_main(LV_PALETTE_RED));
+        top_notice_show("WiFi已关闭", TOP_NOTICE_TYPE_ERROR);
         return;
     }
 
     rebuild_wifi_list(data);
-    show_notice(data, "已刷新 WiFi 列表（测试数据）", lv_color_hex(0xFFD700));
+    top_notice_show("已刷新 WiFi 列表（测试数据）", TOP_NOTICE_TYPE_INFO);
 }
 
 static void wifi_switch_change_cb(lv_event_t* e)
@@ -313,10 +258,10 @@ static void wifi_switch_change_cb(lv_event_t* e)
     data->wifi_enabled = lv_obj_has_state(data->wifi_switch, LV_STATE_CHECKED) ? 1 : 0;
     if (data->wifi_enabled) {
         rebuild_wifi_list(data);
-        show_notice(data, "WiFi已开启（测试）", lv_color_hex(0x7CFC00));
+        top_notice_show("WiFi已开启（测试）", TOP_NOTICE_TYPE_SUCCESS);
     } else {
         lv_obj_clean(data->wifi_list);
-        show_notice(data, "WiFi已关闭（测试）", lv_palette_main(LV_PALETTE_RED));
+        top_notice_show("WiFi已关闭（测试）", TOP_NOTICE_TYPE_ERROR);
     }
 }
 
@@ -487,22 +432,6 @@ void page_wifi_list_create(void)
     lv_keyboard_set_textarea(data->password_kb, data->password_ta);
     lv_obj_add_event_cb(data->password_kb, password_keyboard_event_cb, LV_EVENT_ALL, data);
 
-    /* 底部中间 toast 提示容器。 */
-    data->notice_popup = lv_obj_create(data->container);
-    lv_obj_set_size(data->notice_popup, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
-    lv_obj_add_flag(data->notice_popup, LV_OBJ_FLAG_IGNORE_LAYOUT);
-    lv_obj_add_style(data->notice_popup, &style_toast_popup, LV_PART_MAIN);
-    lv_obj_add_flag(data->notice_popup, LV_OBJ_FLAG_HIDDEN);
-    lv_obj_add_flag(data->notice_popup, LV_OBJ_FLAG_CLICKABLE);
-    lv_obj_align(data->notice_popup, LV_ALIGN_BOTTOM_MID, 0, -24);
-
-    /* toast 提示文字。 */
-    data->notice_label = lv_label_create(data->notice_popup);
-    lv_label_set_text(data->notice_label, "");
-    lv_obj_add_style(data->notice_label, &SMALL_SIZE, LV_PART_MAIN);
-    lv_obj_set_style_text_color(data->notice_label, lv_color_hex(0xFFD700), LV_PART_MAIN);
-    lv_obj_center(data->notice_label);
-
     /* WiFi 列表容器。 */
     data->wifi_list = lv_list_create(data->container);
     lv_obj_set_width(data->wifi_list, lv_pct(100));
@@ -525,11 +454,6 @@ void page_wifi_list_destroy(void)
     page_wifi_list_data_t* data = (page_wifi_list_data_t*)page_get_private_data();
     if (data == NULL) {
         return;
-    }
-
-    if (data->notice_timer != NULL) {
-        lv_timer_del(data->notice_timer);
-        data->notice_timer = NULL;
     }
 
     if (data->container != NULL) {
