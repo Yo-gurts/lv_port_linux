@@ -1,3 +1,5 @@
+#define DEBUG
+
 #include "core/message_manager.h"
 #include "appcomm.h"
 #include "mlog.h"

@@ -53,10 +53,16 @@ static int handle_take_photo(int32_t args)
     return MEDIA_MANAGER_OK;
 }
 
-static int handle_focus(int32_t args)
+static int handle_focus_once(int32_t args)
 {
     (void)args;
     MLOG_INFO("media_manager 对焦(占位实现)");
+    return MEDIA_MANAGER_OK;
+}
+
+static int handle_set_focus_enable(int32_t args)
+{
+    MLOG_INFO("media_manager 设置对焦使能(占位实现): enable=%d", (int)args);
     return MEDIA_MANAGER_OK;
 }
 
@@ -145,7 +151,8 @@ static const media_op_handler_t g_media_handlers[MEDIA_OP_BUTT] = {
     [MEDIA_OP_SWITCH_TO_BOOT_MODE] = handle_switch_to_boot_mode,
     [MEDIA_OP_SWITCH_TO_VIDEO_MODE] = handle_switch_to_video_mode,
     [MEDIA_OP_TAKE_PHOTO] = handle_take_photo,
-    [MEDIA_OP_FOCUS] = handle_focus,
+    [MEDIA_OP_FOCUS_ONCE] = handle_focus_once,
+    [MEDIA_OP_SET_FOCUS_ENABLE] = handle_set_focus_enable,
     [MEDIA_OP_SET_SYSTEM_VOLUME] = handle_set_system_volume,
     [MEDIA_OP_ADJUST_SYSTEM_VOLUME] = handle_adjust_system_volume,
     [MEDIA_OP_FORMAT_STORAGE] = handle_format_storage,

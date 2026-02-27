@@ -20,6 +20,7 @@ typedef enum {
 
 typedef enum {
     KEY_EVENT_CLICK = 0,
+    KEY_EVENT_PRESS,
     KEY_EVENT_LONG_PRESS,
     KEY_EVENT_LONG_PRESS_3S,
     KEY_EVENT_LONG_PRESS_3S_RELEASE,

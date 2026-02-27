@@ -12,7 +12,8 @@ typedef enum {
     MEDIA_OP_SWITCH_TO_BOOT_MODE, /* 切换到启动/首页模式；args 忽略 */
     MEDIA_OP_SWITCH_TO_VIDEO_MODE, /* 切换到录像模式；args 忽略 */
     MEDIA_OP_TAKE_PHOTO, /* 触发一次拍照；args 忽略 */
-    MEDIA_OP_FOCUS, /* 触发一次对焦；args 忽略 */
+    MEDIA_OP_FOCUS_ONCE, /* 触发一次对焦；args 忽略 */
+    MEDIA_OP_SET_FOCUS_ENABLE, /* 设置 AF 使能；args: 0=disable, 1=enable */
     MEDIA_OP_SET_SYSTEM_VOLUME, /* 设置系统音量；args: 0~100 */
     MEDIA_OP_ADJUST_SYSTEM_VOLUME, /* 调整系统音量增量；args: 可正可负 */
     MEDIA_OP_FORMAT_STORAGE, /* 格式化存储介质；args 忽略 */

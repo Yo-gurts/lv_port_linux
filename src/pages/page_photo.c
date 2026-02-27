@@ -116,6 +116,40 @@ static void take_photo_key_cb(key_id_t key, key_event_type_t event_type, void* u
     }
 }
 
+/* 对焦键回调：在拍照页触发对焦动作 */
+static void focus_key_cb(key_id_t key, key_event_type_t event_type, void* user_data)
+{
+    page_photo_data_t* data = (page_photo_data_t*)user_data;
+    int ret = 0;
+
+    if (key != KEY_ID_FOCUS) {
+        return;
+    }
+    if (!data || !data->container) {
+        return;
+    }
+    if (lv_obj_has_flag(data->container, LV_OBJ_FLAG_HIDDEN)) {
+        return;
+    }
+
+    if (event_type == KEY_EVENT_PRESS) {
+        ret = media_manager_execute(MEDIA_OP_FOCUS_ONCE, 0);
+        if (ret != 0) {
+            MLOG_ERR("Focus by key failed: ret=%d", ret);
+        }
+    } else if (event_type == KEY_EVENT_LONG_PRESS_3S) {
+        ret = media_manager_execute(MEDIA_OP_SET_FOCUS_ENABLE, 0);
+        if (ret != 0) {
+            MLOG_ERR("Disable AF by key long-press failed: ret=%d", ret);
+        }
+    } else if (event_type == KEY_EVENT_LONG_PRESS_3S_RELEASE) {
+        ret = media_manager_execute(MEDIA_OP_SET_FOCUS_ENABLE, 1);
+        if (ret != 0) {
+            MLOG_ERR("Enable AF by key release failed: ret=%d", ret);
+        }
+    }
+}
+
 /* 顶部返回按钮回调：返回时切换到 boot mode */
 static void back_btn_cb(lv_event_t* e)
 {
@@ -289,6 +323,9 @@ void page_photo_destroy(void)
     }
 
     (void)key_manager_unregister_callback(KEY_ID_CAMERA, KEY_EVENT_CLICK, take_photo_key_cb, data);
+    (void)key_manager_unregister_callback(KEY_ID_FOCUS, KEY_EVENT_PRESS, focus_key_cb, data);
+    (void)key_manager_unregister_callback(KEY_ID_FOCUS, KEY_EVENT_LONG_PRESS_3S, focus_key_cb, data);
+    (void)key_manager_unregister_callback(KEY_ID_FOCUS, KEY_EVENT_LONG_PRESS_3S_RELEASE, focus_key_cb, data);
 
     filter_panel_hide();
 
@@ -315,6 +352,15 @@ void page_photo_show(void)
     if (key_manager_register_callback(KEY_ID_CAMERA, KEY_EVENT_CLICK, take_photo_key_cb, data) != 0) {
         MLOG_WARN("register photo key callback failed");
     }
+    if (key_manager_register_callback(KEY_ID_FOCUS, KEY_EVENT_PRESS, focus_key_cb, data) != 0) {
+        MLOG_WARN("register focus key callback failed");
+    }
+    if (key_manager_register_callback(KEY_ID_FOCUS, KEY_EVENT_LONG_PRESS_3S, focus_key_cb, data) != 0) {
+        MLOG_WARN("register focus key long-press callback failed");
+    }
+    if (key_manager_register_callback(KEY_ID_FOCUS, KEY_EVENT_LONG_PRESS_3S_RELEASE, focus_key_cb, data) != 0) {
+        MLOG_WARN("register focus key long-press-release callback failed");
+    }
 }
 
 void page_photo_hide(void)
@@ -328,6 +374,9 @@ void page_photo_hide(void)
     filter_panel_hide();
     lv_obj_add_flag(data->container, LV_OBJ_FLAG_HIDDEN);
     (void)key_manager_unregister_callback(KEY_ID_CAMERA, KEY_EVENT_CLICK, take_photo_key_cb, data);
+    (void)key_manager_unregister_callback(KEY_ID_FOCUS, KEY_EVENT_PRESS, focus_key_cb, data);
+    (void)key_manager_unregister_callback(KEY_ID_FOCUS, KEY_EVENT_LONG_PRESS_3S, focus_key_cb, data);
+    (void)key_manager_unregister_callback(KEY_ID_FOCUS, KEY_EVENT_LONG_PRESS_3S_RELEASE, focus_key_cb, data);
 }
 
 void page_photo_update(void)
