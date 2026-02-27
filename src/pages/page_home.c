@@ -6,6 +6,7 @@
 #include "config.h"
 #include "core/font_manager.h"
 #include "core/media_manager.h"
+#include "core/param_manager.h"
 #include "core/style_manager.h"
 #include "mlog.h"
 #include <stdlib.h>
@@ -134,8 +135,23 @@ static void photo_button_cb(lv_event_t* e)
 
 static void recognition_button_cb(lv_event_t* e)
 {
+    int ret = 0;
+
     LV_UNUSED(e);
     MLOG_INFO("AI Photo button clicked");
+
+    ret = media_manager_execute(MEDIA_OP_SWITCH_TO_PHOTO_MODE, 0);
+    if (ret != 0) {
+        MLOG_ERR("AI拍照入口切换到拍照模式失败: ret=%d", ret);
+        return;
+    }
+
+    ret = media_manager_execute(MEDIA_OP_SET_PHOTO_RESOLUTION, PHOTO_RESOLUTION_8M);
+    if (ret != 0) {
+        MLOG_ERR("AI拍照入口设置8M分辨率失败: ret=%d", ret);
+        return;
+    }
+
     page_manager_navigate("ai_photo");
 }
 
