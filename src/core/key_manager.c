@@ -91,6 +91,7 @@ static const char* key_manager_event_to_string(key_event_type_t event_type)
     switch (event_type) {
         ENUM_CASE(KEY_EVENT_CLICK);
         ENUM_CASE(KEY_EVENT_PRESS);
+        ENUM_CASE(KEY_EVENT_RELEASE);
         ENUM_CASE(KEY_EVENT_LONG_PRESS);
         ENUM_CASE(KEY_EVENT_LONG_PRESS_REPEAT);
         ENUM_CASE(KEY_EVENT_LONG_PRESS_3S);
@@ -273,6 +274,7 @@ static void key_manager_handle_key_value(key_id_t key, int value, uint64_t now_m
         if (!state->pressed) {
             return;
         }
+        key_manager_dispatch(key, KEY_EVENT_RELEASE);
         if (state->long_3s_fired) {
             key_manager_dispatch(key, KEY_EVENT_LONG_PRESS_3S_RELEASE);
         }

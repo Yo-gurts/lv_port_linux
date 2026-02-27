@@ -31,6 +31,7 @@ static const int default_values[PARAM_ID_BUTT] = {
     [PARAM_ID_FILTER_INDEX] = 0, /* 默认“原图” */
     [PARAM_ID_FILTER_RESET_ON_MODE_SWITCH] = 0, /* 默认切模式不重置滤镜 */
     [PARAM_ID_VOLUME] = 50, /* 默认音量50% */
+    [PARAM_ID_FOCUS_FRAME_STATE] = FOCUS_FRAME_STATE_HIDDEN, /* 默认隐藏 */
 };
 
 /* 参数合法性规则：set 时按规则校验；get 不做合法性修正。
@@ -48,6 +49,7 @@ static const param_rule_t param_rules[PARAM_ID_BUTT] = {
     [PARAM_ID_FILTER_INDEX] = { .min_value = 0, .max_value = 5, .validate_enabled = 1 },
     [PARAM_ID_FILTER_RESET_ON_MODE_SWITCH] = { .min_value = 0, .max_value = 1, .validate_enabled = 1 },
     [PARAM_ID_VOLUME] = { .min_value = 0, .max_value = 100, .validate_enabled = 1 },
+    [PARAM_ID_FOCUS_FRAME_STATE] = { .min_value = FOCUS_FRAME_STATE_HIDDEN, .max_value = FOCUS_FRAME_STATE_LOCKING, .validate_enabled = 1 },
 };
 
 /* 参数当前值 */

@@ -21,6 +21,7 @@ typedef enum {
     PARAM_ID_FILTER_INDEX, /* 拍照/录像共享滤镜下标 */
     PARAM_ID_FILTER_RESET_ON_MODE_SWITCH, /* 模式切换时是否重置滤镜：0不重置，1重置 */
     PARAM_ID_VOLUME, /* 音量 (0-100) */
+    PARAM_ID_FOCUS_FRAME_STATE, /* 对焦框状态：0隐藏，1普通，2长按3秒状态 */
     PARAM_ID_BUTT,
     PARAM_ID_NONE = -1 /* 无效ID，不同步到param_manager */
 } param_id_t;
@@ -90,6 +91,12 @@ typedef enum {
     AI_MODE_TRANSLATION,
     AI_MODE_BUTT
 } ai_mode_t;
+
+typedef enum {
+    FOCUS_FRAME_STATE_HIDDEN = 0,
+    FOCUS_FRAME_STATE_NORMAL = 1,
+    FOCUS_FRAME_STATE_LOCKING = 2,
+} focus_frame_state_t;
 
 /* 参数管理器初始化 */
 int param_manager_init(void);
