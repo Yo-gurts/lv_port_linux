@@ -117,6 +117,8 @@ static void apply_roller_selection(page_video_settings_data_t* data)
         ret = media_manager_execute(MEDIA_OP_SET_VIDEO_RESOLUTION, selected);
     } else if (config->param_id == PARAM_ID_WHITE_BALANCE) {
         ret = media_manager_execute(MEDIA_OP_SET_WHITE_BALANCE, selected);
+    } else if (config->param_id == PARAM_ID_EXPOSURE) {
+        ret = media_manager_execute(MEDIA_OP_SET_EXPOSURE, selected);
     } else if (config->param_id != PARAM_ID_NONE) {
         ret = param_manager_set((param_id_t)config->param_id, selected);
     }

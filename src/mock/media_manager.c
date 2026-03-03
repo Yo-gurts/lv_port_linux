@@ -123,7 +123,12 @@ static int handle_set_iso(int32_t args)
 
 static int handle_set_exposure(int32_t args)
 {
-    return media_manager_set_param_checked(PARAM_ID_EXPOSURE, (int)args, "设置曝光");
+    int ret = media_manager_set_param_checked(PARAM_ID_EXPOSURE, (int)args, "设置曝光");
+    if (ret != MEDIA_MANAGER_OK) {
+        return ret;
+    }
+    MLOG_INFO("media_manager 设置曝光: level=%d", (int)args);
+    return MEDIA_MANAGER_OK;
 }
 
 static int handle_set_quality(int32_t args)

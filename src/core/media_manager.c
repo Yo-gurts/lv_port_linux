@@ -267,7 +267,29 @@ static int handle_set_iso(int32_t args)
 
 static int handle_set_exposure(int32_t args)
 {
-    return media_manager_set_param_checked(PARAM_ID_EXPOSURE, (int)args, "设置曝光");
+    int value = (int)args;
+    int ret = MEDIA_MANAGER_OK;
+    MESSAGE_S msg = { 0 };
+    uint8_t blocked_prev = 0;
+
+    ret = media_manager_set_param_checked(PARAM_ID_EXPOSURE, value, "设置曝光");
+    if (ret != MEDIA_MANAGER_OK) {
+        return ret;
+    }
+
+    msg.topic = EVENT_MODEMNG_SET_EXPOSURE;
+    msg.arg1 = (uint32_t)value;
+    blocked_prev = key_manager_get_block_non_power();
+    key_manager_set_block_non_power((uint8_t)(blocked_prev | KEY_INPUT_BLOCK_TP | KEY_INPUT_BLOCK_ADC_KEY2));
+    ret = message_manager_send_sync_timeout(&msg, MEDIA_MANAGER_SETTING_TIMEOUT_MS);
+    key_manager_set_block_non_power(blocked_prev);
+    if (ret != 0) {
+        MLOG_ERR("设置曝光消息发送失败: value=%d ret=%d", value, ret);
+        return MEDIA_MANAGER_ESTATE;
+    }
+
+    MLOG_INFO("已设置曝光: index=%d", value);
+    return MEDIA_MANAGER_OK;
 }
 
 static int handle_set_quality(int32_t args)
