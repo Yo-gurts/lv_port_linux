@@ -93,8 +93,8 @@ static void volume_bar_timer_cb(lv_timer_t* timer)
         return;
     }
 
-    /* 淡出动画 */
-    lv_obj_fade_out(data->container, VOLUME_BAR_FADE_MS, 0);
+    /* 隐藏后必须不可触摸 */
+    lv_obj_add_flag(data->container, LV_OBJ_FLAG_HIDDEN);
     data->is_visible = 0;
     MLOG_DBG("Volume bar auto hidden");
 }
@@ -311,8 +311,8 @@ void volume_bar_hide(void)
         g_volume_bar->timer = NULL;
     }
 
-    /* 淡出动画 */
-    lv_obj_fade_out(g_volume_bar->container, VOLUME_BAR_FADE_MS, 0);
+    /* 隐藏后必须不可触摸 */
+    lv_obj_add_flag(g_volume_bar->container, LV_OBJ_FLAG_HIDDEN);
     g_volume_bar->is_visible = 0;
     MLOG_DBG("Volume bar hidden");
 }
