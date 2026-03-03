@@ -235,7 +235,29 @@ static int handle_set_photo_resolution(int32_t args)
 
 static int handle_set_white_balance(int32_t args)
 {
-    return media_manager_set_param_checked(PARAM_ID_WHITE_BALANCE, (int)args, "设置白平衡");
+    int value = (int)args;
+    int ret = MEDIA_MANAGER_OK;
+    MESSAGE_S msg = { 0 };
+    uint8_t blocked_prev = 0;
+
+    ret = media_manager_set_param_checked(PARAM_ID_WHITE_BALANCE, value, "设置白平衡");
+    if (ret != MEDIA_MANAGER_OK) {
+        return ret;
+    }
+
+    msg.topic = EVENT_MODEMNG_SET_WHITE_BALANCE;
+    msg.arg1 = (uint32_t)value;
+    blocked_prev = key_manager_get_block_non_power();
+    key_manager_set_block_non_power((uint8_t)(blocked_prev | KEY_INPUT_BLOCK_TP | KEY_INPUT_BLOCK_ADC_KEY2));
+    ret = message_manager_send_sync_timeout(&msg, MEDIA_MANAGER_SETTING_TIMEOUT_MS);
+    key_manager_set_block_non_power(blocked_prev);
+    if (ret != 0) {
+        MLOG_ERR("设置白平衡消息发送失败: value=%d ret=%d", value, ret);
+        return MEDIA_MANAGER_ESTATE;
+    }
+
+    MLOG_INFO("已设置白平衡: index=%d", value);
+    return MEDIA_MANAGER_OK;
 }
 
 static int handle_set_iso(int32_t args)
