@@ -81,6 +81,9 @@ static int clamp_int(int value, int min_value, int max_value)
 
 static int get_album_total_count(void)
 {
+    if (file_manager_refresh_photo_list() != 0)
+        MLOG_WARN("Album refresh photo list failed before counting");
+
     return file_manager_get_photo_count();
 }
 
@@ -315,7 +318,6 @@ static int delete_selected_photos(page_album_data_t* data)
         return -1;
     }
 
-    (void)file_manager_refresh_photo_list();
     data->total_photos = get_album_total_count();
     if (!ensure_selected_buffer(data, data->total_photos))
         MLOG_WARN("Album selected buffer ensure failed after delete");
@@ -1052,7 +1054,6 @@ void page_album_create(void)
 
     lv_obj_update_layout(data->container);
 
-    (void)file_manager_refresh_photo_list();
     data->total_photos = get_album_total_count();
     if (!ensure_selected_buffer(data, data->total_photos)) {
         MLOG_ERR("Album selected buffer alloc failed");
@@ -1120,14 +1121,10 @@ void page_album_show(void)
 {
     page_album_data_t* data = page_get_private_data();
     int new_total_photos;
-    int refresh_ret;
     if (!data || !data->container)
         return;
 
     MLOG_INFO("Album page show");
-    MLOG_INFO("Album page show: refresh photo list begin");
-    refresh_ret = file_manager_refresh_photo_list();
-    MLOG_INFO("Album page show: refresh photo list done, ret=%d", refresh_ret);
     new_total_photos = get_album_total_count();
     MLOG_INFO("Album page show: new_total_photos=%d old_total_photos=%d", new_total_photos, data->total_photos);
     if (new_total_photos != data->total_photos) {
