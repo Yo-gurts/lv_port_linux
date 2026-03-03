@@ -316,17 +316,88 @@ static int handle_set_exposure(int32_t args)
 
 static int handle_set_quality(int32_t args)
 {
-    return media_manager_set_param_checked(PARAM_ID_QUALITY, (int)args, "设置画质");
+    int value = (int)args;
+    int ret = MEDIA_MANAGER_OK;
+    MESSAGE_S msg = { 0 };
+    uint8_t blocked_prev = 0;
+
+    ret = media_manager_set_param_checked(PARAM_ID_QUALITY, value, "设置画质");
+    if (ret != MEDIA_MANAGER_OK) {
+        return ret;
+    }
+
+    msg.topic = EVENT_MODEMNG_SETTING;
+    msg.arg1 = PARAM_MENU_PHOTO_QUALITY;
+    msg.arg2 = (uint32_t)value;
+    blocked_prev = key_manager_get_block_non_power();
+    key_manager_set_block_non_power((uint8_t)(blocked_prev | KEY_INPUT_BLOCK_TP | KEY_INPUT_BLOCK_ADC_KEY2));
+    ret = message_manager_send_sync_timeout(&msg, MEDIA_MANAGER_SETTING_TIMEOUT_MS);
+    key_manager_set_block_non_power(blocked_prev);
+    if (ret != 0) {
+        MLOG_ERR("设置画质消息发送失败: value=%d ret=%d", value, ret);
+        return MEDIA_MANAGER_ESTATE;
+    }
+
+    MLOG_INFO("已设置画质: index=%d", value);
+    return MEDIA_MANAGER_OK;
 }
 
 static int handle_set_face_detection(int32_t args)
 {
-    return media_manager_set_param_checked(PARAM_ID_FACE_DETECTION, args ? 1 : 0, "设置人脸检测");
+    int enable = args ? 1 : 0;
+    int mode_value = enable; /* 统一语义: 1=开, 0=关 */
+    int ret = MEDIA_MANAGER_OK;
+    MESSAGE_S msg = { 0 };
+    uint8_t blocked_prev = 0;
+
+    ret = media_manager_set_param_checked(PARAM_ID_FACE_DETECTION, enable, "设置人脸检测");
+    if (ret != MEDIA_MANAGER_OK) {
+        return ret;
+    }
+
+    msg.topic = EVENT_MODEMNG_SETTING;
+    msg.arg1 = PARAM_MENU_FACE_DET;
+    msg.arg2 = (uint32_t)mode_value;
+    blocked_prev = key_manager_get_block_non_power();
+    key_manager_set_block_non_power((uint8_t)(blocked_prev | KEY_INPUT_BLOCK_TP | KEY_INPUT_BLOCK_ADC_KEY2));
+    ret = message_manager_send_sync_timeout(&msg, MEDIA_MANAGER_SETTING_TIMEOUT_MS);
+    key_manager_set_block_non_power(blocked_prev);
+    if (ret != 0) {
+        MLOG_ERR("设置人脸检测消息发送失败: enable=%d ret=%d", enable, ret);
+        return MEDIA_MANAGER_ESTATE;
+    }
+
+    MLOG_INFO("已设置人脸检测: enable=%d mode_value=%d", enable, mode_value);
+    return MEDIA_MANAGER_OK;
 }
 
 static int handle_set_smile_capture(int32_t args)
 {
-    return media_manager_set_param_checked(PARAM_ID_SMILE_CAPTURE, args ? 1 : 0, "设置笑脸抓拍");
+    int enable = args ? 1 : 0;
+    int mode_value = enable; /* 统一语义: 1=开, 0=关 */
+    int ret = MEDIA_MANAGER_OK;
+    MESSAGE_S msg = { 0 };
+    uint8_t blocked_prev = 0;
+
+    ret = media_manager_set_param_checked(PARAM_ID_SMILE_CAPTURE, enable, "设置笑脸抓拍");
+    if (ret != MEDIA_MANAGER_OK) {
+        return ret;
+    }
+
+    msg.topic = EVENT_MODEMNG_SETTING;
+    msg.arg1 = PARAM_MENU_FACE_SMILE;
+    msg.arg2 = (uint32_t)mode_value;
+    blocked_prev = key_manager_get_block_non_power();
+    key_manager_set_block_non_power((uint8_t)(blocked_prev | KEY_INPUT_BLOCK_TP | KEY_INPUT_BLOCK_ADC_KEY2));
+    ret = message_manager_send_sync_timeout(&msg, MEDIA_MANAGER_SETTING_TIMEOUT_MS);
+    key_manager_set_block_non_power(blocked_prev);
+    if (ret != 0) {
+        MLOG_ERR("设置笑脸抓拍消息发送失败: enable=%d ret=%d", enable, ret);
+        return MEDIA_MANAGER_ESTATE;
+    }
+
+    MLOG_INFO("已设置笑脸抓拍: enable=%d mode_value=%d", enable, mode_value);
+    return MEDIA_MANAGER_OK;
 }
 
 static int handle_set_video_resolution(int32_t args)

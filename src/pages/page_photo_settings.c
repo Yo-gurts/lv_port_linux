@@ -180,6 +180,8 @@ static void apply_roller_selection(page_photo_settings_data_t* data)
         ret = media_manager_execute(MEDIA_OP_SET_ISO, selected);
     } else if (config->param_id == PARAM_ID_EXPOSURE) {
         ret = media_manager_execute(MEDIA_OP_SET_EXPOSURE, selected);
+    } else if (config->param_id == PARAM_ID_QUALITY) {
+        ret = media_manager_execute(MEDIA_OP_SET_QUALITY, selected);
     } else if (config->param_id != PARAM_ID_NONE) {
         ret = param_manager_set((param_id_t)config->param_id, selected);
     }
@@ -247,13 +249,22 @@ static void setting_item_cb(lv_event_t* e)
         /* 切换开关状态 */
         item->current_index = !item->current_index;
         const char* new_value = item->current_index ? "已开启" : "已关闭";
-        lv_label_set_text(item->value_label, new_value);
+        int ret = 0;
 
-        /* 同步更新param_manager */
-        if (config->param_id != PARAM_ID_NONE) {
-            param_manager_set((param_id_t)config->param_id, item->current_index);
+        if (config->param_id == PARAM_ID_FACE_DETECTION) {
+            ret = media_manager_execute(MEDIA_OP_SET_FACE_DETECTION, item->current_index);
+        } else if (config->param_id == PARAM_ID_SMILE_CAPTURE) {
+            ret = media_manager_execute(MEDIA_OP_SET_SMILE_CAPTURE, item->current_index);
+        } else if (config->param_id != PARAM_ID_NONE) {
+            ret = param_manager_set((param_id_t)config->param_id, item->current_index);
+        }
+        if (ret != 0) {
+            item->current_index = !item->current_index;
+            MLOG_ERR("设置'%s'失败: selected=%d ret=%d", config->title, item->current_index, ret);
+            return;
         }
 
+        lv_label_set_text(item->value_label, new_value);
         MLOG_INFO("Setting '%s' toggled to: %s", config->title, new_value);
     } else {
         /* 普通设置，弹出滚轮 */
