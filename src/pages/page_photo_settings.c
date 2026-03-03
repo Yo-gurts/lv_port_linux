@@ -176,6 +176,8 @@ static void apply_roller_selection(page_photo_settings_data_t* data)
         ret = media_manager_execute(MEDIA_OP_SET_PHOTO_RESOLUTION, selected);
     } else if (config->param_id == PARAM_ID_WHITE_BALANCE) {
         ret = media_manager_execute(MEDIA_OP_SET_WHITE_BALANCE, selected);
+    } else if (config->param_id == PARAM_ID_ISO) {
+        ret = media_manager_execute(MEDIA_OP_SET_ISO, selected);
     } else if (config->param_id == PARAM_ID_EXPOSURE) {
         ret = media_manager_execute(MEDIA_OP_SET_EXPOSURE, selected);
     } else if (config->param_id != PARAM_ID_NONE) {

@@ -98,6 +98,7 @@ static int32_t message_manager_dispatch_event(EVENT_S* evt)
     case EVENT_MODEMNG_RECODER_STARTPIVSTAUE:
     case EVENT_MODEMNG_RECODER_STOPPIVSTAUE:
     case EVENT_MODEMNG_SET_WHITE_BALANCE:
+    case EVENT_MODEMNG_SET_ISO:
     case EVENT_MODEMNG_SET_EXPOSURE:
         MLOG_DBG("处理 topic=%s(0x%x) result=%d", event_topic_get_name(evt->topic), evt->topic, evt->s32Result);
         break;
@@ -158,6 +159,7 @@ static int32_t message_manager_subscribe(void)
         EVENT_MODEMNG_RECODER_STARTPIVSTAUE,
         EVENT_MODEMNG_RECODER_STOPPIVSTAUE,
         EVENT_MODEMNG_SET_WHITE_BALANCE,
+        EVENT_MODEMNG_SET_ISO,
         EVENT_MODEMNG_SET_EXPOSURE,
         EVENT_UI_TOUCH,
     };
