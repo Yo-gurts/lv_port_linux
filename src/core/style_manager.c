@@ -51,6 +51,16 @@ lv_style_t style_photo_filter_focus_frame;
 lv_style_t style_photo_filter_item;
 /* 拍照页滤镜缩略图底样式 */
 lv_style_t style_photo_filter_thumb;
+/* 缩放总容器样式 */
+lv_style_t style_zoom_container;
+/* 缩放按钮基础样式 */
+lv_style_t style_zoom_btn;
+/* 缩放按钮选中样式 */
+lv_style_t style_zoom_btn_active;
+/* 缩放文字默认样式 */
+lv_style_t style_zoom_label;
+/* 缩放文字选中样式 */
+lv_style_t style_zoom_label_active;
 
 /**
  * @brief 初始化所有公共样式
@@ -273,4 +283,36 @@ void style_common_init(void)
     lv_style_set_border_width(&style_photo_filter_thumb, 0);
     lv_style_set_radius(&style_photo_filter_thumb, 12);
     lv_style_set_pad_all(&style_photo_filter_thumb, 0);
+
+    /* 初始化缩放总容器样式 */
+    lv_style_init(&style_zoom_container);
+    lv_style_set_bg_color(&style_zoom_container, lv_color_hex(0xFFFFFF));
+    lv_style_set_bg_opa(&style_zoom_container, LV_OPA_20);
+    lv_style_set_border_width(&style_zoom_container, 0);
+    lv_style_set_radius(&style_zoom_container, LV_RADIUS_CIRCLE);
+    lv_style_set_pad_all(&style_zoom_container, 0);
+
+    /* 初始化缩放按钮基础样式 */
+    lv_style_init(&style_zoom_btn);
+    lv_style_set_bg_color(&style_zoom_btn, lv_color_hex(0xFFFFFF));
+    lv_style_set_bg_opa(&style_zoom_btn, LV_OPA_10);
+    lv_style_set_border_width(&style_zoom_btn, 0);
+    lv_style_set_radius(&style_zoom_btn, LV_RADIUS_CIRCLE);
+    lv_style_set_shadow_width(&style_zoom_btn, 0);
+    lv_style_set_pad_all(&style_zoom_btn, 0);
+
+    /* 初始化缩放按钮选中样式 */
+    lv_style_init(&style_zoom_btn_active);
+    lv_style_set_bg_color(&style_zoom_btn_active, lv_color_hex(0xFFFFFF));
+    lv_style_set_bg_opa(&style_zoom_btn_active, LV_OPA_30);
+
+    /* 初始化缩放文字默认样式 */
+    lv_style_init(&style_zoom_label);
+    lv_style_set_text_color(&style_zoom_label, lv_color_hex(0xFFFFFF));
+    lv_style_set_text_align(&style_zoom_label, LV_TEXT_ALIGN_CENTER);
+
+    /* 初始化缩放文字选中样式 */
+    lv_style_init(&style_zoom_label_active);
+    lv_style_set_text_color(&style_zoom_label_active, lv_color_hex(0xF05A28));
+    lv_style_set_text_align(&style_zoom_label_active, LV_TEXT_ALIGN_CENTER);
 }

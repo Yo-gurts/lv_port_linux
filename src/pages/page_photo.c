@@ -12,6 +12,7 @@
 #include "core/style_manager.h"
 #include "mlog.h"
 #include "ui/filter_panel.h"
+#include "ui/zoom_bar.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -81,6 +82,15 @@ static void update_focus_box_display(page_photo_data_t* data, focus_frame_state_
     }
 }
 
+static void update_zoom_buttons_display(page_photo_data_t* data)
+{
+    if (data == NULL) {
+        return;
+    }
+
+    zoom_bar_set_value(param_manager_get(PARAM_ID_ZOOM));
+}
+
 static void photo_param_cb(param_id_t id, int value, void* user_data)
 {
     page_photo_data_t* data = (page_photo_data_t*)user_data;
@@ -97,6 +107,12 @@ static void photo_param_cb(param_id_t id, int value, void* user_data)
 
     if (id == PARAM_ID_FOCUS_FRAME_STATE) {
         update_focus_box_display(data, (focus_frame_state_t)value);
+        return;
+    }
+
+    if (id == PARAM_ID_ZOOM) {
+        LV_UNUSED(value);
+        update_zoom_buttons_display(data);
     }
 }
 
@@ -125,8 +141,10 @@ static void mode_switch_cb(lv_event_t* e)
     if (reset_filter == 1) {
         (void)param_manager_set(PARAM_ID_FILTER_INDEX, 0);
     }
+    (void)param_manager_set(PARAM_ID_ZOOM, param_manager_get_default(PARAM_ID_ZOOM));
 
     filter_panel_hide();
+    zoom_bar_hide();
     MLOG_INFO("Switching to video page");
     (void)media_manager_execute(MEDIA_OP_SWITCH_TO_VIDEO_MODE, 0);
     page_manager_navigate("video");
@@ -204,7 +222,9 @@ static void focus_key_cb(key_id_t key, key_event_type_t event_type, void* user_d
 static void back_btn_cb(lv_event_t* e)
 {
     LV_UNUSED(e);
+    (void)param_manager_set(PARAM_ID_ZOOM, param_manager_get_default(PARAM_ID_ZOOM));
     filter_panel_hide();
+    zoom_bar_hide();
     (void)media_manager_execute(MEDIA_OP_SWITCH_TO_BOOT_MODE, 0);
     page_manager_back();
 }
@@ -257,6 +277,7 @@ void page_photo_create(void)
 
     /* 初始化全局滤镜面板（单例）。 */
     filter_panel_init();
+    zoom_bar_init();
 
     /* 创建页面容器 */
     data->container = lv_obj_create(lv_screen_active());
@@ -310,6 +331,9 @@ void page_photo_create(void)
     lv_obj_align(data->focus_corners[3], LV_ALIGN_BOTTOM_RIGHT, 0, 0);
 
     update_focus_box_display(data, FOCUS_FRAME_STATE_HIDDEN);
+
+    zoom_bar_hide();
+    update_zoom_buttons_display(data);
 
     /* =======================
      * 顶部状态栏：[back][8M] 在左边，剩余拍照数 [SD][battery] 在右边
@@ -421,6 +445,7 @@ void page_photo_destroy(void)
     param_manager_unregister_callback(photo_param_cb);
 
     filter_panel_hide();
+    zoom_bar_hide();
 
     if (data->container != NULL) {
         lv_obj_del(data->container);
@@ -439,7 +464,9 @@ void page_photo_show(void)
 
     MLOG_INFO("Photo page show");
     filter_panel_hide();
+    zoom_bar_show();
     update_resolution_display(data);
+    update_zoom_buttons_display(data);
     lv_obj_clear_flag(data->container, LV_OBJ_FLAG_HIDDEN);
 
     if (key_manager_register_callback(KEY_ID_CAMERA, KEY_EVENT_CLICK, take_photo_key_cb, data) != 0) {
@@ -466,6 +493,7 @@ void page_photo_hide(void)
 
     MLOG_INFO("Photo page hide");
     filter_panel_hide();
+    zoom_bar_hide();
     lv_obj_add_flag(data->container, LV_OBJ_FLAG_HIDDEN);
     (void)key_manager_unregister_callback(KEY_ID_CAMERA, KEY_EVENT_CLICK, take_photo_key_cb, data);
     (void)key_manager_unregister_callback(KEY_ID_FOCUS, KEY_EVENT_PRESS, focus_key_cb, data);
@@ -478,6 +506,7 @@ void page_photo_update(void)
 {
     page_photo_data_t* data = page_get_private_data();
     update_resolution_display(data);
+    update_zoom_buttons_display(data);
 }
 
 // #endregion

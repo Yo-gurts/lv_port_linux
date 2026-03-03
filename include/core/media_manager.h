@@ -26,6 +26,7 @@ typedef enum {
     MEDIA_OP_SET_FACE_DETECTION, /* 设置人脸检测开关；args: 0/1 */
     MEDIA_OP_SET_SMILE_CAPTURE, /* 设置笑脸抓拍开关；args: 0/1 */
     MEDIA_OP_SET_VIDEO_RESOLUTION, /* 设置录像分辨率；args: video_resolution_t */
+    MEDIA_OP_SET_ZOOM, /* 设置变焦倍率；args: 1/2/3/6 */
     MEDIA_OP_BUTT /* 枚举边界 */
 } media_operation_t;
 

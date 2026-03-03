@@ -146,6 +146,12 @@ static int handle_set_video_resolution(int32_t args)
     return media_manager_set_param_checked(PARAM_ID_VIDEO_RESOLUTION, (int)args, "设置录像分辨率");
 }
 
+static int handle_set_zoom(int32_t args)
+{
+    MLOG_INFO("media_manager 设置变焦(占位实现): zoom=%d", (int)args);
+    return MEDIA_MANAGER_OK;
+}
+
 static const media_op_handler_t g_media_handlers[MEDIA_OP_BUTT] = {
     [MEDIA_OP_SWITCH_TO_PHOTO_MODE] = handle_switch_to_photo_mode,
     [MEDIA_OP_SWITCH_TO_BOOT_MODE] = handle_switch_to_boot_mode,
@@ -165,6 +171,7 @@ static const media_op_handler_t g_media_handlers[MEDIA_OP_BUTT] = {
     [MEDIA_OP_SET_FACE_DETECTION] = handle_set_face_detection,
     [MEDIA_OP_SET_SMILE_CAPTURE] = handle_set_smile_capture,
     [MEDIA_OP_SET_VIDEO_RESOLUTION] = handle_set_video_resolution,
+    [MEDIA_OP_SET_ZOOM] = handle_set_zoom,
 };
 
 int media_manager_execute(media_operation_t op, int32_t args)

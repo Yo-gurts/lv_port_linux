@@ -20,6 +20,7 @@ typedef enum {
     PARAM_ID_AI_MODE, /* AI功能模式：风格变换/AI识万物/拍照翻译 */
     PARAM_ID_FILTER_INDEX, /* 拍照/录像共享滤镜下标 */
     PARAM_ID_FILTER_RESET_ON_MODE_SWITCH, /* 模式切换时是否重置滤镜：0不重置，1重置 */
+    PARAM_ID_ZOOM, /* 变焦倍率：1/2/3/6 */
     PARAM_ID_VOLUME, /* 音量 (0-100) */
     PARAM_ID_FOCUS_FRAME_STATE, /* 对焦框状态：0隐藏，1普通，2长按3秒状态 */
     PARAM_ID_BUTT,
@@ -91,6 +92,13 @@ typedef enum {
     AI_MODE_TRANSLATION,
     AI_MODE_BUTT
 } ai_mode_t;
+
+typedef enum {
+    ZOOM_LEVEL_1X = 1,
+    ZOOM_LEVEL_2X = 2,
+    ZOOM_LEVEL_3X = 3,
+    ZOOM_LEVEL_6X = 6,
+} zoom_level_t;
 
 typedef enum {
     FOCUS_FRAME_STATE_HIDDEN = 0,

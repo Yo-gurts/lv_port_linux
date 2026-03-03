@@ -11,6 +11,7 @@
 #include "core/style_manager.h"
 #include "mlog.h"
 #include "ui/filter_panel.h"
+#include "ui/zoom_bar.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -55,6 +56,15 @@ static void update_resolution_display(void)
     lv_img_set_src(data->resolution_img, video_resolution_icons[resolution_index]);
 }
 
+static void update_zoom_buttons_display(page_video_data_t* data)
+{
+    if (data == NULL) {
+        return;
+    }
+
+    zoom_bar_set_value(param_manager_get(PARAM_ID_ZOOM));
+}
+
 // #endregion
 // #############################################################################
 // ! #region 5. 对外接口函数
@@ -80,8 +90,10 @@ static void mode_switch_cb(lv_event_t* e)
     if (reset_filter == 1) {
         (void)param_manager_set(PARAM_ID_FILTER_INDEX, 0);
     }
+    (void)param_manager_set(PARAM_ID_ZOOM, param_manager_get_default(PARAM_ID_ZOOM));
 
     filter_panel_hide();
+    zoom_bar_hide();
     MLOG_INFO("Back to photo page");
     (void)media_manager_execute(MEDIA_OP_SWITCH_TO_PHOTO_MODE, 0);
     page_manager_back();
@@ -91,7 +103,9 @@ static void mode_switch_cb(lv_event_t* e)
 static void back_btn_cb(lv_event_t* e)
 {
     LV_UNUSED(e);
+    (void)param_manager_set(PARAM_ID_ZOOM, param_manager_get_default(PARAM_ID_ZOOM));
     filter_panel_hide();
+    zoom_bar_hide();
     (void)media_manager_execute(MEDIA_OP_SWITCH_TO_PHOTO_MODE, 0);
     page_manager_back();
 }
@@ -118,6 +132,25 @@ static void filter_btn_cb(lv_event_t* e)
     filter_panel_show();
 }
 
+/* 当检测到滑动时，调用 lv_indev_wait_release() 避免释放时触发点击 */
+static void swipe_right_cb(lv_event_t* e)
+{
+    lv_event_code_t code = lv_event_get_code(e);
+    if (code == LV_EVENT_GESTURE) {
+        lv_dir_t dir = lv_indev_get_gesture_dir(lv_indev_get_act());
+        if (dir == LV_DIR_RIGHT) {
+            MLOG_INFO("Swipe right, back to photo page");
+            back_btn_cb(NULL);
+        }
+
+        /* 检测到滑动，忽略后续的点击事件 */
+        lv_indev_t* indev = lv_indev_get_act();
+        if (indev != NULL) {
+            lv_indev_wait_release(indev);
+        }
+    }
+}
+
 // #endregion
 // #############################################################################
 // ! #region 8. 初始化、去初始化、资源管理
@@ -135,6 +168,7 @@ void page_video_create(void)
 
     /* 初始化全局滤镜面板（单例）。 */
     filter_panel_init();
+    zoom_bar_init();
 
     /* 创建页面容器 */
     data->container = lv_obj_create(lv_screen_active());
@@ -146,8 +180,11 @@ void page_video_create(void)
     /* 启用滑动手势检测，不将 GESTURE 事件传递给父控件 */
     lv_obj_clear_flag(data->container, LV_OBJ_FLAG_GESTURE_BUBBLE);
 
-    /* 添加滑动手势回调：从左往右滑返回上一页 */
-    lv_obj_add_event_cb(data->container, page_manager_swipe_right_cb, LV_EVENT_GESTURE, NULL);
+    /* 添加滑动手势回调：从左往右滑返回拍照页 */
+    lv_obj_add_event_cb(data->container, swipe_right_cb, LV_EVENT_GESTURE, NULL);
+
+    zoom_bar_hide();
+    update_zoom_buttons_display(data);
 
     /* =======================
      * 顶部状态栏：[back][4K] 在左边，录像时长 [SD][battery] 在右边
@@ -251,6 +288,7 @@ void page_video_destroy(void)
     }
 
     filter_panel_hide();
+    zoom_bar_hide();
     /* 删除容器（子元素会自动删除） */
     if (data->container != NULL) {
         lv_obj_del(data->container);
@@ -269,7 +307,9 @@ void page_video_show(void)
 
     MLOG_INFO("Video page show");
     filter_panel_hide();
+    zoom_bar_show();
     update_resolution_display();
+    update_zoom_buttons_display(data);
     lv_obj_clear_flag(data->container, LV_OBJ_FLAG_HIDDEN);
 }
 
@@ -282,6 +322,7 @@ void page_video_hide(void)
 
     MLOG_INFO("Video page hide");
     filter_panel_hide();
+    zoom_bar_hide();
     lv_obj_add_flag(data->container, LV_OBJ_FLAG_HIDDEN);
 }
 
@@ -289,6 +330,7 @@ void page_video_update(void)
 {
     /* 更新分辨率显示 */
     update_resolution_display();
+    update_zoom_buttons_display(page_get_private_data());
 }
 
 // #endregion

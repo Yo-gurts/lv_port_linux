@@ -5,6 +5,7 @@
 #include "mlog.h"
 #include "mode.h"
 #include "param.h"
+#include <stdio.h>
 
 #define MEDIA_MANAGER_TAKE_PHOTO_TIMEOUT_MS 2000U
 #define MEDIA_MANAGER_MODE_SWITCH_TIMEOUT_MS 3000U
@@ -289,6 +290,30 @@ static int handle_set_video_resolution(int32_t args)
     return MEDIA_MANAGER_OK;
 }
 
+static int handle_set_zoom(int32_t args)
+{
+    int zoom = (int)args;
+    int ret = MEDIA_MANAGER_OK;
+    MESSAGE_S msg = { 0 };
+
+    ret = media_manager_set_param_checked(PARAM_ID_ZOOM, zoom, "设置变焦倍率");
+    if (ret != MEDIA_MANAGER_OK) {
+        return ret;
+    }
+
+    msg.topic = EVENT_MODEMNG_LIVEVIEW_ADJUSTFOCUS;
+    msg.arg1 = 0;
+    snprintf((char*)msg.aszPayload, sizeof(msg.aszPayload), "%d", zoom);
+    ret = MODEMNG_SendMessage(&msg);
+    if (ret != 0) {
+        MLOG_ERR("设置变焦消息发送失败: zoom=%d ret=%d", zoom, (int)ret);
+        return MEDIA_MANAGER_ESTATE;
+    }
+
+    MLOG_INFO("已请求设置变焦: zoom=%d", zoom);
+    return MEDIA_MANAGER_OK;
+}
+
 static const media_op_handler_t g_media_handlers[MEDIA_OP_BUTT] = {
     [MEDIA_OP_SWITCH_TO_PHOTO_MODE] = handle_switch_to_photo_mode,
     [MEDIA_OP_SWITCH_TO_BOOT_MODE] = handle_switch_to_boot_mode,
@@ -308,6 +333,7 @@ static const media_op_handler_t g_media_handlers[MEDIA_OP_BUTT] = {
     [MEDIA_OP_SET_FACE_DETECTION] = handle_set_face_detection,
     [MEDIA_OP_SET_SMILE_CAPTURE] = handle_set_smile_capture,
     [MEDIA_OP_SET_VIDEO_RESOLUTION] = handle_set_video_resolution,
+    [MEDIA_OP_SET_ZOOM] = handle_set_zoom,
 };
 
 int media_manager_execute(media_operation_t op, int32_t args)

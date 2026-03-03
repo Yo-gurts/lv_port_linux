@@ -32,6 +32,11 @@ extern lv_style_t style_photo_filter_panel; /* 拍照页滤镜面板样式 */
 extern lv_style_t style_photo_filter_focus_frame; /* 拍照页滤镜选中框样式 */
 extern lv_style_t style_photo_filter_item; /* 拍照页滤镜条目样式 */
 extern lv_style_t style_photo_filter_thumb; /* 拍照页滤镜缩略图底样式 */
+extern lv_style_t style_zoom_container; /* 缩放总容器样式 */
+extern lv_style_t style_zoom_btn; /* 缩放按钮基础样式 */
+extern lv_style_t style_zoom_btn_active; /* 缩放按钮选中样式 */
+extern lv_style_t style_zoom_label; /* 缩放文字默认样式 */
+extern lv_style_t style_zoom_label_active; /* 缩放文字选中样式 */
 
 void style_common_init(void);
 

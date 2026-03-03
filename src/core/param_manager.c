@@ -31,6 +31,7 @@ static const int default_values[PARAM_ID_BUTT] = {
     [PARAM_ID_AI_MODE] = AI_MODE_STYLE_TRANSFER,
     [PARAM_ID_FILTER_INDEX] = 0, /* 默认“原图” */
     [PARAM_ID_FILTER_RESET_ON_MODE_SWITCH] = 0, /* 默认切模式不重置滤镜 */
+    [PARAM_ID_ZOOM] = ZOOM_LEVEL_1X, /* 默认1x */
     [PARAM_ID_VOLUME] = 50, /* 默认音量50% */
     [PARAM_ID_FOCUS_FRAME_STATE] = FOCUS_FRAME_STATE_HIDDEN, /* 默认隐藏 */
 };
@@ -49,6 +50,7 @@ static const param_rule_t param_rules[PARAM_ID_BUTT] = {
     [PARAM_ID_AI_MODE] = { .min_value = AI_MODE_STYLE_TRANSFER, .max_value = AI_MODE_BUTT - 1, .validate_enabled = 1 },
     [PARAM_ID_FILTER_INDEX] = { .min_value = 0, .max_value = 5, .validate_enabled = 1 },
     [PARAM_ID_FILTER_RESET_ON_MODE_SWITCH] = { .min_value = 0, .max_value = 1, .validate_enabled = 1 },
+    [PARAM_ID_ZOOM] = { .min_value = ZOOM_LEVEL_1X, .max_value = ZOOM_LEVEL_6X, .validate_enabled = 1 },
     [PARAM_ID_VOLUME] = { .min_value = 0, .max_value = 100, .validate_enabled = 1 },
     [PARAM_ID_FOCUS_FRAME_STATE] = { .min_value = FOCUS_FRAME_STATE_HIDDEN, .max_value = FOCUS_FRAME_STATE_LOCKING, .validate_enabled = 1 },
 };
@@ -83,6 +85,14 @@ static int validate_param_value(param_id_t id, int value)
 
     if (!is_valid_param_id(id)) {
         return -1;
+    }
+
+    if (id == PARAM_ID_ZOOM) {
+        if (value != ZOOM_LEVEL_1X && value != ZOOM_LEVEL_2X && value != ZOOM_LEVEL_3X && value != ZOOM_LEVEL_6X) {
+            MLOG_WARN("param[%d] value %d is not a supported zoom level", id, value);
+            return -1;
+        }
+        return 0;
     }
 
     rule = &param_rules[id];
