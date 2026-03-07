@@ -6,6 +6,7 @@
 #include "config.h"
 #include "core/key_manager.h"
 #include "core/page_manager.h"
+#include "core/param_manager.h"
 #include "hal_backlight.h"
 #include "lvgl/lvgl.h"
 #include "mlog.h"
@@ -256,6 +257,7 @@ void power_manager_deinit(void)
 
 void power_manager_poll(void)
 {
+    int auto_sleep_enabled;
     uint64_t now_ms;
 
     if (!g_inited) {
@@ -264,7 +266,8 @@ void power_manager_poll(void)
 
     power_manager_poll_touch_activity();
 
-    if (g_disable_auto_sleep_depth > 0 || !g_screen_on) {
+    auto_sleep_enabled = param_manager_get(PARAM_ID_AUTO_SLEEP);
+    if (g_disable_auto_sleep_depth > 0 || !g_screen_on || !auto_sleep_enabled) {
         return;
     }
 

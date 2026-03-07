@@ -33,14 +33,16 @@ static const setting_config_t settings_config[] = {
     { .icon_path = "A" RES_ICON_PATH "/sys-wifi.png", .title = "WiFi设置", .value = "未连接", .type = SETTING_TYPE_NORMAL },
     { .icon_path = "A" RES_ICON_PATH "/datetime.png", .title = "时间和日期", .value = "2026-02-07 12:00", .type = SETTING_TYPE_NORMAL },
     { .icon_path = "A" RES_ICON_PATH "/sys-volume.png", .title = "音量设置", .value = "xx%", .type = SETTING_TYPE_NORMAL },
+    { .icon_path = "A" RES_ICON_PATH "/switch.png", .title = "自动息屏", .value = "已开启", .type = SETTING_TYPE_TOGGLE },
     { .icon_path = "A" RES_ICON_PATH "/delete.png", .title = "格式化", .value = "请确认", .type = SETTING_TYPE_NORMAL },
     { .icon_path = "A" RES_ICON_PATH "/factory.png", .title = "出厂设置", .value = "请确认", .type = SETTING_TYPE_NORMAL },
     { .icon_path = "A" RES_ICON_PATH "/info.png", .title = "版本信息", .value = "V1.0.0", .type = SETTING_TYPE_NORMAL },
 };
 
 #define SETTINGS_COUNT (int)(sizeof(settings_config) / sizeof(settings_config[0]))
-#define SETTINGS_INDEX_FORMAT 4
-#define SETTINGS_INDEX_FACTORY_RESET 5
+#define SETTINGS_INDEX_AUTO_SLEEP 4
+#define SETTINGS_INDEX_FORMAT 5
+#define SETTINGS_INDEX_FACTORY_RESET 6
 #define SETTINGS_INDEX_VOLUME 3
 
 typedef enum {
@@ -67,6 +69,24 @@ static void update_volume_setting_value(page_system_settings_data_t* data)
     volume = param_manager_get(PARAM_ID_VOLUME);
     lv_snprintf(text, sizeof(text), "%d%%", volume);
     lv_label_set_text(data->settings[SETTINGS_INDEX_VOLUME].value_label, text);
+}
+
+static void update_auto_sleep_setting_value(page_system_settings_data_t* data)
+{
+    int enabled;
+    system_setting_item_t* item;
+
+    if (data == NULL || data->settings[SETTINGS_INDEX_AUTO_SLEEP].value_label == NULL) {
+        return;
+    }
+
+    enabled = param_manager_get(PARAM_ID_AUTO_SLEEP);
+    if (enabled != 0 && enabled != 1) {
+        enabled = 1;
+    }
+    item = &data->settings[SETTINGS_INDEX_AUTO_SLEEP];
+    item->current_index = enabled ? 1 : 0;
+    lv_label_set_text(item->value_label, enabled ? "已开启" : "已关闭");
 }
 
 static void show_confirm_dialog(page_system_settings_data_t* data, system_action_t action)
@@ -107,16 +127,19 @@ static void hide_confirm_dialog(page_system_settings_data_t* data)
     lv_obj_add_flag(data->confirm_mask, LV_OBJ_FLAG_HIDDEN);
 }
 
-/* 参数更新回调：音量变化时同步系统设置页显示。 */
+/* 参数更新回调：参数变化时同步系统设置页显示。 */
 static void system_settings_param_cb(param_id_t id, int value, void* user_data)
 {
     page_system_settings_data_t* data = (page_system_settings_data_t*)user_data;
     LV_UNUSED(value);
 
-    if (id != PARAM_ID_VOLUME) {
+    if (id == PARAM_ID_VOLUME) {
+        update_volume_setting_value(data);
         return;
     }
-    update_volume_setting_value(data);
+    if (id == PARAM_ID_AUTO_SLEEP) {
+        update_auto_sleep_setting_value(data);
+    }
 }
 
 // #endregion
@@ -166,6 +189,7 @@ static void system_action_timer_cb(lv_timer_t* timer)
     }
 
     update_volume_setting_value(data);
+    update_auto_sleep_setting_value(data);
     data->pending_action = SYSTEM_ACTION_NONE;
     data->action_processing = 0;
     data->action_timer = NULL;
@@ -237,11 +261,12 @@ static void setting_item_cb(lv_event_t* e)
     const setting_config_t* config = &settings_config[index];
 
     if (config->type == SETTING_TYPE_TOGGLE) {
-        /* 切换开关状态 */
-        item->current_index = !item->current_index;
-        const char* new_value = item->current_index ? "已开启" : "已关闭";
-        lv_label_set_text(item->value_label, new_value);
-        MLOG_INFO("Setting '%s' toggled to: %s", config->title, new_value);
+        if (index == SETTINGS_INDEX_AUTO_SLEEP) {
+            item->current_index = !item->current_index;
+            (void)param_manager_set(PARAM_ID_AUTO_SLEEP, item->current_index ? 1 : 0);
+            lv_label_set_text(item->value_label, item->current_index ? "已开启" : "已关闭");
+            MLOG_INFO("自动息屏已%s", item->current_index ? "开启" : "关闭");
+        }
     } else {
         /* WiFi设置跳转 */
         if (index == 1) {
@@ -330,7 +355,7 @@ void page_system_settings_create(void)
     lv_obj_set_flex_flow(data->settings_container, LV_FLEX_FLOW_COLUMN);
     lv_obj_set_flex_align(data->settings_container, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
 
-    /* 创建7个设置项 */
+    /* 创建8个设置项 */
     for (int i = 0; i < SETTINGS_COUNT; i++) {
         system_setting_item_t* item = &data->settings[i];
 
@@ -427,6 +452,7 @@ void page_system_settings_create(void)
     /* 监听参数变化，保持“音量设置”与 param_manager 同步。 */
     param_manager_register_callback(system_settings_param_cb, data);
     update_volume_setting_value(data);
+    update_auto_sleep_setting_value(data);
 }
 
 void page_system_settings_destroy(void)
@@ -461,6 +487,7 @@ void page_system_settings_show(void)
 
     MLOG_INFO("System settings page show");
     update_volume_setting_value(data);
+    update_auto_sleep_setting_value(data);
     lv_obj_clear_flag(data->container, LV_OBJ_FLAG_HIDDEN);
 }
 

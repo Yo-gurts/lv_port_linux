@@ -22,6 +22,7 @@ typedef enum {
     PARAM_ID_FILTER_RESET_ON_MODE_SWITCH, /* 模式切换时是否重置滤镜：0不重置，1重置 */
     PARAM_ID_ZOOM, /* 变焦倍率：1/2/3/6 */
     PARAM_ID_VOLUME, /* 音量 (0-100) */
+    PARAM_ID_AUTO_SLEEP, /* 自动息屏开关：0关闭，1开启 */
     PARAM_ID_FOCUS_FRAME_STATE, /* 对焦框状态：0隐藏，1普通，2长按3秒状态 */
     PARAM_ID_BUTT,
     PARAM_ID_NONE = -1 /* 无效ID，不同步到param_manager */
