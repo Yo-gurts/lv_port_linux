@@ -12,6 +12,7 @@
 #include "mlog.h"
 #include "ui/filter_panel.h"
 #include "ui/zoom_bar.h"
+#include "ui/gesture_back.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -132,38 +133,6 @@ static void filter_btn_cb(lv_event_t* e)
     filter_panel_show();
 }
 
-/* 当检测到滑动时，调用 lv_indev_wait_release() 避免释放时触发点击 */
-static void swipe_right_cb(lv_event_t* e)
-{
-    static lv_point_t swipe_start_point = {0};
-    static int swipe_start_valid = 0;
-    lv_event_code_t code = lv_event_get_code(e);
-    lv_indev_t* indev = lv_indev_get_act();
-
-    if (code == LV_EVENT_PRESSED) {
-        if (indev != NULL) {
-            lv_indev_get_point(indev, &swipe_start_point);
-            swipe_start_valid = 1;
-        }
-        return;
-    }
-
-    if (code == LV_EVENT_GESTURE) {
-        lv_dir_t dir = indev ? lv_indev_get_gesture_dir(indev) : LV_DIR_NONE;
-        int from_left_edge = swipe_start_valid && (swipe_start_point.x <= SWIPE_BACK_EDGE_THRESHOLD_PX);
-        if (dir == LV_DIR_RIGHT && from_left_edge) {
-            MLOG_INFO("Swipe right, back to photo page");
-            back_btn_cb(NULL);
-        }
-
-        /* 检测到滑动，忽略后续的点击事件 */
-        if (indev != NULL) {
-            lv_indev_wait_release(indev);
-        }
-        swipe_start_valid = 0;
-    }
-}
-
 // #endregion
 // #############################################################################
 // ! #region 8. 初始化、去初始化、资源管理
@@ -194,8 +163,8 @@ void page_video_create(void)
     lv_obj_clear_flag(data->container, LV_OBJ_FLAG_GESTURE_BUBBLE);
 
     /* 添加滑动手势回调：从左往右滑返回拍照页 */
-    lv_obj_add_event_cb(data->container, swipe_right_cb, LV_EVENT_GESTURE, NULL);
-    lv_obj_add_event_cb(data->container, swipe_right_cb, LV_EVENT_PRESSED, NULL);
+    gesture_back_register_events(data->container);
+    gesture_back_set_left_edge_swipe_cb(data->container, back_btn_cb);
 
     zoom_bar_hide();
     update_zoom_buttons_display(data);
@@ -290,6 +259,9 @@ void page_video_create(void)
     lv_img_set_src(menu_icon, "A:" RES_ICON_PATH "/menu.png");
     lv_obj_align(menu_icon, LV_ALIGN_CENTER, 0, 0);
 
+    /* 启用整页事件冒泡，确保子对象按压事件传递到父容器。 */
+    gesture_back_enable_event_bubble_recursive(data->container);
+
     /* 保存 private_data，供 show/hide/destroy 使用 */
     page_set_private_data(data);
 }
@@ -318,6 +290,8 @@ void page_video_show(void)
     if (data == NULL || data->container == NULL) {
         return;
     }
+
+    gesture_back_set_left_edge_swipe_cb(data->container, back_btn_cb);
 
     MLOG_INFO("Video page show");
     filter_panel_hide();

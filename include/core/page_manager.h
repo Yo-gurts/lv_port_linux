@@ -39,7 +39,6 @@ void page_set_private_data(void* data);
 
 /* 通用事件回调函数 - 所有页面可直接作为事件回调使用 */
 void page_manager_back_cb(lv_event_t* e);
-void page_manager_swipe_right_cb(lv_event_t* e);
 
 #ifdef __cplusplus
 }

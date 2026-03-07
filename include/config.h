@@ -50,6 +50,9 @@ extern "C" {
 /* 滑动返回边缘阈值（部分页面可能不吃这个配置） */
 #define SWIPE_BACK_EDGE_THRESHOLD_PX 40
 
+/* 按下到手势识别的最大时间窗，超时不触发右滑返回 */
+#define SWIPE_BACK_PRESS_GESTURE_MAX_MS 800
+
 #ifdef __cplusplus
 }
 #endif

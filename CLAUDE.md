@@ -91,24 +91,7 @@ src/
 - **SDL2**：x86 开发的显示后端
 - **MLOG**：基于 Syslog 的日志系统，支持多级别（MLOG_ERR, MLOG_INFO, MLOG_DBG 等）
 
-<<<<<<< HEAD
 ## 代码规范
-=======
-- Use Chinese commit messages following existing history style (e.g. `feat: ...`, `refactor(ui): ...`).
-- Keep the commit body compact and readable; avoid too many blank lines between items.
-- Commit body must use real line breaks. Do not write literal `\n` in message text.
-- Recommended command format:
-
-```bash
-git commit -m "fix(module): 简短标题" -m $'- 要点1\n- 要点2\n- 要点3'
-```
-
-- Wrong example (will keep `\n` as plain text):
-
-```bash
-git commit -m "fix(module): 简短标题" -m "- 要点1\n- 要点2"
-```
->>>>>>> docs(claude): 补充提交信息换行规范
 
 - **格式**：`clang-format-12` 配合 WebKit 风格（`.clang-format`）
 - **提交时自动格式化**：`.git/hooks/` 中的预提交钩子会应用 clang-format-diff-12
@@ -172,6 +155,26 @@ feat(system_settings): 增加格式化/恢复出厂确认弹框与处理提示
 8. **使用虚拟列表** - 用于大型列表/图片（tileview、list、table）
 9. **页面隐藏时暂停资源** - 隐藏页面时停止定时器/动画
 10. **关注内存** - 合理配置 `LV_MEM_SIZE`
+
+## 已遇到的 Bug
+
+### 问题：在 `show()` 注册手势事件导致重复挂载
+
+- 现象：页面 `show()` 时若继续注册 `LV_EVENT_PRESSED / LV_EVENT_GESTURE / LV_EVENT_DELETE`，事件回调可能重复挂载。
+- 影响：长期运行后，事件描述符可能累积，增加内存和事件分发开销，手势行为也更难排查。
+- 结论：`show()` 阶段不允许注册事件回调。事件回调只允许在 `create()` 阶段注册，`show()` 仅做状态刷新。
+
+### 问题：只靠方向和边缘判断会误判“先点后滑”
+
+- 现象：用户先点击一次，再进行滑动，如果沿用旧按压状态，可能被误判成右滑返回。
+- 关键点：`PRESSED -> GESTURE` 的时间窗不仅用于过滤慢速拖拽，更重要是切断“先点后滑”的误判链路。
+- 结论：右滑返回需要联合判定：同一目标、左边缘起滑、时间窗内完成。
+
+### 问题：`EVENT_BUBBLE` 配置不当会导致手势事件不生效
+
+- 现象：部分页面或控件层级下，父容器偶发收不到 `LV_EVENT_PRESSED / LV_EVENT_GESTURE`，表现为右滑返回不稳定或失效。
+- 原因：若子控件未开启 `LV_OBJ_FLAG_EVENT_BUBBLE`，按压事件不会上传到父容器；若页面容器也开启了 `EVENT_BUBBLE`，事件可能继续向上层传递导致目标不一致。
+- 结论：页面容器应 `clear EVENT_BUBBLE`，子孙控件应 `add EVENT_BUBBLE`，确保事件汇聚到页面容器且不继续上冒。
 
 ### 命名约定
 

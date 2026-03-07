@@ -8,6 +8,7 @@
 #include "core/page_manager.h"
 #include "core/style_manager.h"
 #include "mlog.h"
+#include "ui/gesture_back.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -112,8 +113,8 @@ void page_version_info_create(void)
     lv_obj_clear_flag(data->container, LV_OBJ_FLAG_GESTURE_BUBBLE);
 
     /* 添加滑动手势回调：从左往右滑返回上一页 */
-    lv_obj_add_event_cb(data->container, page_manager_swipe_right_cb, LV_EVENT_GESTURE, NULL);
-    lv_obj_add_event_cb(data->container, page_manager_swipe_right_cb, LV_EVENT_PRESSED, NULL);
+    gesture_back_register_events(data->container);
+    gesture_back_set_left_edge_swipe_cb(data->container, page_manager_back_cb);
 
     /* =======================
      * 1. 顶部导航栏
@@ -183,6 +184,9 @@ void page_version_info_create(void)
         }
     }
 
+    /* 启用整页事件冒泡，确保子对象按压事件传递到父容器。 */
+    gesture_back_enable_event_bubble_recursive(data->container);
+
     /* 保存 private_data */
     page_set_private_data(data);
 }
@@ -208,6 +212,8 @@ void page_version_info_show(void)
     if (!data || !data->container) {
         return;
     }
+
+    gesture_back_set_left_edge_swipe_cb(data->container, page_manager_back_cb);
 
     MLOG_INFO("Version info page show");
     lv_obj_clear_flag(data->container, LV_OBJ_FLAG_HIDDEN);

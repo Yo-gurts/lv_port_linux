@@ -8,6 +8,7 @@
 #include "core/page_manager.h"
 #include "core/style_manager.h"
 #include "mlog.h"
+#include "ui/gesture_back.h"
 #include "ui/top_notice.h"
 #include <stdint.h>
 #include <stdlib.h>
@@ -296,8 +297,8 @@ void page_wifi_list_create(void)
     lv_obj_set_scrollbar_mode(data->container, LV_SCROLLBAR_MODE_OFF);
     lv_obj_clear_flag(data->container, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_clear_flag(data->container, LV_OBJ_FLAG_GESTURE_BUBBLE);
-    lv_obj_add_event_cb(data->container, page_manager_swipe_right_cb, LV_EVENT_GESTURE, NULL);
-    lv_obj_add_event_cb(data->container, page_manager_swipe_right_cb, LV_EVENT_PRESSED, NULL);
+    gesture_back_register_events(data->container);
+    gesture_back_set_left_edge_swipe_cb(data->container, page_manager_back_cb);
 
     /* 顶部导航栏容器。 */
     data->nav_bar = lv_obj_create(data->container);
@@ -447,6 +448,10 @@ void page_wifi_list_create(void)
     data->wifi_enabled = 1;
     rebuild_wifi_list(data);
 
+    /* 启用整页事件冒泡，确保子对象按压事件传递到父容器。 */
+    gesture_back_enable_event_bubble_recursive(data->container);
+
+    /* 保存 private_data */
     page_set_private_data(data);
 }
 
@@ -471,6 +476,8 @@ void page_wifi_list_show(void)
     if (data == NULL || data->container == NULL) {
         return;
     }
+
+    gesture_back_set_left_edge_swipe_cb(data->container, page_manager_back_cb);
 
     rebuild_wifi_list(data);
     lv_obj_clear_flag(data->container, LV_OBJ_FLAG_HIDDEN);

@@ -93,6 +93,7 @@ set(SOURCES
     src/pages/page_video.c
     src/pages/page_wifi_list.c
     src/ui/filter_panel.c
+    src/ui/gesture_back.c
     src/ui/top_notice.c
     src/ui/zoom_bar.c
     src/ui/volume_bar.c
