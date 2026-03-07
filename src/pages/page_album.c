@@ -3,6 +3,7 @@
 // #############################################################################
 
 #include "pages/page_album.h"
+#include "pages/page_photo_preview.h"
 #include "config.h"
 #include "core/file_manager.h"
 #include "core/font_manager.h"
@@ -44,6 +45,7 @@
 
 static void refresh_visible_items(page_album_data_t* data, bool force_refresh);
 static void update_scroll_content_height(page_album_data_t* data);
+static int get_max_scroll_y(page_album_data_t* data);
 static void sync_fast_scrollbar_from_scroll(page_album_data_t* data);
 static void set_fast_scrollbar_visible(page_album_data_t* data, bool visible);
 static int get_photo_index_by_display_index(const page_album_data_t* data, int display_index);
@@ -65,6 +67,10 @@ static void cancel_btn_cb(lv_event_t* e);
 static void select_all_btn_cb(lv_event_t* e);
 static void show_fast_scrollbar_progress_notice(page_album_data_t* data, bool force);
 static void sync_fast_scrollbar_deferred_cb(void* user_data);
+static void show_photo_preview(page_album_data_t* data, int photo_index);
+static int get_scroll_y_for_photo_index(page_album_data_t* data, int photo_index);
+
+static int g_album_focus_photo_index = -1;
 
 // #endregion
 // #############################################################################
@@ -287,9 +293,13 @@ static int delete_selected_photos(page_album_data_t* data)
 {
     int photo_index;
     int deleted = 0;
+    int prev_scroll_y;
+    int target_scroll_y;
 
     if (!data || !data->selected_flags || data->selected_count <= 0)
         return -1;
+
+    prev_scroll_y = clamp_int(lv_obj_get_scroll_y(data->grid_container), 0, get_max_scroll_y(data));
 
     data->deleting_in_progress = true;
     data->prev_input_block_mask = key_manager_get_block_non_power();
@@ -323,8 +333,9 @@ static int delete_selected_photos(page_album_data_t* data)
     if (!ensure_selected_buffer(data, data->total_photos))
         MLOG_WARN("Album selected buffer ensure failed after delete");
     update_scroll_content_height(data);
+    target_scroll_y = clamp_int(prev_scroll_y, 0, get_max_scroll_y(data));
     data->first_visible_row = -1;
-    lv_obj_scroll_to_y(data->grid_container, 0, LV_ANIM_OFF);
+    lv_obj_scroll_to_y(data->grid_container, target_scroll_y, LV_ANIM_OFF);
     exit_selection_mode(data);
     refresh_visible_items(data, true);
     sync_fast_scrollbar_from_scroll(data);
@@ -362,8 +373,10 @@ static void album_item_event_cb(lv_event_t* e)
             data->suppress_next_item_click = false;
             return;
         }
-        if (!data->selection_mode)
+        if (!data->selection_mode) {
+            show_photo_preview(data, item->photo_index);
             return;
+        }
         toggle_item_selected(data, item);
     }
 }
@@ -408,12 +421,48 @@ static void select_all_btn_cb(lv_event_t* e)
     refresh_selection_overlays(data);
 }
 
+static void show_photo_preview(page_album_data_t* data, int photo_index)
+{
+    if (!data)
+        return;
+    if (photo_index < 0 || photo_index >= data->total_photos)
+        return;
+
+    page_photo_preview_set_initial_photo_index(photo_index);
+    page_manager_navigate("photo_preview");
+}
+
 static int get_total_rows(const page_album_data_t* data)
 {
     int total_rows = (data->total_photos + data->layout.cols - 1) / data->layout.cols;
     if (total_rows < 1)
         total_rows = 1;
     return total_rows;
+}
+
+static int get_scroll_y_for_photo_index(page_album_data_t* data, int photo_index)
+{
+    int display_index;
+    int target_row;
+    int viewport_height;
+    int target_y;
+    int max_scroll_y;
+
+    if (!data || data->total_photos <= 0)
+        return 0;
+    if (photo_index < 0 || photo_index >= data->total_photos)
+        return 0;
+
+    display_index = data->total_photos - 1 - photo_index;
+    target_row = display_index / data->layout.cols;
+    viewport_height = lv_obj_get_content_height(data->grid_container);
+    if (viewport_height <= 0)
+        viewport_height = data->layout.row_height;
+
+    /* 回到九宫格时尽量让目标项居中可见 */
+    target_y = target_row * data->layout.row_height - (viewport_height - data->layout.row_height) / 2;
+    max_scroll_y = get_max_scroll_y(data);
+    return clamp_int(target_y, 0, max_scroll_y);
 }
 
 static void calculate_layout(page_album_data_t* data)
@@ -1126,6 +1175,8 @@ void page_album_show(void)
 {
     page_album_data_t* data = page_get_private_data();
     int new_total_photos;
+    bool has_focus_target = false;
+    int target_scroll_y = 0;
     if (!data || !data->container)
         return;
 
@@ -1142,12 +1193,19 @@ void page_album_show(void)
             MLOG_WARN("Album selected buffer ensure failed");
         exit_selection_mode(data);
     }
+    if (g_album_focus_photo_index >= 0 && g_album_focus_photo_index < data->total_photos) {
+        has_focus_target = true;
+        target_scroll_y = get_scroll_y_for_photo_index(data, g_album_focus_photo_index);
+    }
 
     update_nav_bar_state(data);
     data->last_notice_index = -1;
     lv_obj_clear_flag(data->container, LV_OBJ_FLAG_HIDDEN);
-    data->first_visible_row = -1;
-    lv_obj_scroll_to_y(data->grid_container, 0, LV_ANIM_OFF);
+    if (has_focus_target) {
+        data->first_visible_row = -1;
+        lv_obj_scroll_to_y(data->grid_container, target_scroll_y, LV_ANIM_OFF);
+        g_album_focus_photo_index = -1;
+    }
     refresh_visible_items(data, true);
     sync_fast_scrollbar_from_scroll(data);
     set_fast_scrollbar_visible(data, true);
@@ -1165,8 +1223,6 @@ void page_album_hide(void)
     MLOG_INFO("Album page hide");
     exit_selection_mode(data);
     data->last_notice_index = -1;
-    data->first_visible_row = -1;
-    lv_obj_scroll_to_y(data->grid_container, 0, LV_ANIM_OFF);
     top_notice_hide();
     set_fast_scrollbar_visible(data, true);
     lv_obj_add_flag(data->container, LV_OBJ_FLAG_HIDDEN);
@@ -1175,6 +1231,11 @@ void page_album_hide(void)
 void page_album_update(void)
 {
     /* no-op */
+}
+
+void page_album_set_focus_photo_index(int photo_index)
+{
+    g_album_focus_photo_index = photo_index;
 }
 
 // #endregion

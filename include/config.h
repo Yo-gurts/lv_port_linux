@@ -26,6 +26,10 @@ extern "C" {
 #define PHOTO_ALBUM_IMAGE_THUMB_PATH "A:/mnt/sd/.thumb/photo_small/"
 #endif
 
+#ifndef PHOTO_ALBUM_IMAGE_SUBPIC_PATH
+#define PHOTO_ALBUM_IMAGE_SUBPIC_PATH "A:/mnt/sd/.thumb/photo_large/"
+#endif
+
 /* =======================
  * 字体配置
  * ======================= */

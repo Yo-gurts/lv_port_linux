@@ -14,6 +14,7 @@
 #include "pages/page_ai_photo.h"
 #include "pages/page_ai_photo_settings.h"
 #include "pages/page_album.h"
+#include "pages/page_photo_preview.h"
 #include "pages/page_chat.h"
 #include "pages/page_home.h"
 #include "pages/page_photo.h"
@@ -196,6 +197,14 @@ static page_interface_t album_page_interface = {
     .update = page_album_update,
 };
 
+static page_interface_t photo_preview_page_interface = {
+    .create = page_photo_preview_create,
+    .destroy = page_photo_preview_destroy,
+    .show = page_photo_preview_show,
+    .hide = page_photo_preview_hide,
+    .update = page_photo_preview_update,
+};
+
 int32_t ui_main(void)
 {
     lv_init();
@@ -238,6 +247,7 @@ int32_t ui_main(void)
     page_manager_register("ai_photo_settings", &ai_photo_settings_page_interface, NULL);
     page_manager_register("chat", &chat_page_interface, NULL);
     page_manager_register("album", &album_page_interface, NULL);
+    page_manager_register("photo_preview", &photo_preview_page_interface, NULL);
 
     /* Navigate to home page */
     page_manager_navigate("home");

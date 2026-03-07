@@ -25,6 +25,11 @@ typedef struct {
 
 static photo_list_t g_photo_list = {0};
 
+typedef enum {
+    PHOTO_DERIVED_TYPE_THUMBNAIL = 0,
+    PHOTO_DERIVED_TYPE_SUBPIC = 1,
+} photo_derived_type_t;
+
 static const char* to_real_path(const char* path)
 {
     if (path && path[0] == 'A' && path[1] == ':')
@@ -230,6 +235,80 @@ static int refresh_photo_list_by_fs(const char* real_dir)
 }
 
 #ifdef COMPONENTS_THUMBNAIL_EXTRACTOR_ON
+static int extract_thumbnail_file(const char* src_path, const char* dst_path);
+#endif
+
+static int get_photo_derived_lv_path(
+    int index,
+    photo_derived_type_t derived_type,
+    char* out_path,
+    size_t out_size)
+{
+    char file_name[FILE_MANAGER_MAX_NAME_LEN];
+    char base_name[FILE_MANAGER_MAX_NAME_LEN];
+    char src_lv_path[FILE_MANAGER_MAX_PATH_LEN];
+    char target_lv_path[FILE_MANAGER_MAX_PATH_LEN];
+    const char* target_real_path;
+
+    const char* target_dir_lv;
+    const char* target_dir_log_name;
+    int fallback_to_thumbnail;
+
+    if (!out_path || out_size == 0)
+        return -1;
+
+    if (derived_type == PHOTO_DERIVED_TYPE_THUMBNAIL) {
+        target_dir_lv = PHOTO_ALBUM_IMAGE_THUMB_PATH;
+        target_dir_log_name = "thumbnail";
+        fallback_to_thumbnail = 0;
+    } else {
+        target_dir_lv = PHOTO_ALBUM_IMAGE_SUBPIC_PATH;
+        target_dir_log_name = "subpic";
+        fallback_to_thumbnail = 1;
+    }
+
+    if (file_manager_get_photo_name(index, file_name, sizeof(file_name)) != 0)
+        return -1;
+
+    get_photo_basename(file_name, base_name, sizeof(base_name));
+
+    if (snprintf(target_lv_path, sizeof(target_lv_path), "%s%s.jpg", target_dir_lv, base_name) >= (int)sizeof(target_lv_path))
+        return -1;
+
+    target_real_path = to_real_path(target_lv_path);
+    if (file_exists_and_valid(target_real_path)) {
+        if (snprintf(out_path, out_size, "%s", target_lv_path) >= (int)out_size)
+            return -1;
+        return 0;
+    }
+
+    if (ensure_dir_recursive(to_real_path(target_dir_lv)) != 0)
+        MLOG_WARN("Create %s dir failed: %s", target_dir_log_name, target_dir_lv);
+
+    if (snprintf(src_lv_path, sizeof(src_lv_path), "%s%s", PHOTO_ALBUM_IMAGE_PATH, file_name) >= (int)sizeof(src_lv_path))
+        return -1;
+
+#ifdef COMPONENTS_THUMBNAIL_EXTRACTOR_ON
+    {
+        const char* src_real_path = to_real_path(src_lv_path);
+        if (extract_thumbnail_file(src_real_path, target_real_path) == 0 && file_exists_and_valid(target_real_path)) {
+            if (snprintf(out_path, out_size, "%s", target_lv_path) >= (int)out_size)
+                return -1;
+            return 0;
+        }
+    }
+#endif
+
+    if (fallback_to_thumbnail)
+        return file_manager_get_photo_thumbnail_path(index, out_path, out_size);
+
+    if (snprintf(out_path, out_size, "%s", src_lv_path) >= (int)out_size)
+        return -1;
+
+    return 0;
+}
+
+#ifdef COMPONENTS_THUMBNAIL_EXTRACTOR_ON
 static int extract_thumbnail_file(const char* src_path, const char* dst_path)
 {
     THUMBNAIL_EXTRACTOR_HANDLE_T extractor = NULL;
@@ -304,13 +383,9 @@ int file_manager_get_photo_name(int index, char* out_name, size_t out_size)
     return 0;
 }
 
-int file_manager_get_photo_thumbnail_path(int index, char* out_path, size_t out_size)
+int file_manager_get_photo_path(int index, char* out_path, size_t out_size)
 {
     char file_name[FILE_MANAGER_MAX_NAME_LEN];
-    char base_name[FILE_MANAGER_MAX_NAME_LEN];
-    char src_lv_path[FILE_MANAGER_MAX_PATH_LEN];
-    char dst_lv_path[FILE_MANAGER_MAX_PATH_LEN];
-    const char* dst_real_path;
 
     if (!out_path || out_size == 0)
         return -1;
@@ -318,44 +393,20 @@ int file_manager_get_photo_thumbnail_path(int index, char* out_path, size_t out_
     if (file_manager_get_photo_name(index, file_name, sizeof(file_name)) != 0)
         return -1;
 
-    get_photo_basename(file_name, base_name, sizeof(base_name));
-
-    if (snprintf(dst_lv_path, sizeof(dst_lv_path), "%s%s.jpg", PHOTO_ALBUM_IMAGE_THUMB_PATH, base_name) >=
-        (int)sizeof(dst_lv_path)) {
-        return -1;
-    }
-
-    dst_real_path = to_real_path(dst_lv_path);
-
-    if (file_exists_and_valid(dst_real_path)) {
-        if (snprintf(out_path, out_size, "%s", dst_lv_path) >= (int)out_size)
-            return -1;
-        return 0;
-    }
-
-    if (ensure_dir_recursive(to_real_path(PHOTO_ALBUM_IMAGE_THUMB_PATH)) != 0)
-        MLOG_WARN("Create thumbnail dir failed: %s", PHOTO_ALBUM_IMAGE_THUMB_PATH);
-
-    if (snprintf(src_lv_path, sizeof(src_lv_path), "%s%s", PHOTO_ALBUM_IMAGE_PATH, file_name) >=
-        (int)sizeof(src_lv_path)) {
-        return -1;
-    }
-
-#ifdef COMPONENTS_THUMBNAIL_EXTRACTOR_ON
-    {
-        const char* src_real_path = to_real_path(src_lv_path);
-        if (extract_thumbnail_file(src_real_path, dst_real_path) == 0 && file_exists_and_valid(dst_real_path)) {
-            if (snprintf(out_path, out_size, "%s", dst_lv_path) >= (int)out_size)
-                return -1;
-            return 0;
-        }
-    }
-#endif
-
-    if (snprintf(out_path, out_size, "%s", src_lv_path) >= (int)out_size)
+    if (snprintf(out_path, out_size, "%s%s", PHOTO_ALBUM_IMAGE_PATH, file_name) >= (int)out_size)
         return -1;
 
     return 0;
+}
+
+int file_manager_get_photo_thumbnail_path(int index, char* out_path, size_t out_size)
+{
+    return get_photo_derived_lv_path(index, PHOTO_DERIVED_TYPE_THUMBNAIL, out_path, out_size);
+}
+
+int file_manager_get_photo_subpic_path(int index, char* out_path, size_t out_size)
+{
+    return get_photo_derived_lv_path(index, PHOTO_DERIVED_TYPE_SUBPIC, out_path, out_size);
 }
 
 int file_manager_delete_photo_by_index(int index)
@@ -364,8 +415,10 @@ int file_manager_delete_photo_by_index(int index)
     char base_name[FILE_MANAGER_MAX_NAME_LEN];
     char src_lv_path[FILE_MANAGER_MAX_PATH_LEN];
     char thumb_lv_path[FILE_MANAGER_MAX_PATH_LEN];
+    char subpic_lv_path[FILE_MANAGER_MAX_PATH_LEN];
     const char* src_real_path;
     const char* thumb_real_path;
+    const char* subpic_real_path;
     char* removed_name;
     int move_count;
 
@@ -387,6 +440,12 @@ int file_manager_delete_photo_by_index(int index)
         thumb_real_path = to_real_path(thumb_lv_path);
         if (unlink(thumb_real_path) != 0 && errno != ENOENT)
             MLOG_WARN("Delete thumbnail failed: file=%s path=%s errno=%d", file_name, thumb_real_path, errno);
+    }
+    if (snprintf(subpic_lv_path, sizeof(subpic_lv_path), "%s%s.jpg", PHOTO_ALBUM_IMAGE_SUBPIC_PATH, base_name) <
+        (int)sizeof(subpic_lv_path)) {
+        subpic_real_path = to_real_path(subpic_lv_path);
+        if (unlink(subpic_real_path) != 0 && errno != ENOENT)
+            MLOG_WARN("Delete subpic failed: file=%s path=%s errno=%d", file_name, subpic_real_path, errno);
     }
 
     removed_name = g_photo_list.names[index];

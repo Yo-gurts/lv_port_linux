@@ -72,6 +72,7 @@ void page_album_destroy(void);
 void page_album_show(void);
 void page_album_hide(void);
 void page_album_update(void);
+void page_album_set_focus_photo_index(int photo_index);
 
 #ifdef __cplusplus
 }
