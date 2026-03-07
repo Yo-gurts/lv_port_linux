@@ -30,6 +30,7 @@ typedef enum {
     PHOTO_DERIVED_TYPE_SUBPIC = 1,
 } photo_derived_type_t;
 
+/* 将 LVGL 路径（A:/...）转换为真实文件系统路径（/...）。 */
 static const char* to_real_path(const char* path)
 {
     if (path && path[0] == 'A' && path[1] == ':')
@@ -37,6 +38,38 @@ static const char* to_real_path(const char* path)
     return path;
 }
 
+/* 将真实路径转换为 LVGL 可识别路径；绝对路径自动补 A: 前缀。 */
+static int to_lv_path(const char* real_path, char* lv_path, size_t lv_size)
+{
+    if (!real_path || !lv_path || lv_size == 0)
+        return -1;
+
+    if (real_path[0] == '/') {
+        if (snprintf(lv_path, lv_size, "A:%s", real_path) >= (int)lv_size)
+            return -1;
+    } else {
+        if (snprintf(lv_path, lv_size, "%s", real_path) >= (int)lv_size)
+            return -1;
+    }
+    return 0;
+}
+
+/* 按路径类型将 real_path 输出为 real/LV 路径。 */
+static int export_path_by_type(const char* real_path, file_manager_path_type_t path_type, char* out_path, size_t out_size)
+{
+    if (!real_path || !out_path || out_size == 0)
+        return -1;
+
+    if (path_type == FILE_PATH_REAL) {
+        if (snprintf(out_path, out_size, "%s", real_path) >= (int)out_size)
+            return -1;
+        return 0;
+    }
+
+    return to_lv_path(real_path, out_path, out_size);
+}
+
+/* 判断文件名是否为 JPEG 扩展名。 */
 static int is_jpeg_file(const char* name)
 {
     const char* dot;
@@ -51,6 +84,7 @@ static int is_jpeg_file(const char* name)
     return (strcasecmp(dot, ".jpg") == 0 || strcasecmp(dot, ".jpeg") == 0);
 }
 
+/* 照片文件名字典序比较函数，用于排序。 */
 static int photo_name_cmp(const void* a, const void* b)
 {
     const char* lhs = *(const char* const*)a;
@@ -59,6 +93,7 @@ static int photo_name_cmp(const void* a, const void* b)
     return strcmp(lhs, rhs);
 }
 
+/* 释放照片列表内存。 */
 static void free_photo_list(photo_list_t* list)
 {
     int i;
@@ -75,6 +110,7 @@ static void free_photo_list(photo_list_t* list)
     list->capacity = 0;
 }
 
+/* 追加一个照片文件名到列表，必要时扩容。 */
 static int append_photo_name(photo_list_t* list, const char* name)
 {
     char** new_names;
@@ -102,6 +138,7 @@ static int append_photo_name(photo_list_t* list, const char* name)
     return 0;
 }
 
+/* 递归确保目录存在。 */
 static int ensure_dir_recursive(const char* dir_path)
 {
     char tmp[FILE_MANAGER_MAX_PATH_LEN];
@@ -136,6 +173,7 @@ static int ensure_dir_recursive(const char* dir_path)
     return 0;
 }
 
+/* 判断文件是否存在且有效（普通文件且大小大于 0）。 */
 static int file_exists_and_valid(const char* path)
 {
     struct stat st;
@@ -152,6 +190,7 @@ static int file_exists_and_valid(const char* path)
     return st.st_size > 0;
 }
 
+/* 判断路径是否为普通文件。 */
 static int is_regular_file_path(const char* path)
 {
     struct stat st;
@@ -165,6 +204,7 @@ static int is_regular_file_path(const char* path)
     return S_ISREG(st.st_mode);
 }
 
+/* 提取文件主名（去掉扩展名）。 */
 static void get_photo_basename(const char* name, char* out_base, size_t out_size)
 {
     const char* dot;
@@ -188,6 +228,7 @@ static void get_photo_basename(const char* name, char* out_base, size_t out_size
     out_base[len] = '\0';
 }
 
+/* 通过扫描文件系统刷新照片列表。 */
 static int refresh_photo_list_by_fs(const char* real_dir)
 {
     char full_path[FILE_MANAGER_MAX_PATH_LEN];
@@ -235,27 +276,35 @@ static int refresh_photo_list_by_fs(const char* real_dir)
 }
 
 #ifdef COMPONENTS_THUMBNAIL_EXTRACTOR_ON
+/* 缩略图提取函数前置声明（启用提取器时有效）。 */
 static int extract_thumbnail_file(const char* src_path, const char* dst_path);
 #endif
 
+/* 统一获取派生图片路径（缩略图/子图），并按策略回退。 */
 static int get_photo_derived_lv_path(
     int index,
     photo_derived_type_t derived_type,
     char* out_path,
-    size_t out_size)
+    size_t out_size,
+    file_manager_path_type_t path_type)
 {
     char file_name[FILE_MANAGER_MAX_NAME_LEN];
     char base_name[FILE_MANAGER_MAX_NAME_LEN];
-    char src_lv_path[FILE_MANAGER_MAX_PATH_LEN];
-    char target_lv_path[FILE_MANAGER_MAX_PATH_LEN];
+    char src_real_path[FILE_MANAGER_MAX_PATH_LEN];
+    char target_real_path_buf[FILE_MANAGER_MAX_PATH_LEN];
     const char* target_real_path;
-
+    const char* image_dir_real;
     const char* target_dir_lv;
     const char* target_dir_log_name;
     int fallback_to_thumbnail;
 
     if (!out_path || out_size == 0)
         return -1;
+
+    if (file_manager_get_photo_name(index, file_name, sizeof(file_name)) != 0)
+        return -1;
+
+    get_photo_basename(file_name, base_name, sizeof(base_name));
 
     if (derived_type == PHOTO_DERIVED_TYPE_THUMBNAIL) {
         target_dir_lv = PHOTO_ALBUM_IMAGE_THUMB_PATH;
@@ -267,17 +316,20 @@ static int get_photo_derived_lv_path(
         fallback_to_thumbnail = 1;
     }
 
-    if (file_manager_get_photo_name(index, file_name, sizeof(file_name)) != 0)
+    if (snprintf(target_real_path_buf, sizeof(target_real_path_buf), "%s%s.jpg", to_real_path(target_dir_lv), base_name) >=
+        (int)sizeof(target_real_path_buf)) {
+        return -1;
+    }
+    target_real_path = target_real_path_buf;
+
+    image_dir_real = to_real_path(PHOTO_ALBUM_IMAGE_PATH);
+    if (!image_dir_real)
+        return -1;
+    if (snprintf(src_real_path, sizeof(src_real_path), "%s%s", image_dir_real, file_name) >= (int)sizeof(src_real_path))
         return -1;
 
-    get_photo_basename(file_name, base_name, sizeof(base_name));
-
-    if (snprintf(target_lv_path, sizeof(target_lv_path), "%s%s.jpg", target_dir_lv, base_name) >= (int)sizeof(target_lv_path))
-        return -1;
-
-    target_real_path = to_real_path(target_lv_path);
     if (file_exists_and_valid(target_real_path)) {
-        if (snprintf(out_path, out_size, "%s", target_lv_path) >= (int)out_size)
+        if (export_path_by_type(target_real_path, path_type, out_path, out_size) != 0)
             return -1;
         return 0;
     }
@@ -285,30 +337,25 @@ static int get_photo_derived_lv_path(
     if (ensure_dir_recursive(to_real_path(target_dir_lv)) != 0)
         MLOG_WARN("Create %s dir failed: %s", target_dir_log_name, target_dir_lv);
 
-    if (snprintf(src_lv_path, sizeof(src_lv_path), "%s%s", PHOTO_ALBUM_IMAGE_PATH, file_name) >= (int)sizeof(src_lv_path))
-        return -1;
-
 #ifdef COMPONENTS_THUMBNAIL_EXTRACTOR_ON
-    {
-        const char* src_real_path = to_real_path(src_lv_path);
-        if (extract_thumbnail_file(src_real_path, target_real_path) == 0 && file_exists_and_valid(target_real_path)) {
-            if (snprintf(out_path, out_size, "%s", target_lv_path) >= (int)out_size)
-                return -1;
-            return 0;
-        }
+    if (extract_thumbnail_file(src_real_path, target_real_path) == 0 && file_exists_and_valid(target_real_path)) {
+        if (export_path_by_type(target_real_path, path_type, out_path, out_size) != 0)
+            return -1;
+        return 0;
     }
 #endif
 
     if (fallback_to_thumbnail)
-        return file_manager_get_photo_thumbnail_path(index, out_path, out_size);
+        return file_manager_get_photo_thumbnail_path(index, out_path, out_size, path_type);
 
-    if (snprintf(out_path, out_size, "%s", src_lv_path) >= (int)out_size)
+    if (export_path_by_type(src_real_path, path_type, out_path, out_size) != 0)
         return -1;
 
     return 0;
 }
 
 #ifdef COMPONENTS_THUMBNAIL_EXTRACTOR_ON
+/* 从原图提取缩略图并写入目标文件。 */
 static int extract_thumbnail_file(const char* src_path, const char* dst_path)
 {
     THUMBNAIL_EXTRACTOR_HANDLE_T extractor = NULL;
@@ -346,6 +393,7 @@ cleanup:
 }
 #endif
 
+/* 刷新照片列表（mock 通过目录扫描实现）。 */
 int file_manager_refresh_photo_list(void)
 {
     const char* real_dir = to_real_path(PHOTO_ALBUM_IMAGE_PATH);
@@ -364,11 +412,13 @@ int file_manager_refresh_photo_list(void)
     return -1;
 }
 
+/* 获取照片总数。 */
 int file_manager_get_photo_count(void)
 {
     return g_photo_list.count;
 }
 
+/* 按索引获取照片文件名。 */
 int file_manager_get_photo_name(int index, char* out_name, size_t out_size)
 {
     if (!out_name || out_size == 0)
@@ -383,9 +433,12 @@ int file_manager_get_photo_name(int index, char* out_name, size_t out_size)
     return 0;
 }
 
-int file_manager_get_photo_path(int index, char* out_path, size_t out_size)
+/* 按索引获取原图路径。 */
+int file_manager_get_photo_path(int index, char* out_path, size_t out_size, file_manager_path_type_t path_type)
 {
     char file_name[FILE_MANAGER_MAX_NAME_LEN];
+    char real_path[FILE_MANAGER_MAX_PATH_LEN];
+    const char* image_dir_real;
 
     if (!out_path || out_size == 0)
         return -1;
@@ -393,22 +446,30 @@ int file_manager_get_photo_path(int index, char* out_path, size_t out_size)
     if (file_manager_get_photo_name(index, file_name, sizeof(file_name)) != 0)
         return -1;
 
-    if (snprintf(out_path, out_size, "%s%s", PHOTO_ALBUM_IMAGE_PATH, file_name) >= (int)out_size)
+    image_dir_real = to_real_path(PHOTO_ALBUM_IMAGE_PATH);
+    if (!image_dir_real)
+        return -1;
+    if (snprintf(real_path, sizeof(real_path), "%s%s", image_dir_real, file_name) >= (int)sizeof(real_path))
+        return -1;
+    if (export_path_by_type(real_path, path_type, out_path, out_size) != 0)
         return -1;
 
     return 0;
 }
 
-int file_manager_get_photo_thumbnail_path(int index, char* out_path, size_t out_size)
+/* 按索引获取缩略图路径。 */
+int file_manager_get_photo_thumbnail_path(int index, char* out_path, size_t out_size, file_manager_path_type_t path_type)
 {
-    return get_photo_derived_lv_path(index, PHOTO_DERIVED_TYPE_THUMBNAIL, out_path, out_size);
+    return get_photo_derived_lv_path(index, PHOTO_DERIVED_TYPE_THUMBNAIL, out_path, out_size, path_type);
 }
 
-int file_manager_get_photo_subpic_path(int index, char* out_path, size_t out_size)
+/* 按索引获取子图路径（photo_large）。 */
+int file_manager_get_photo_subpic_path(int index, char* out_path, size_t out_size, file_manager_path_type_t path_type)
 {
-    return get_photo_derived_lv_path(index, PHOTO_DERIVED_TYPE_SUBPIC, out_path, out_size);
+    return get_photo_derived_lv_path(index, PHOTO_DERIVED_TYPE_SUBPIC, out_path, out_size, path_type);
 }
 
+/* 按索引删除原图及其派生图，并同步更新内存列表。 */
 int file_manager_delete_photo_by_index(int index)
 {
     char file_name[FILE_MANAGER_MAX_NAME_LEN];
@@ -459,6 +520,7 @@ int file_manager_delete_photo_by_index(int index)
     return 0;
 }
 
+/* 格式化 SD 卡（当前为 mock 延时实现）。 */
 int file_manager_format_sdcard(void)
 {
     MLOG_INFO("file_manager: start format sdcard (mock)");

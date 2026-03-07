@@ -87,7 +87,7 @@ static void render_current_photo(page_photo_preview_data_t* data)
     data->current_display_index = clamp_int(data->current_display_index, 0, data->total_photos - 1);
     photo_index = display_index_to_photo_index(data->total_photos, data->current_display_index);
 
-    if (file_manager_get_photo_subpic_path(photo_index, subpic_path, sizeof(subpic_path)) == 0)
+    if (file_manager_get_photo_subpic_path(photo_index, subpic_path, sizeof(subpic_path), FILE_PATH_LV) == 0)
         lv_img_set_src(data->image, subpic_path);
     else
         lv_img_set_src(data->image, NULL);

@@ -631,7 +631,7 @@ static void update_item_content(page_album_data_t* data, album_item_t* item, int
     photo_index = get_photo_index_by_display_index(data, display_index);
     item->photo_index = photo_index;
 
-    if (file_manager_get_photo_thumbnail_path(photo_index, thumb_path, sizeof(thumb_path)) == 0) {
+    if (file_manager_get_photo_thumbnail_path(photo_index, thumb_path, sizeof(thumb_path), FILE_PATH_LV) == 0) {
         lv_img_set_src(item->img, thumb_path);
         lv_obj_set_style_bg_opa(item->img, LV_OPA_TRANSP, LV_PART_MAIN);
     } else {
