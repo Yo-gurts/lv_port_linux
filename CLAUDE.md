@@ -91,7 +91,24 @@ src/
 - **SDL2**：x86 开发的显示后端
 - **MLOG**：基于 Syslog 的日志系统，支持多级别（MLOG_ERR, MLOG_INFO, MLOG_DBG 等）
 
+<<<<<<< HEAD
 ## 代码规范
+=======
+- Use Chinese commit messages following existing history style (e.g. `feat: ...`, `refactor(ui): ...`).
+- Keep the commit body compact and readable; avoid too many blank lines between items.
+- Commit body must use real line breaks. Do not write literal `\n` in message text.
+- Recommended command format:
+
+```bash
+git commit -m "fix(module): 简短标题" -m $'- 要点1\n- 要点2\n- 要点3'
+```
+
+- Wrong example (will keep `\n` as plain text):
+
+```bash
+git commit -m "fix(module): 简短标题" -m "- 要点1\n- 要点2"
+```
+>>>>>>> docs(claude): 补充提交信息换行规范
 
 - **格式**：`clang-format-12` 配合 WebKit 风格（`.clang-format`）
 - **提交时自动格式化**：`.git/hooks/` 中的预提交钩子会应用 clang-format-diff-12
