@@ -94,9 +94,9 @@ static void show_prev_photo(page_photo_preview_data_t* data)
     if (!data || data->total_photos <= 0)
         return;
     if (data->current_display_index <= 0)
-        return;
-
-    data->current_display_index--;
+        data->current_display_index = data->total_photos - 1;
+    else
+        data->current_display_index--;
     render_current_photo(data);
 }
 
@@ -105,9 +105,9 @@ static void show_next_photo(page_photo_preview_data_t* data)
     if (!data || data->total_photos <= 0)
         return;
     if (data->current_display_index >= data->total_photos - 1)
-        return;
-
-    data->current_display_index++;
+        data->current_display_index = 0;
+    else
+        data->current_display_index++;
     render_current_photo(data);
 }
 
