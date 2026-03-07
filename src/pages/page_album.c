@@ -1181,9 +1181,12 @@ void page_album_show(void)
             MLOG_WARN("Album selected buffer ensure failed");
         exit_selection_mode(data);
     }
-    if (g_album_focus_photo_index >= 0 && g_album_focus_photo_index < data->total_photos) {
-        has_focus_target = true;
-        target_scroll_y = get_scroll_y_for_photo_index(data, g_album_focus_photo_index);
+    if (g_album_focus_photo_index >= 0) {
+        if (g_album_focus_photo_index < data->total_photos) {
+            has_focus_target = true;
+            target_scroll_y = get_scroll_y_for_photo_index(data, g_album_focus_photo_index);
+        }
+        g_album_focus_photo_index = -1;
     }
 
     update_nav_bar_state(data);
@@ -1192,7 +1195,10 @@ void page_album_show(void)
     if (has_focus_target) {
         data->first_visible_row = -1;
         lv_obj_scroll_to_y(data->grid_container, target_scroll_y, LV_ANIM_OFF);
-        g_album_focus_photo_index = -1;
+    } else {
+        /* 非预览返回场景（如从 Home 进入），默认回到顶部。 */
+        data->first_visible_row = -1;
+        lv_obj_scroll_to_y(data->grid_container, 0, LV_ANIM_OFF);
     }
     refresh_visible_items(data, true);
     sync_fast_scrollbar_from_scroll(data);
