@@ -27,8 +27,6 @@ static int g_initial_photo_index = -1;
 
 static int clamp_int(int value, int min_value, int max_value);
 static int get_album_total_count(void);
-static int photo_index_to_display_index(int total_photos, int photo_index);
-static int display_index_to_photo_index(int total_photos, int display_index);
 static void render_current_photo(page_photo_preview_data_t* data);
 static void show_prev_photo(page_photo_preview_data_t* data);
 static void show_next_photo(page_photo_preview_data_t* data);
@@ -58,16 +56,6 @@ static int get_album_total_count(void)
     return file_manager_get_photo_count();
 }
 
-static int photo_index_to_display_index(int total_photos, int photo_index)
-{
-    return total_photos - 1 - photo_index;
-}
-
-static int display_index_to_photo_index(int total_photos, int display_index)
-{
-    return total_photos - 1 - display_index;
-}
-
 static void render_current_photo(page_photo_preview_data_t* data)
 {
     char subpic_path[FILE_MANAGER_MAX_PATH_LEN];
@@ -86,7 +74,7 @@ static void render_current_photo(page_photo_preview_data_t* data)
     }
 
     data->current_display_index = clamp_int(data->current_display_index, 0, data->total_photos - 1);
-    photo_index = display_index_to_photo_index(data->total_photos, data->current_display_index);
+    photo_index = data->current_display_index;
 
     if (file_manager_get_photo_subpic_path(photo_index, subpic_path, sizeof(subpic_path), FILE_PATH_LV) == 0)
         lv_img_set_src(data->image, subpic_path);
@@ -125,13 +113,10 @@ static void show_next_photo(page_photo_preview_data_t* data)
 
 static int get_current_photo_index(const page_photo_preview_data_t* data)
 {
-    int display_index;
-
     if (!data || data->total_photos <= 0)
         return -1;
 
-    display_index = clamp_int(data->current_display_index, 0, data->total_photos - 1);
-    return data->total_photos - 1 - display_index;
+    return clamp_int(data->current_display_index, 0, data->total_photos - 1);
 }
 
 // #endregion
@@ -273,7 +258,7 @@ void page_photo_preview_show(void)
 
     if (g_initial_photo_index >= 0) {
         int clamped_photo_index = clamp_int(g_initial_photo_index, 0, data->total_photos - 1);
-        data->current_display_index = photo_index_to_display_index(data->total_photos, clamped_photo_index);
+        data->current_display_index = clamped_photo_index;
         g_initial_photo_index = -1;
     } else {
         data->current_display_index = clamp_int(data->current_display_index, 0, data->total_photos - 1);

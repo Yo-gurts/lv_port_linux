@@ -90,7 +90,7 @@ static int photo_name_cmp(const void* a, const void* b)
     const char* lhs = *(const char* const*)a;
     const char* rhs = *(const char* const*)b;
 
-    return strcmp(lhs, rhs);
+    return strcmp(rhs, lhs); /* 降序排序，最新的文件在前 */
 }
 
 /* 释放照片列表内存。 */

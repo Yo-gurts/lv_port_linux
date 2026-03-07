@@ -48,7 +48,6 @@ static void update_scroll_content_height(page_album_data_t* data);
 static int get_max_scroll_y(page_album_data_t* data);
 static void sync_fast_scrollbar_from_scroll(page_album_data_t* data);
 static void set_fast_scrollbar_visible(page_album_data_t* data, bool visible);
-static int get_photo_index_by_display_index(const page_album_data_t* data, int display_index);
 static bool ensure_selected_buffer(page_album_data_t* data, int required_count);
 static void clear_selection_state(page_album_data_t* data);
 static void set_selection_mode(page_album_data_t* data, bool enable);
@@ -92,14 +91,6 @@ static int get_album_total_count(void)
         MLOG_WARN("Album refresh photo list failed before counting");
 
     return file_manager_get_photo_count();
-}
-
-static int get_photo_index_by_display_index(const page_album_data_t* data, int display_index)
-{
-    if (!data)
-        return display_index;
-
-    return data->total_photos - 1 - display_index;
 }
 
 static bool ensure_selected_buffer(page_album_data_t* data, int required_count)
@@ -453,7 +444,7 @@ static int get_scroll_y_for_photo_index(page_album_data_t* data, int photo_index
     if (photo_index < 0 || photo_index >= data->total_photos)
         return 0;
 
-    display_index = data->total_photos - 1 - photo_index;
+    display_index = photo_index;
     target_row = display_index / data->layout.cols;
     viewport_height = lv_obj_get_content_height(data->grid_container);
     if (viewport_height <= 0)
@@ -626,12 +617,9 @@ static void sync_fast_scrollbar_from_scroll(page_album_data_t* data)
 static void update_item_content(page_album_data_t* data, album_item_t* item, int display_index)
 {
     char thumb_path[FILE_MANAGER_MAX_PATH_LEN];
-    int photo_index;
+    item->photo_index = display_index;
 
-    photo_index = get_photo_index_by_display_index(data, display_index);
-    item->photo_index = photo_index;
-
-    if (file_manager_get_photo_thumbnail_path(photo_index, thumb_path, sizeof(thumb_path), FILE_PATH_LV) == 0) {
+    if (file_manager_get_photo_thumbnail_path(item->photo_index, thumb_path, sizeof(thumb_path), FILE_PATH_LV) == 0) {
         lv_img_set_src(item->img, thumb_path);
         lv_obj_set_style_bg_opa(item->img, LV_OPA_TRANSP, LV_PART_MAIN);
     } else {
