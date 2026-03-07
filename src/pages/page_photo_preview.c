@@ -10,6 +10,7 @@
 #include "core/page_manager.h"
 #include "core/style_manager.h"
 #include "ui/top_notice.h"
+#include "ui/gesture_back.h"
 #include "mlog.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -199,6 +200,8 @@ void page_photo_preview_create(void)
     lv_obj_set_style_bg_color(data->container, lv_color_black(), LV_PART_MAIN);
     lv_obj_set_style_bg_opa(data->container, LV_OPA_COVER, LV_PART_MAIN);
     lv_obj_clear_flag(data->container, LV_OBJ_FLAG_GESTURE_BUBBLE);
+    gesture_back_register_events(data->container);
+    gesture_back_set_left_edge_swipe_cb(data->container, back_btn_cb);
     lv_obj_add_event_cb(data->container, gesture_event_cb, LV_EVENT_GESTURE, data);
 
     data->image_area = lv_obj_create(data->container);
@@ -233,6 +236,7 @@ void page_photo_preview_create(void)
     lv_obj_align(data->file_name_label, LV_ALIGN_TOP_MID, 0, 16);
     lv_label_set_text(data->file_name_label, "");
 
+    gesture_back_enable_event_bubble_recursive(data->container);
     page_set_private_data(data);
 }
 
@@ -255,6 +259,8 @@ void page_photo_preview_show(void)
     page_photo_preview_data_t* data = (page_photo_preview_data_t*)page_get_private_data();
     if (!data || !data->container)
         return;
+
+    gesture_back_set_left_edge_swipe_cb(data->container, back_btn_cb);
 
     data->total_photos = get_album_total_count();
     if (data->total_photos <= 0) {
