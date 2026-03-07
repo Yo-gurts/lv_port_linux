@@ -95,6 +95,8 @@ src/
 
 - **格式**：`clang-format-12` 配合 WebKit 风格（`.clang-format`）
 - **提交时自动格式化**：`.git/hooks/` 中的预提交钩子会应用 clang-format-diff-12
+- **日志语言**：业务日志统一使用中文（`MLOG_ERR/MLOG_WARN/MLOG_INFO/MLOG_DBG`）
+- **提交前检查**：提交代码前先执行 `/review` 检查代码改动，优先修复 review 发现的问题
 
 ## Git 提交信息
 

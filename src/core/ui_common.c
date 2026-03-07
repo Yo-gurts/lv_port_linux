@@ -6,6 +6,7 @@
 #include "config.h"
 #include "core/font_manager.h"
 #include "core/key_manager.h"
+#include "core/power_manager.h"
 #include "core/page_manager.h"
 #include "core/param_manager.h"
 #include "core/style_manager.h"
@@ -228,6 +229,9 @@ int32_t ui_main(void)
     /* Initialize key manager */
     key_manager_init();
 
+    /* Initialize power manager */
+    power_manager_init();
+
     /* Create page manager */
     if (page_manager_create() != 0) {
         MLOG_ERR("Failed to create page manager");
@@ -259,11 +263,13 @@ int32_t ui_main(void)
     /* Handle LVGL tasks */
     while (1) {
         key_manager_poll();
+        power_manager_poll();
         param_manager_poll();
         lv_timer_handler();
         usleep(5000);
     }
 
+    power_manager_deinit();
     key_manager_deinit();
     page_manager_destroy();
     return 0;

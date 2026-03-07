@@ -5,9 +5,11 @@
 #include "pages/page_video.h"
 #include "config.h"
 #include "core/font_manager.h"
+#include "core/key_manager.h"
 #include "core/media_manager.h"
 #include "core/page_manager.h"
 #include "core/param_manager.h"
+#include "core/power_manager.h"
 #include "core/style_manager.h"
 #include "mlog.h"
 #include "ui/filter_panel.h"
@@ -64,6 +66,31 @@ static void update_zoom_buttons_display(page_video_data_t* data)
     }
 
     zoom_bar_set_value(param_manager_get(PARAM_ID_ZOOM));
+}
+
+static int page_video_stop_recording_if_needed(void* user_data)
+{
+    page_video_data_t* data = (page_video_data_t*)user_data;
+    int ret;
+
+    if (data == NULL || data->container == NULL) {
+        return 0;
+    }
+    if (lv_obj_has_flag(data->container, LV_OBJ_FLAG_HIDDEN)) {
+        return 0;
+    }
+    if (!data->is_recording) {
+        return 0;
+    }
+
+    ret = media_manager_execute(MEDIA_OP_STOP_RECORD, 0);
+    if (ret != 0) {
+        MLOG_WARN("stop record before shutdown failed: ret=%d", ret);
+        return -1;
+    }
+
+    data->is_recording = 0;
+    return 0;
 }
 
 // #endregion
@@ -131,6 +158,39 @@ static void filter_btn_cb(lv_event_t* e)
     }
 
     filter_panel_show();
+}
+
+static void record_key_cb(key_id_t key, key_event_type_t event_type, void* user_data)
+{
+    page_video_data_t* data = (page_video_data_t*)user_data;
+    int ret;
+
+    if (key != KEY_ID_CAMERA || event_type != KEY_EVENT_CLICK) {
+        return;
+    }
+    if (data == NULL || data->container == NULL) {
+        return;
+    }
+    if (lv_obj_has_flag(data->container, LV_OBJ_FLAG_HIDDEN)) {
+        return;
+    }
+
+    if (!data->is_recording) {
+        ret = media_manager_execute(MEDIA_OP_START_RECORD, 0);
+        if (ret != 0) {
+            MLOG_ERR("start record failed: ret=%d", ret);
+            return;
+        }
+        data->is_recording = 1;
+        return;
+    }
+
+    ret = media_manager_execute(MEDIA_OP_STOP_RECORD, 0);
+    if (ret != 0) {
+        MLOG_ERR("stop record failed: ret=%d", ret);
+        return;
+    }
+    data->is_recording = 0;
 }
 
 // #endregion
@@ -273,6 +333,9 @@ void page_video_destroy(void)
         return;
     }
 
+    (void)key_manager_unregister_callback(KEY_ID_CAMERA, KEY_EVENT_CLICK, record_key_cb, data);
+    power_manager_unregister_shutdown_prepare_cb(page_video_stop_recording_if_needed, data);
+    power_manager_enable_auto_sleep();
     filter_panel_hide();
     zoom_bar_hide();
     /* 删除容器（子元素会自动删除） */
@@ -294,11 +357,17 @@ void page_video_show(void)
     gesture_back_set_left_edge_swipe_cb(data->container, back_btn_cb);
 
     MLOG_INFO("Video page show");
+    power_manager_disable_auto_sleep();
+    power_manager_register_shutdown_prepare_cb(page_video_stop_recording_if_needed, data);
     filter_panel_hide();
     zoom_bar_show();
     update_resolution_display();
     update_zoom_buttons_display(data);
     lv_obj_clear_flag(data->container, LV_OBJ_FLAG_HIDDEN);
+
+    if (key_manager_register_callback(KEY_ID_CAMERA, KEY_EVENT_CLICK, record_key_cb, data) != 0) {
+        MLOG_WARN("register video record key callback failed");
+    }
 }
 
 void page_video_hide(void)
@@ -309,6 +378,9 @@ void page_video_hide(void)
     }
 
     MLOG_INFO("Video page hide");
+    power_manager_enable_auto_sleep();
+    power_manager_unregister_shutdown_prepare_cb(page_video_stop_recording_if_needed, data);
+    (void)key_manager_unregister_callback(KEY_ID_CAMERA, KEY_EVENT_CLICK, record_key_cb, data);
     filter_panel_hide();
     zoom_bar_hide();
     lv_obj_add_flag(data->container, LV_OBJ_FLAG_HIDDEN);

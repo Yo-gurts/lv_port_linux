@@ -9,6 +9,7 @@
 #include "core/media_manager.h"
 #include "core/page_manager.h"
 #include "core/param_manager.h"
+#include "core/power_manager.h"
 #include "core/style_manager.h"
 #include "mlog.h"
 #include "ui/filter_panel.h"
@@ -430,6 +431,7 @@ void page_photo_destroy(void)
     (void)key_manager_unregister_callback(KEY_ID_FOCUS, KEY_EVENT_RELEASE, focus_key_cb, data);
     (void)key_manager_unregister_callback(KEY_ID_FOCUS, KEY_EVENT_LONG_PRESS_3S, focus_key_cb, data);
     param_manager_unregister_callback(photo_param_cb);
+    power_manager_enable_auto_sleep();
 
     filter_panel_hide();
     zoom_bar_hide();
@@ -452,6 +454,7 @@ void page_photo_show(void)
     gesture_back_set_left_edge_swipe_cb(data->container, back_btn_cb);
 
     MLOG_INFO("Photo page show");
+    power_manager_disable_auto_sleep();
     filter_panel_hide();
     zoom_bar_show();
     update_resolution_display(data);
@@ -481,6 +484,7 @@ void page_photo_hide(void)
     }
 
     MLOG_INFO("Photo page hide");
+    power_manager_enable_auto_sleep();
     filter_panel_hide();
     zoom_bar_hide();
     lv_obj_add_flag(data->container, LV_OBJ_FLAG_HIDDEN);

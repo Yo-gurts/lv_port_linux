@@ -11,6 +11,8 @@ typedef enum {
     MEDIA_OP_SWITCH_TO_PHOTO_MODE = 0, /* 切换到拍照模式；args 忽略 */
     MEDIA_OP_SWITCH_TO_BOOT_MODE, /* 切换到启动/首页模式；args 忽略 */
     MEDIA_OP_SWITCH_TO_VIDEO_MODE, /* 切换到录像模式；args 忽略 */
+    MEDIA_OP_START_RECORD, /* 开始录像；args 忽略 */
+    MEDIA_OP_STOP_RECORD, /* 停止录像；args 忽略 */
     MEDIA_OP_TAKE_PHOTO, /* 触发一次拍照；args 忽略 */
     MEDIA_OP_FOCUS_ONCE, /* 触发一次对焦；args 忽略 */
     MEDIA_OP_SET_FOCUS_ENABLE, /* 设置 AF 使能；args: 0=disable, 1=enable */

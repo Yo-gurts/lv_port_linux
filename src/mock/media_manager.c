@@ -46,6 +46,20 @@ static int handle_switch_to_video_mode(int32_t args)
     return MEDIA_MANAGER_OK;
 }
 
+static int handle_start_record(int32_t args)
+{
+    (void)args;
+    MLOG_INFO("media_manager 开始录像(占位实现)");
+    return MEDIA_MANAGER_OK;
+}
+
+static int handle_stop_record(int32_t args)
+{
+    (void)args;
+    MLOG_INFO("media_manager 停止录像(占位实现)");
+    return MEDIA_MANAGER_OK;
+}
+
 static int handle_take_photo(int32_t args)
 {
     (void)args;
@@ -161,6 +175,8 @@ static const media_op_handler_t g_media_handlers[MEDIA_OP_BUTT] = {
     [MEDIA_OP_SWITCH_TO_PHOTO_MODE] = handle_switch_to_photo_mode,
     [MEDIA_OP_SWITCH_TO_BOOT_MODE] = handle_switch_to_boot_mode,
     [MEDIA_OP_SWITCH_TO_VIDEO_MODE] = handle_switch_to_video_mode,
+    [MEDIA_OP_START_RECORD] = handle_start_record,
+    [MEDIA_OP_STOP_RECORD] = handle_stop_record,
     [MEDIA_OP_TAKE_PHOTO] = handle_take_photo,
     [MEDIA_OP_FOCUS_ONCE] = handle_focus_once,
     [MEDIA_OP_SET_FOCUS_ENABLE] = handle_set_focus_enable,

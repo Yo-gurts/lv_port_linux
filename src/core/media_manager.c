@@ -100,6 +100,40 @@ static int handle_switch_to_video_mode(int32_t args)
     return MEDIA_MANAGER_OK;
 }
 
+static int handle_start_record(int32_t args)
+{
+    MESSAGE_S msg = { 0 };
+    int32_t ret = 0;
+
+    (void)args;
+    msg.topic = EVENT_MODEMNG_START_REC;
+    ret = MODEMNG_SendMessage(&msg);
+    if (ret != 0) {
+        MLOG_ERR("开始录像消息发送失败: ret=%d", (int)ret);
+        return MEDIA_MANAGER_ESTATE;
+    }
+
+    MLOG_INFO("已请求开始录像");
+    return MEDIA_MANAGER_OK;
+}
+
+static int handle_stop_record(int32_t args)
+{
+    MESSAGE_S msg = { 0 };
+    int32_t ret = 0;
+
+    (void)args;
+    msg.topic = EVENT_MODEMNG_STOP_REC;
+    ret = MODEMNG_SendMessage(&msg);
+    if (ret != 0) {
+        MLOG_ERR("停止录像消息发送失败: ret=%d", (int)ret);
+        return MEDIA_MANAGER_ESTATE;
+    }
+
+    MLOG_INFO("已请求停止录像");
+    return MEDIA_MANAGER_OK;
+}
+
 static int handle_take_photo(int32_t args)
 {
     MESSAGE_S msg = { 0 };
@@ -455,6 +489,8 @@ static const media_op_handler_t g_media_handlers[MEDIA_OP_BUTT] = {
     [MEDIA_OP_SWITCH_TO_PHOTO_MODE] = handle_switch_to_photo_mode,
     [MEDIA_OP_SWITCH_TO_BOOT_MODE] = handle_switch_to_boot_mode,
     [MEDIA_OP_SWITCH_TO_VIDEO_MODE] = handle_switch_to_video_mode,
+    [MEDIA_OP_START_RECORD] = handle_start_record,
+    [MEDIA_OP_STOP_RECORD] = handle_stop_record,
     [MEDIA_OP_TAKE_PHOTO] = handle_take_photo,
     [MEDIA_OP_FOCUS_ONCE] = handle_focus_once,
     [MEDIA_OP_SET_FOCUS_ENABLE] = handle_set_focus_enable,

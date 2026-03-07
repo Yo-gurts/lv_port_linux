@@ -76,16 +76,17 @@ set(SOURCES
     src/main/simulator/mouse_cursor_icon.c
     src/main/simulator/uiapp_start.c
     src/mock/file_manager.c
+    src/mock/file_manager.c
     src/mock/media_manager.c
     src/mock/message_manager.c
-    src/mock/file_manager.c
+    src/mock/power_manager.c
     src/mock/wifi_manager.c
     src/pages/page_ai_photo_settings.c
     src/pages/page_ai_photo.c
     src/pages/page_album.c
-    src/pages/page_photo_preview.c
     src/pages/page_chat.c
     src/pages/page_home.c
+    src/pages/page_photo_preview.c
     src/pages/page_photo_settings.c
     src/pages/page_photo.c
     src/pages/page_system_settings.c
@@ -96,8 +97,8 @@ set(SOURCES
     src/ui/filter_panel.c
     src/ui/gesture_back.c
     src/ui/top_notice.c
-    src/ui/zoom_bar.c
     src/ui/volume_bar.c
+    src/ui/zoom_bar.c
 )
 
 # Framebuffer manager (only for FB mode)

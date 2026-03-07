@@ -48,6 +48,13 @@ extern "C" {
 #define TOUCH_PANEL_EVENT_PATH "/dev/input/touchscreen"
 
 /* =======================
+ * 电源管理配置
+ * ======================= */
+
+/* 屏幕空闲超时时间（毫秒） */
+#define POWER_MANAGER_SCREEN_IDLE_TIMEOUT_MS 60000
+
+/* =======================
  * 触控手势配置
  * ======================= */
 
