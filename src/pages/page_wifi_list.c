@@ -297,6 +297,7 @@ void page_wifi_list_create(void)
     lv_obj_clear_flag(data->container, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_clear_flag(data->container, LV_OBJ_FLAG_GESTURE_BUBBLE);
     lv_obj_add_event_cb(data->container, page_manager_swipe_right_cb, LV_EVENT_GESTURE, NULL);
+    lv_obj_add_event_cb(data->container, page_manager_swipe_right_cb, LV_EVENT_PRESSED, NULL);
 
     /* 顶部导航栏容器。 */
     data->nav_bar = lv_obj_create(data->container);

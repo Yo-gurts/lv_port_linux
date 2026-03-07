@@ -98,6 +98,7 @@ void page_chat_create(void)
 
     /* 添加滑动手势回调：从左往右滑返回上一页 */
     lv_obj_add_event_cb(data->container, page_manager_swipe_right_cb, LV_EVENT_GESTURE, NULL);
+    lv_obj_add_event_cb(data->container, page_manager_swipe_right_cb, LV_EVENT_PRESSED, NULL);
 
     /* =======================
      * 消息列表区域 - 占满中间空间

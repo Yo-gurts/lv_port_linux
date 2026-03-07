@@ -92,6 +92,7 @@ void page_ai_photo_create(void)
 
     /* 添加滑动手势回调：从左往右滑返回上一页 */
     lv_obj_add_event_cb(data->container, page_manager_swipe_right_cb, LV_EVENT_GESTURE, NULL);
+    lv_obj_add_event_cb(data->container, page_manager_swipe_right_cb, LV_EVENT_PRESSED, NULL);
 
     /* =======================
      * 顶部状态栏：[back][AI] 在左边，剩余拍照数 [SD][battery] 在右边

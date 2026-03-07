@@ -135,19 +135,32 @@ static void filter_btn_cb(lv_event_t* e)
 /* 当检测到滑动时，调用 lv_indev_wait_release() 避免释放时触发点击 */
 static void swipe_right_cb(lv_event_t* e)
 {
+    static lv_point_t swipe_start_point = {0};
+    static int swipe_start_valid = 0;
     lv_event_code_t code = lv_event_get_code(e);
+    lv_indev_t* indev = lv_indev_get_act();
+
+    if (code == LV_EVENT_PRESSED) {
+        if (indev != NULL) {
+            lv_indev_get_point(indev, &swipe_start_point);
+            swipe_start_valid = 1;
+        }
+        return;
+    }
+
     if (code == LV_EVENT_GESTURE) {
-        lv_dir_t dir = lv_indev_get_gesture_dir(lv_indev_get_act());
-        if (dir == LV_DIR_RIGHT) {
+        lv_dir_t dir = indev ? lv_indev_get_gesture_dir(indev) : LV_DIR_NONE;
+        int from_left_edge = swipe_start_valid && (swipe_start_point.x <= SWIPE_BACK_EDGE_THRESHOLD_PX);
+        if (dir == LV_DIR_RIGHT && from_left_edge) {
             MLOG_INFO("Swipe right, back to photo page");
             back_btn_cb(NULL);
         }
 
         /* 检测到滑动，忽略后续的点击事件 */
-        lv_indev_t* indev = lv_indev_get_act();
         if (indev != NULL) {
             lv_indev_wait_release(indev);
         }
+        swipe_start_valid = 0;
     }
 }
 
@@ -182,6 +195,7 @@ void page_video_create(void)
 
     /* 添加滑动手势回调：从左往右滑返回拍照页 */
     lv_obj_add_event_cb(data->container, swipe_right_cb, LV_EVENT_GESTURE, NULL);
+    lv_obj_add_event_cb(data->container, swipe_right_cb, LV_EVENT_PRESSED, NULL);
 
     zoom_bar_hide();
     update_zoom_buttons_display(data);

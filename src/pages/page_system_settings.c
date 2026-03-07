@@ -289,6 +289,7 @@ void page_system_settings_create(void)
 
     /* 添加滑动手势回调：从左往右滑返回上一页 */
     lv_obj_add_event_cb(data->container, page_manager_swipe_right_cb, LV_EVENT_GESTURE, NULL);
+    lv_obj_add_event_cb(data->container, page_manager_swipe_right_cb, LV_EVENT_PRESSED, NULL);
 
     /* =======================
      * 1. 顶部导航栏

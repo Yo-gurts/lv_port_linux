@@ -43,6 +43,13 @@ extern "C" {
 #define FB_DEV_NAME "/dev/fb0"
 #define TOUCH_PANEL_EVENT_PATH "/dev/input/touchscreen"
 
+/* =======================
+ * 触控手势配置
+ * ======================= */
+
+/* 滑动返回边缘阈值（部分页面可能不吃这个配置） */
+#define SWIPE_BACK_EDGE_THRESHOLD_PX 40
+
 #ifdef __cplusplus
 }
 #endif
