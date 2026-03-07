@@ -63,6 +63,10 @@ typedef struct {
     int selected_count; /* 当前选中数量 */
     bool deleting_in_progress; /* 正在删除，阻塞操作 */
     bool suppress_next_item_click; /* 长按后抑制下一次点击，避免重复切换 */
+    bool is_scrolling; /* 主列表是否处于滚动中 */
+    uint32_t last_scroll_end_tick; /* 最近一次滚动结束时间，用于点击冷却 */
+    int item_press_scroll_y; /* item按下时的滚动位置 */
+    bool item_press_valid; /* 是否记录了有效的按下滚动位置 */
     uint8_t prev_input_block_mask; /* 删除前的输入屏蔽状态 */
 } page_album_data_t;
 

@@ -32,6 +32,8 @@
 #define SELECT_BOX_SIZE 22
 #define SELECT_BOX_OFFSET_X -6
 #define SELECT_BOX_OFFSET_Y -6
+#define ITEM_CLICK_GUARD_AFTER_SCROLL_MS 180
+#define ITEM_CLICK_CANCEL_SCROLL_DELTA 8
 
 // #endregion
 // #############################################################################
@@ -341,6 +343,9 @@ static void album_item_event_cb(lv_event_t* e)
     lv_obj_t* target = lv_event_get_target(e);
     lv_event_code_t code = lv_event_get_code(e);
     album_item_t* item;
+    int current_scroll_y;
+    int scroll_delta;
+    bool is_scroll_guard_active;
 
     if (!data || !target)
         return;
@@ -351,15 +356,40 @@ static void album_item_event_cb(lv_event_t* e)
     if (!item || item->photo_index < 0)
         return;
 
+    if (code == LV_EVENT_PRESSED) {
+        data->item_press_scroll_y = lv_obj_get_scroll_y(data->grid_container);
+        data->item_press_valid = true;
+        return;
+    }
+
+    if (code == LV_EVENT_PRESS_LOST) {
+        data->item_press_valid = false;
+        return;
+    }
+
+    current_scroll_y = lv_obj_get_scroll_y(data->grid_container);
+    scroll_delta = data->item_press_valid ? abs(current_scroll_y - data->item_press_scroll_y) : 0;
+    is_scroll_guard_active = data->is_scrolling || (lv_tick_elaps(data->last_scroll_end_tick) < ITEM_CLICK_GUARD_AFTER_SCROLL_MS)
+        || (scroll_delta >= ITEM_CLICK_CANCEL_SCROLL_DELTA);
+
+    if ((code == LV_EVENT_CLICKED || code == LV_EVENT_LONG_PRESSED) && is_scroll_guard_active) {
+        if (code == LV_EVENT_CLICKED)
+            data->suppress_next_item_click = false;
+        data->item_press_valid = false;
+        return;
+    }
+
     if (code == LV_EVENT_LONG_PRESSED) {
         if (!data->selection_mode)
             enter_selection_mode(data);
         toggle_item_selected(data, item);
         data->suppress_next_item_click = true;
+        data->item_press_valid = false;
         return;
     }
 
     if (code == LV_EVENT_CLICKED) {
+        data->item_press_valid = false;
         if (data->suppress_next_item_click) {
             data->suppress_next_item_click = false;
             return;
@@ -693,6 +723,8 @@ static int create_item_pool(page_album_data_t* data)
 
         lv_obj_add_event_cb(item->container, album_item_event_cb, LV_EVENT_CLICKED, data);
         lv_obj_add_event_cb(item->container, album_item_event_cb, LV_EVENT_LONG_PRESSED, data);
+        lv_obj_add_event_cb(item->container, album_item_event_cb, LV_EVENT_PRESSED, data);
+        lv_obj_add_event_cb(item->container, album_item_event_cb, LV_EVENT_PRESS_LOST, data);
 
     }
 
@@ -848,10 +880,17 @@ static void scroll_event_cb(lv_event_t* e)
 
     code = lv_event_get_code(e);
     if (code == LV_EVENT_SCROLL_BEGIN) {
+        data->is_scrolling = true;
+        data->item_press_valid = false;
         set_fast_scrollbar_visible(data, true);
         sync_fast_scrollbar_from_scroll(data);
         show_fast_scrollbar_progress_notice(data, true);
         return;
+    }
+
+    if (code == LV_EVENT_SCROLL_END) {
+        data->is_scrolling = false;
+        data->last_scroll_end_tick = lv_tick_get();
     }
 
     refresh_visible_items(data, false);
@@ -1191,6 +1230,9 @@ void page_album_show(void)
 
     update_nav_bar_state(data);
     data->last_notice_index = -1;
+    data->is_scrolling = false;
+    data->item_press_valid = false;
+    data->last_scroll_end_tick = 0;
     lv_obj_clear_flag(data->container, LV_OBJ_FLAG_HIDDEN);
     if (has_focus_target) {
         data->first_visible_row = -1;
@@ -1217,6 +1259,8 @@ void page_album_hide(void)
     MLOG_INFO("Album page hide");
     exit_selection_mode(data);
     data->last_notice_index = -1;
+    data->is_scrolling = false;
+    data->item_press_valid = false;
     top_notice_hide();
     set_fast_scrollbar_visible(data, true);
     lv_obj_add_flag(data->container, LV_OBJ_FLAG_HIDDEN);
