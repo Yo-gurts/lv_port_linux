@@ -13,7 +13,7 @@ void gesture_back_enable_event_bubble_recursive(lv_obj_t* obj);
 /* 在页面 create 阶段注册手势事件回调（PRESSED/GESTURE）。 */
 void gesture_back_register_events(lv_obj_t* container);
 
-/* 设置当前页面左边缘右滑返回回调（只更新 active 回调，不注册事件）。 */
+/* 设置当前页面边缘滑动返回回调（左边缘右滑 / 右边缘左滑）。 */
 void gesture_back_set_left_edge_swipe_cb(lv_obj_t* container, lv_event_cb_t action);
 
 #ifdef __cplusplus

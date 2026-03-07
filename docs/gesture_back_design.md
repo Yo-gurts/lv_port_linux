@@ -2,7 +2,7 @@
 
 ## 1. 背景
 
-页面右滑返回在交互上要求稳定、可预期，不能和普通点击冲突。
+页面边缘滑动返回在交互上要求稳定、可预期，不能和普通点击冲突。
 
 当前实现抽离为 `gesture_back` 模块，页面在 `create()`/`show()` 分别调用：
 
@@ -16,7 +16,7 @@ gesture_back_set_left_edge_swipe_cb(data->container, page_manager_back_cb);
 
 ## 2. 要解决的问题
 
-右滑返回主要有两类误触风险：
+边缘滑动返回主要有两类误触风险：
 
 1. 慢速拖动误触发  
 触摸拖得很慢时，用户意图可能不是“返回”。
@@ -31,7 +31,9 @@ gesture_back_set_left_edge_swipe_cb(data->container, page_manager_back_cb);
 `gesture_back` 在 `LV_EVENT_PRESSED` 与 `LV_EVENT_GESTURE` 之间做联合判定：
 
 - 必须是同一个活跃页面容器
-- 必须从左侧边缘起滑（`SWIPE_BACK_EDGE_THRESHOLD_PX`）
+- 必须从边缘起滑（`SWIPE_BACK_EDGE_THRESHOLD_PX`）
+  - 左边缘右滑
+  - 右边缘左滑
 - 必须在时间窗内完成（`SWIPE_BACK_PRESS_GESTURE_MAX_MS`）
 
 只有同时满足以上条件才触发返回回调。
@@ -81,5 +83,5 @@ gesture_back_set_left_edge_swipe_cb(data->container, page_manager_back_cb);
 
 位于 `include/config.h`：
 
-- `SWIPE_BACK_EDGE_THRESHOLD_PX`：左边缘起滑阈值
+- `SWIPE_BACK_EDGE_THRESHOLD_PX`：边缘起滑阈值（左/右边缘）
 - `SWIPE_BACK_PRESS_GESTURE_MAX_MS`：`PRESSED -> GESTURE` 最大时间窗

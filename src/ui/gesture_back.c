@@ -35,8 +35,11 @@ static void gesture_back_event_cb(lv_event_t* e)
     if (code == LV_EVENT_GESTURE) {
         uint32_t elapsed;
         lv_dir_t dir = indev ? lv_indev_get_gesture_dir(indev) : LV_DIR_NONE;
+        lv_coord_t container_width = lv_obj_get_width(container);
         int same_target = g_swipe_start_valid && (g_swipe_pressed_obj == container);
         int from_left_edge = same_target && (g_swipe_start_point.x <= SWIPE_BACK_EDGE_THRESHOLD_PX);
+        int from_right_edge = same_target && (g_swipe_start_point.x >= container_width - SWIPE_BACK_EDGE_THRESHOLD_PX);
+        int trigger = 0;
 
         if (same_target == 0) {
             return;
@@ -44,10 +47,12 @@ static void gesture_back_event_cb(lv_event_t* e)
 
         /* 使用 PRESSED->GESTURE 时间窗过滤慢速拖拽误触。 */
         elapsed = lv_tick_elaps(g_swipe_start_tick);
-        if (dir == LV_DIR_RIGHT
-            && from_left_edge
-            && elapsed <= SWIPE_BACK_PRESS_GESTURE_MAX_MS
-            && g_active_action != NULL) {
+        if (dir == LV_DIR_RIGHT && from_left_edge && elapsed <= SWIPE_BACK_PRESS_GESTURE_MAX_MS) {
+            trigger = 1;
+        } else if (dir == LV_DIR_LEFT && from_right_edge && elapsed <= SWIPE_BACK_PRESS_GESTURE_MAX_MS) {
+            trigger = 1;
+        }
+        if (trigger && g_active_action != NULL) {
             g_active_action(NULL);
         }
 
