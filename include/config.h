@@ -23,7 +23,7 @@ extern "C" {
 #endif
 
 #ifndef PHOTO_ALBUM_IMAGE_THUMB_PATH
-#define PHOTO_ALBUM_IMAGE_THUMB_PATH "A:/mnt/sd/.thumb/PHOTO_SMALL/"
+#define PHOTO_ALBUM_IMAGE_THUMB_PATH "A:/mnt/sd/.thumb/photo_small/"
 #endif
 
 /* =======================
