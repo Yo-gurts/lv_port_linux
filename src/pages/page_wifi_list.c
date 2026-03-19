@@ -34,6 +34,8 @@ static void password_keyboard_event_cb(lv_event_t* e);
 static void show_password_modal(page_wifi_list_data_t* data, const char* ssid);
 static void hide_password_modal(page_wifi_list_data_t* data);
 static void connect_wifi_and_refresh(page_wifi_list_data_t* data, const char* ssid, const char* password);
+static void start_wifi_scan(page_wifi_list_data_t* data);
+static void scan_timer_cb(lv_timer_t* timer);
 
 // #endregion
 // #############################################################################
@@ -112,7 +114,11 @@ static void rebuild_wifi_list(page_wifi_list_data_t* data)
         return;
     }
 
-    data->scan_count = wifi_manager_scan(data->scan_results, WIFI_LIST_MAX_AP_COUNT);
+    if (data->wifi_enabled == 0) {
+        lv_obj_clean(data->wifi_list);
+        return;
+    }
+
     lv_obj_clean(data->wifi_list);
 
     for (i = 0; i < data->scan_count; i++) {
@@ -145,6 +151,106 @@ static void rebuild_wifi_list(page_wifi_list_data_t* data)
         lv_obj_set_user_data(btn, &data->scan_results[i]);
         lv_obj_add_event_cb(btn, wifi_item_click_cb, LV_EVENT_CLICKED, data);
     }
+}
+
+/* 开始 WiFi 扫描 */
+static void start_wifi_scan(page_wifi_list_data_t* data)
+{
+    if (data == NULL) {
+        return;
+    }
+
+    /* 停止之前的定时器 */
+    if (data->scan_timer != NULL) {
+        lv_timer_del(data->scan_timer);
+        data->scan_timer = NULL;
+    }
+
+    /* 启动扫描 */
+    data->pending_scan_id = wifi_manager_start_scan();
+    if (data->pending_scan_id < 0) {
+        top_notice_show_for("扫描启动失败", TOP_NOTICE_TYPE_ERROR, 2000);
+        return;
+    }
+
+    top_notice_show_for("正在扫描 WiFi...", TOP_NOTICE_TYPE_INFO, 5000);
+
+    /* 创建 1 秒定时器轮询结果 */
+    data->scan_timer = lv_timer_create(scan_timer_cb, 1000, data);
+}
+
+/* 扫描定时器回调 */
+static void scan_timer_cb(lv_timer_t* timer)
+{
+    page_wifi_list_data_t* data;
+    int count;
+    int i;
+
+    if (timer == NULL) {
+        return;
+    }
+
+    data = (page_wifi_list_data_t*)lv_timer_get_user_data(timer);
+    if (data == NULL || data->wifi_list == NULL) {
+        lv_timer_del(timer);
+        data->scan_timer = NULL;
+        return;
+    }
+
+    if (data->wifi_enabled == 0) {
+        lv_timer_del(timer);
+        data->scan_timer = NULL;
+        return;
+    }
+
+    /* 获取扫描结果 */
+    count = wifi_manager_get_scan_results(data->scan_results, WIFI_LIST_MAX_AP_COUNT, data->pending_scan_id);
+    if (count < 0) {
+        /* 还在扫描中，继续等待 */
+        return;
+    }
+
+    /* 扫描完成 */
+    data->scan_count = count;
+    lv_timer_del(timer);
+    data->scan_timer = NULL;
+
+    /* 重建列表 */
+    lv_obj_clean(data->wifi_list);
+    for (i = 0; i < count; i++) {
+        lv_obj_t* btn;
+        const char* icon_path;
+
+        icon_path = get_wifi_icon_path(&data->scan_results[i]);
+        btn = lv_list_add_btn(data->wifi_list, icon_path, data->scan_results[i].ssid);
+        lv_obj_add_style(btn, &style_settings_item, LV_PART_MAIN);
+        lv_obj_add_style(btn, &NORMAL_SIZE, LV_PART_MAIN);
+        lv_obj_add_style(btn, (i % 2 == 0) ? &style_list_row_even : &style_list_row_odd, LV_PART_MAIN);
+        {
+            lv_obj_t* label = lv_obj_get_child(btn, 1);
+            if (label != NULL) {
+                lv_obj_add_style(label, &NORMAL_SIZE, LV_PART_MAIN);
+                lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_LEFT, LV_PART_MAIN);
+                lv_obj_set_width(label, lv_pct(70));
+                lv_obj_align(label, LV_ALIGN_LEFT_MID, 44, 0);
+            }
+        }
+        if (data->scan_results[i].is_connected) {
+            lv_obj_t* connected_icon = lv_img_create(btn);
+            lv_img_set_src(connected_icon, "A:" RES_ICON_PATH "/check.png");
+            lv_obj_align(connected_icon, LV_ALIGN_RIGHT_MID, -10, 0);
+        } else if (data->scan_results[i].is_saved) {
+            lv_obj_t* saved_icon = lv_img_create(btn);
+            lv_img_set_src(saved_icon, "A:" RES_ICON_PATH "/wifi-saved-unlock.png");
+            lv_obj_align(saved_icon, LV_ALIGN_RIGHT_MID, -10, 0);
+        }
+        lv_obj_set_user_data(btn, &data->scan_results[i]);
+        lv_obj_add_event_cb(btn, wifi_item_click_cb, LV_EVENT_CLICKED, data);
+    }
+
+    char notice_text[64];
+    snprintf(notice_text, sizeof(notice_text), "扫描到 %d 个 WiFi", count);
+    top_notice_show(notice_text, TOP_NOTICE_TYPE_INFO);
 }
 
 // #endregion
@@ -241,28 +347,40 @@ static void refresh_btn_click_cb(lv_event_t* e)
     }
 
     if (data->wifi_enabled == 0) {
-        top_notice_show("WiFi已关闭", TOP_NOTICE_TYPE_ERROR);
+        top_notice_show_for("WiFi已关闭", TOP_NOTICE_TYPE_ERROR, 2000);
         return;
     }
 
-    rebuild_wifi_list(data);
-    top_notice_show("已刷新 WiFi 列表（测试数据）", TOP_NOTICE_TYPE_INFO);
+    start_wifi_scan(data);
 }
 
 static void wifi_switch_change_cb(lv_event_t* e)
 {
     page_wifi_list_data_t* data = (page_wifi_list_data_t*)lv_event_get_user_data(e);
+    int enabled;
+
     if (data == NULL || data->wifi_switch == NULL) {
         return;
     }
 
-    data->wifi_enabled = lv_obj_has_state(data->wifi_switch, LV_STATE_CHECKED) ? 1 : 0;
-    if (data->wifi_enabled) {
-        rebuild_wifi_list(data);
-        top_notice_show("WiFi已开启（测试）", TOP_NOTICE_TYPE_SUCCESS);
+    enabled = lv_obj_has_state(data->wifi_switch, LV_STATE_CHECKED) ? 1 : 0;
+    if (wifi_manager_set_enabled(enabled) != 0) {
+        top_notice_show_for(enabled ? "WiFi开启失败" : "WiFi关闭失败", TOP_NOTICE_TYPE_ERROR, 2000);
+        return;
+    }
+
+    data->wifi_enabled = enabled;
+    if (enabled) {
+        start_wifi_scan(data);
+        top_notice_show_for("WiFi已开启", TOP_NOTICE_TYPE_SUCCESS, 2000);
     } else {
+        /* 停止扫描定时器 */
+        if (data->scan_timer != NULL) {
+            lv_timer_del(data->scan_timer);
+            data->scan_timer = NULL;
+        }
         lv_obj_clean(data->wifi_list);
-        top_notice_show("WiFi已关闭（测试）", TOP_NOTICE_TYPE_ERROR);
+        top_notice_show_for("WiFi已关闭", TOP_NOTICE_TYPE_ERROR, 2000);
     }
 }
 
@@ -341,7 +459,13 @@ void page_wifi_list_create(void)
     data->wifi_switch = lv_switch_create(data->nav_bar);
     lv_obj_set_size(data->wifi_switch, 52, 30);
     lv_obj_align_to(data->wifi_switch, data->refresh_btn, LV_ALIGN_OUT_LEFT_MID, -10, 0);
-    lv_obj_add_state(data->wifi_switch, LV_STATE_CHECKED);
+    /* 获取 WiFi 状态并设置开关 */
+    data->wifi_enabled = wifi_manager_get_status() == 1 ? 1 : 0;
+    if (data->wifi_enabled) {
+        lv_obj_add_state(data->wifi_switch, LV_STATE_CHECKED);
+    } else {
+        lv_obj_remove_state(data->wifi_switch, LV_STATE_CHECKED);
+    }
     lv_obj_add_event_cb(data->wifi_switch, wifi_switch_change_cb, LV_EVENT_VALUE_CHANGED, data);
 
     /* 密码输入流程的全屏遮罩。 */
@@ -445,8 +569,10 @@ void page_wifi_list_create(void)
     lv_obj_set_scroll_dir(data->wifi_list, LV_DIR_VER);
     lv_obj_set_scrollbar_mode(data->wifi_list, LV_SCROLLBAR_MODE_AUTO);
 
-    data->wifi_enabled = 1;
-    rebuild_wifi_list(data);
+    /* 初始化定时器为 NULL */
+    data->scan_timer = NULL;
+    data->scan_count = 0;
+    data->pending_scan_id = -1;
 
     /* 启用整页事件冒泡，确保子对象按压事件传递到父容器。 */
     gesture_back_enable_event_bubble_recursive(data->container);
@@ -460,6 +586,12 @@ void page_wifi_list_destroy(void)
     page_wifi_list_data_t* data = (page_wifi_list_data_t*)page_get_private_data();
     if (data == NULL) {
         return;
+    }
+
+    /* 停止扫描定时器 */
+    if (data->scan_timer != NULL) {
+        lv_timer_del(data->scan_timer);
+        data->scan_timer = NULL;
     }
 
     if (data->container != NULL) {
@@ -479,7 +611,11 @@ void page_wifi_list_show(void)
 
     gesture_back_set_left_edge_swipe_cb(data->container, page_manager_back_cb);
 
-    rebuild_wifi_list(data);
+    /* WiFi 已启用则开始扫描 */
+    if (data->wifi_enabled) {
+        start_wifi_scan(data);
+    }
+
     lv_obj_clear_flag(data->container, LV_OBJ_FLAG_HIDDEN);
 }
 
@@ -488,6 +624,12 @@ void page_wifi_list_hide(void)
     page_wifi_list_data_t* data = (page_wifi_list_data_t*)page_get_private_data();
     if (data == NULL || data->container == NULL) {
         return;
+    }
+
+    /* 停止扫描定时器 */
+    if (data->scan_timer != NULL) {
+        lv_timer_del(data->scan_timer);
+        data->scan_timer = NULL;
     }
 
     lv_obj_add_flag(data->container, LV_OBJ_FLAG_HIDDEN);

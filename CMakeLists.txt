@@ -9,7 +9,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # Project Configuration
 #=======================
 if(CMAKE_C_COMPILER_TARGET MATCHES "arm-none-linux" OR CMAKE_SYSTEM_PROCESSOR MATCHES "arm")
-    set(PROJECT_PATH_STR "/mnt/data")
+    set(PROJECT_PATH_STR "/mnt/data/bin")
 else()
     set(PROJECT_PATH_STR "${CMAKE_CURRENT_SOURCE_DIR}")
 endif()
@@ -80,7 +80,6 @@ set(SOURCES
     src/mock/media_manager.c
     src/mock/message_manager.c
     src/mock/power_manager.c
-    src/mock/wifi_manager.c
     src/pages/page_ai_photo_settings.c
     src/pages/page_ai_photo.c
     src/pages/page_album.c
@@ -104,6 +103,7 @@ set(SOURCES
 # Framebuffer manager (only for FB mode)
 if(CONFIG STREQUAL "FB")
     list(APPEND SOURCES src/core/framebuffer_manager.c)
+    list(APPEND SOURCES src/core/wifi_manager.c)
 endif()
 
 add_executable(main ${SOURCES})
