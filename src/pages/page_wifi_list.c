@@ -469,7 +469,7 @@ void page_wifi_list_create(void)
     /* 右上角 WiFi 开关。 */
     data->wifi_switch = lv_switch_create(data->nav_bar);
     lv_obj_set_size(data->wifi_switch, 52, 30);
-    lv_obj_align_to(data->wifi_switch, data->refresh_btn, LV_ALIGN_OUT_LEFT_MID, -10, 0);
+    lv_obj_align_to(data->wifi_switch, title_label, LV_ALIGN_OUT_RIGHT_MID, 10, 0);
     /* 获取 WiFi 状态并设置开关 */
     data->wifi_enabled = wifi_manager_get_status() == 1 ? 1 : 0;
     if (data->wifi_enabled) {
