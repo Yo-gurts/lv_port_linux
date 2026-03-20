@@ -104,6 +104,8 @@ set(SOURCES
 if(CONFIG STREQUAL "FB")
     list(APPEND SOURCES src/core/framebuffer_manager.c)
     list(APPEND SOURCES src/core/wifi_manager.c)
+else()
+    list(APPEND SOURCES src/mock/wifi_manager.c)
 endif()
 
 add_executable(main ${SOURCES})

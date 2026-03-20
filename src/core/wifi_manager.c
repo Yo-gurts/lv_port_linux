@@ -12,6 +12,39 @@
 #define WIFI_DAEMON_SOCKET "/tmp/aicam_wifi.sock"
 #define RESP_SIZE 8192
 
+static int parse_ap_line(char* line, wifi_ap_info_t* ap)
+{
+    char* fields[8];
+    char* p;
+    int field_idx = 0;
+
+    if (line == NULL || ap == NULL || strncmp(line, "AP\t", 3) != 0) {
+        return -1;
+    }
+
+    p = line + 3;
+    fields[field_idx++] = p;
+    while (*p != '\0' && field_idx < (int)(sizeof(fields) / sizeof(fields[0]))) {
+        if (*p == '\t') {
+            *p = '\0';
+            fields[field_idx++] = p + 1;
+        }
+        p++;
+    }
+
+    if (field_idx < 3) {
+        return -1;
+    }
+
+    memset(ap, 0, sizeof(*ap));
+    strncpy(ap->ssid, fields[0], WIFI_MANAGER_MAX_SSID_LEN - 1);
+    ap->signal_level = atoi(fields[1]);
+    ap->is_secured = (uint8_t)atoi(fields[2]);
+    ap->is_saved = (field_idx >= 4) ? (uint8_t)atoi(fields[3]) : 0;
+    ap->is_connected = (field_idx >= 5) ? (uint8_t)atoi(fields[4]) : 0;
+    return 0;
+}
+
 static int send_cmd(const char* cmd, char* resp, size_t resp_sz)
 {
     int fd;
@@ -133,6 +166,8 @@ int wifi_manager_get_scan_results(wifi_ap_info_t* out_list, int max_count, int e
 {
     char resp[RESP_SIZE];
     int count = 0;
+    char* line;
+    int curr_id;
 
     if (out_list == NULL || max_count <= 0) {
         return 0;
@@ -144,47 +179,21 @@ int wifi_manager_get_scan_results(wifi_ap_info_t* out_list, int max_count, int e
 
     MLOG_INFO("SCAN_GET response: %s", resp);
 
-    /* 检查是否有 AP 结果 */
-    if (strstr(resp, "AP\t") == NULL) {
-        return -1; /* 没有 AP 结果，继续等待 */
-    }
-
-    /* 检查 scan_id 是否匹配 */
-    if (strncmp(resp, "OK\tSCAN\t", 8) == 0) {
-        int curr_id = atoi(resp + 8);
-        if (curr_id < expected_scan_id) {
-            return -1; /* 还在扫描中，结果还不是最新的 */
-        }
-    } else {
+    if (strncmp(resp, "OK\tSCAN\t", 8) != 0) {
         return -1; /* 还在扫描中 */
     }
 
+    /* 检查 scan_id 是否匹配 */
+    curr_id = atoi(resp + 8);
+    if (curr_id < expected_scan_id) {
+        return -1; /* 还在扫描中，结果还不是最新的 */
+    }
+
     /* 解析 AP 列表 */
-    char* line = strtok(resp, "\n");
+    line = strtok(resp, "\n");
     while (line != NULL && count < max_count) {
-        if (strncmp(line, "AP\t", 3) == 0) {
-            char* fields[6];
-            char* p = line + 3;
-            int field_idx = 0;
-
-            fields[field_idx++] = p;
-            while (*p && field_idx < 6) {
-                if (*p == '\t') {
-                    *p = '\0';
-                    fields[field_idx++] = p + 1;
-                }
-                p++;
-            }
-
-            if (field_idx >= 5) {
-                memset(&out_list[count], 0, sizeof(out_list[count]));
-                strncpy(out_list[count].ssid, fields[0], WIFI_MANAGER_MAX_SSID_LEN - 1);
-                out_list[count].signal_level = atoi(fields[1]);
-                out_list[count].is_secured = (uint8_t)atoi(fields[2]);
-                out_list[count].is_saved = (uint8_t)atoi(fields[3]);
-                out_list[count].is_connected = (uint8_t)atoi(fields[4]);
-                count++;
-            }
+        if (parse_ap_line(line, &out_list[count]) == 0) {
+            count++;
         }
         line = strtok(NULL, "\n");
     }
@@ -248,29 +257,8 @@ int wifi_manager_scan(wifi_ap_info_t* out_list, int max_count)
     /* 解析 AP 列表 */
     char* line = strtok(resp, "\n");
     while (line != NULL && count < max_count) {
-        if (strncmp(line, "AP\t", 3) == 0) {
-            char* fields[6];
-            char* p = line + 3;
-            int field_idx = 0;
-
-            fields[field_idx++] = p;
-            while (*p && field_idx < 6) {
-                if (*p == '\t') {
-                    *p = '\0';
-                    fields[field_idx++] = p + 1;
-                }
-                p++;
-            }
-
-            if (field_idx >= 5) {
-                memset(&out_list[count], 0, sizeof(out_list[count]));
-                strncpy(out_list[count].ssid, fields[0], WIFI_MANAGER_MAX_SSID_LEN - 1);
-                out_list[count].signal_level = atoi(fields[1]);
-                out_list[count].is_secured = (uint8_t)atoi(fields[2]);
-                out_list[count].is_saved = (uint8_t)atoi(fields[3]);
-                out_list[count].is_connected = (uint8_t)atoi(fields[4]);
-                count++;
-            }
+        if (parse_ap_line(line, &out_list[count]) == 0) {
+            count++;
         }
         line = strtok(NULL, "\n");
     }

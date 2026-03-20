@@ -36,6 +36,7 @@ static void hide_password_modal(page_wifi_list_data_t* data);
 static void connect_wifi_and_refresh(page_wifi_list_data_t* data, const char* ssid, const char* password);
 static void start_wifi_scan(page_wifi_list_data_t* data);
 static void scan_timer_cb(lv_timer_t* timer);
+static void append_wifi_list_item(page_wifi_list_data_t* data, int index);
 
 // #endregion
 // #############################################################################
@@ -49,6 +50,45 @@ static const char* get_wifi_icon_path(const wifi_ap_info_t* ap)
         return "A:" RES_ICON_PATH "/sys-wifi-lock.png";
     }
     return "A:" RES_ICON_PATH "/sys-wifi.png";
+}
+
+static void append_wifi_list_item(page_wifi_list_data_t* data, int index)
+{
+    lv_obj_t* btn;
+    lv_obj_t* label;
+    const char* icon_path;
+    wifi_ap_info_t* ap;
+
+    if (data == NULL || data->wifi_list == NULL || index < 0 || index >= data->scan_count) {
+        return;
+    }
+
+    ap = &data->scan_results[index];
+    icon_path = get_wifi_icon_path(ap);
+    btn = lv_list_add_btn(data->wifi_list, icon_path, ap->ssid);
+    lv_obj_add_style(btn, &style_settings_item, LV_PART_MAIN);
+    lv_obj_add_style(btn, &NORMAL_SIZE, LV_PART_MAIN);
+    lv_obj_add_style(btn, (index % 2 == 0) ? &style_list_row_even : &style_list_row_odd, LV_PART_MAIN);
+    label = lv_obj_get_child(btn, 1);
+    if (label != NULL) {
+        lv_obj_add_style(label, &NORMAL_SIZE, LV_PART_MAIN);
+        lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_LEFT, LV_PART_MAIN);
+        lv_obj_set_width(label, lv_pct(78));
+        lv_obj_align(label, LV_ALIGN_LEFT_MID, 44, 0);
+    }
+
+    if (ap->is_connected) {
+        lv_obj_t* connected_icon = lv_img_create(btn);
+        lv_img_set_src(connected_icon, "A:" RES_ICON_PATH "/check.png");
+        lv_obj_align(connected_icon, LV_ALIGN_RIGHT_MID, -10, 0);
+    } else if (ap->is_saved) {
+        lv_obj_t* saved_icon = lv_img_create(btn);
+        lv_img_set_src(saved_icon, "A:" RES_ICON_PATH "/wifi-saved-unlock.png");
+        lv_obj_align(saved_icon, LV_ALIGN_RIGHT_MID, -10, 0);
+    }
+
+    lv_obj_set_user_data(btn, ap);
+    lv_obj_add_event_cb(btn, wifi_item_click_cb, LV_EVENT_CLICKED, data);
 }
 
 /* 显示密码输入弹层并绑定目标 SSID。 */
@@ -89,6 +129,7 @@ static void hide_password_modal(page_wifi_list_data_t* data)
 static void connect_wifi_and_refresh(page_wifi_list_data_t* data, const char* ssid, const char* password)
 {
     int ret;
+    int i;
 
     if (data == NULL || ssid == NULL || ssid[0] == '\0') {
         return;
@@ -97,6 +138,28 @@ static void connect_wifi_and_refresh(page_wifi_list_data_t* data, const char* ss
     top_notice_show_for("正在连接...", TOP_NOTICE_TYPE_WARNING, 1200);
     ret = wifi_manager_connect(ssid, password);
     if (ret == 0) {
+        const char* connected_ssid = wifi_manager_get_connected_ssid();
+        int matched = 0;
+
+        for (i = 0; i < data->scan_count; i++) {
+            data->scan_results[i].is_connected = 0;
+            if (connected_ssid != NULL && connected_ssid[0] != '\0' && strcmp(connected_ssid, "未连接") != 0 && strcmp(data->scan_results[i].ssid, connected_ssid) == 0) {
+                data->scan_results[i].is_connected = 1;
+                data->scan_results[i].is_saved = 1;
+                matched = 1;
+            }
+        }
+
+        if (!matched) {
+            for (i = 0; i < data->scan_count; i++) {
+                if (strcmp(data->scan_results[i].ssid, ssid) == 0) {
+                    data->scan_results[i].is_connected = 1;
+                    data->scan_results[i].is_saved = 1;
+                    break;
+                }
+            }
+        }
+
         top_notice_show("连接成功", TOP_NOTICE_TYPE_SUCCESS);
     } else {
         top_notice_show("连接失败", TOP_NOTICE_TYPE_ERROR);
@@ -122,34 +185,7 @@ static void rebuild_wifi_list(page_wifi_list_data_t* data)
     lv_obj_clean(data->wifi_list);
 
     for (i = 0; i < data->scan_count; i++) {
-        lv_obj_t* btn;
-        const char* icon_path;
-
-        icon_path = get_wifi_icon_path(&data->scan_results[i]);
-        btn = lv_list_add_btn(data->wifi_list, icon_path, data->scan_results[i].ssid);
-        lv_obj_add_style(btn, &style_settings_item, LV_PART_MAIN);
-        lv_obj_add_style(btn, &NORMAL_SIZE, LV_PART_MAIN);
-        lv_obj_add_style(btn, (i % 2 == 0) ? &style_list_row_even : &style_list_row_odd, LV_PART_MAIN);
-        {
-            lv_obj_t* label = lv_obj_get_child(btn, 1);
-            if (label != NULL) {
-                lv_obj_add_style(label, &NORMAL_SIZE, LV_PART_MAIN);
-                lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_LEFT, LV_PART_MAIN);
-                lv_obj_set_width(label, lv_pct(70));
-                lv_obj_align(label, LV_ALIGN_LEFT_MID, 44, 0);
-            }
-        }
-        if (data->scan_results[i].is_connected) {
-            lv_obj_t* connected_icon = lv_img_create(btn);
-            lv_img_set_src(connected_icon, "A:" RES_ICON_PATH "/check.png");
-            lv_obj_align(connected_icon, LV_ALIGN_RIGHT_MID, -10, 0);
-        } else if (data->scan_results[i].is_saved) {
-            lv_obj_t* saved_icon = lv_img_create(btn);
-            lv_img_set_src(saved_icon, "A:" RES_ICON_PATH "/wifi-saved-unlock.png");
-            lv_obj_align(saved_icon, LV_ALIGN_RIGHT_MID, -10, 0);
-        }
-        lv_obj_set_user_data(btn, &data->scan_results[i]);
-        lv_obj_add_event_cb(btn, wifi_item_click_cb, LV_EVENT_CLICKED, data);
+        append_wifi_list_item(data, i);
     }
 }
 
@@ -193,7 +229,9 @@ static void scan_timer_cb(lv_timer_t* timer)
     data = (page_wifi_list_data_t*)lv_timer_get_user_data(timer);
     if (data == NULL || data->wifi_list == NULL) {
         lv_timer_del(timer);
-        data->scan_timer = NULL;
+        if (data != NULL) {
+            data->scan_timer = NULL;
+        }
         return;
     }
 
@@ -218,34 +256,7 @@ static void scan_timer_cb(lv_timer_t* timer)
     /* 重建列表 */
     lv_obj_clean(data->wifi_list);
     for (i = 0; i < count; i++) {
-        lv_obj_t* btn;
-        const char* icon_path;
-
-        icon_path = get_wifi_icon_path(&data->scan_results[i]);
-        btn = lv_list_add_btn(data->wifi_list, icon_path, data->scan_results[i].ssid);
-        lv_obj_add_style(btn, &style_settings_item, LV_PART_MAIN);
-        lv_obj_add_style(btn, &NORMAL_SIZE, LV_PART_MAIN);
-        lv_obj_add_style(btn, (i % 2 == 0) ? &style_list_row_even : &style_list_row_odd, LV_PART_MAIN);
-        {
-            lv_obj_t* label = lv_obj_get_child(btn, 1);
-            if (label != NULL) {
-                lv_obj_add_style(label, &NORMAL_SIZE, LV_PART_MAIN);
-                lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_LEFT, LV_PART_MAIN);
-                lv_obj_set_width(label, lv_pct(70));
-                lv_obj_align(label, LV_ALIGN_LEFT_MID, 44, 0);
-            }
-        }
-        if (data->scan_results[i].is_connected) {
-            lv_obj_t* connected_icon = lv_img_create(btn);
-            lv_img_set_src(connected_icon, "A:" RES_ICON_PATH "/check.png");
-            lv_obj_align(connected_icon, LV_ALIGN_RIGHT_MID, -10, 0);
-        } else if (data->scan_results[i].is_saved) {
-            lv_obj_t* saved_icon = lv_img_create(btn);
-            lv_img_set_src(saved_icon, "A:" RES_ICON_PATH "/wifi-saved-unlock.png");
-            lv_obj_align(saved_icon, LV_ALIGN_RIGHT_MID, -10, 0);
-        }
-        lv_obj_set_user_data(btn, &data->scan_results[i]);
-        lv_obj_add_event_cb(btn, wifi_item_click_cb, LV_EVENT_CLICKED, data);
+        append_wifi_list_item(data, i);
     }
 
     char notice_text[64];
