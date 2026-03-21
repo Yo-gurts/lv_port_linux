@@ -1,16 +1,27 @@
 #include "core/wifi_manager.h"
+#include "core/param_manager.h"
 #include "mlog.h"
 #include <errno.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/select.h>
 #include <sys/socket.h>
 #include <sys/un.h>
+#include <time.h>
 #include <unistd.h>
 
 #define WIFI_DAEMON_SOCKET "/tmp/aicam_wifi.sock"
 #define RESP_SIZE 8192
+#define WIFI_STATUS_POLL_INTERVAL_MS 3000
+
+static uint64_t monotonic_ms(void)
+{
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    return (uint64_t)ts.tv_sec * 1000ULL + (uint64_t)ts.tv_nsec / 1000000ULL;
+}
 
 static int parse_ap_line(char* line, wifi_ap_info_t* ap)
 {
@@ -139,6 +150,57 @@ int wifi_manager_get_status(void)
     }
     MLOG_ERR("GET_STATUS parse failed: %s", resp);
     return -1;
+}
+
+void wifi_manager_poll(void)
+{
+    static uint64_t last_poll_ms = 0;
+    uint64_t now_ms = monotonic_ms();
+    char resp[128];
+    char* saveptr = NULL;
+    char* token;
+    int enabled = 0;
+    int connected = 0;
+    int signal_dbm = -1;
+
+    if (now_ms - last_poll_ms < WIFI_STATUS_POLL_INTERVAL_MS) {
+        return;
+    }
+    last_poll_ms = now_ms;
+
+    if (send_cmd("GET_STATUS\n", resp, sizeof(resp)) != 0) {
+        return;
+    }
+
+    token = strtok_r(resp, "\t\n", &saveptr);
+    if (token == NULL || strcmp(token, "OK") != 0) {
+        return;
+    }
+    token = strtok_r(NULL, "\t\n", &saveptr);
+    if (token == NULL || strcmp(token, "STATUS") != 0) {
+        return;
+    }
+
+    token = strtok_r(NULL, "\t\n", &saveptr);
+    if (token != NULL) {
+        enabled = atoi(token);
+    }
+    token = strtok_r(NULL, "\t\n", &saveptr);
+    if (token != NULL) {
+        connected = atoi(token);
+    }
+    token = strtok_r(NULL, "\t\n", &saveptr);
+    if (token != NULL) {
+        signal_dbm = atoi(token);
+    }
+
+    if (!enabled) {
+        connected = 0;
+        signal_dbm = -1;
+    }
+
+    (void)param_manager_set(PARAM_ID_WIFI_CONNECTED, connected ? 1 : 0);
+    (void)param_manager_set(PARAM_ID_WIFI_SIGNAL_DBM, signal_dbm);
 }
 
 int wifi_manager_set_enabled(int enabled)

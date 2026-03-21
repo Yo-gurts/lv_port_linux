@@ -6,19 +6,20 @@
 #include "config.h"
 #include "core/font_manager.h"
 #include "core/key_manager.h"
-#include "core/power_manager.h"
 #include "core/page_manager.h"
 #include "core/param_manager.h"
+#include "core/power_manager.h"
 #include "core/style_manager.h"
+#include "core/wifi_manager.h"
 #include "lvgl/lvgl.h"
 #include "mlog.h"
 #include "pages/page_ai_photo.h"
 #include "pages/page_ai_photo_settings.h"
 #include "pages/page_album.h"
-#include "pages/page_photo_preview.h"
 #include "pages/page_chat.h"
 #include "pages/page_home.h"
 #include "pages/page_photo.h"
+#include "pages/page_photo_preview.h"
 #include "pages/page_photo_settings.h"
 #include "pages/page_system_settings.h"
 #include "pages/page_version_info.h"
@@ -264,6 +265,7 @@ int32_t ui_main(void)
     while (1) {
         key_manager_poll();
         power_manager_poll();
+        wifi_manager_poll();
         param_manager_poll();
         lv_timer_handler();
         usleep(5000);

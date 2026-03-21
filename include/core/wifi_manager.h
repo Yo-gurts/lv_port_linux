@@ -33,6 +33,7 @@ int wifi_manager_set_enabled(int enabled);
 int wifi_manager_scan(wifi_ap_info_t* out_list, int max_count);
 int wifi_manager_start_scan(void);
 int wifi_manager_get_scan_results(wifi_ap_info_t* out_list, int max_count, int expected_scan_id);
+void wifi_manager_poll(void);
 int wifi_manager_connect(const char* ssid, const char* password);
 int wifi_manager_connect_async(const char* ssid, const char* password);
 int wifi_manager_get_connect_result(int* out_state, int* out_error, char* out_ssid, int out_ssid_sz);

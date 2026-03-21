@@ -9,6 +9,7 @@
 #include "core/page_manager.h"
 #include "core/param_manager.h"
 #include "core/style_manager.h"
+#include "core/wifi_manager.h"
 #include "mlog.h"
 #include "ui/gesture_back.h"
 #include "ui/top_notice.h"
@@ -44,6 +45,7 @@ static const setting_config_t settings_config[] = {
 #define SETTINGS_INDEX_FORMAT 5
 #define SETTINGS_INDEX_FACTORY_RESET 6
 #define SETTINGS_INDEX_VOLUME 3
+#define SETTINGS_INDEX_WIFI 1
 
 typedef enum {
     SYSTEM_ACTION_NONE = 0,
@@ -87,6 +89,28 @@ static void update_auto_sleep_setting_value(page_system_settings_data_t* data)
     item = &data->settings[SETTINGS_INDEX_AUTO_SLEEP];
     item->current_index = enabled ? 1 : 0;
     lv_label_set_text(item->value_label, enabled ? "已开启" : "已关闭");
+}
+
+static void update_wifi_setting_value(page_system_settings_data_t* data)
+{
+    int connected;
+    const char* ssid;
+
+    if (data == NULL || data->settings[SETTINGS_INDEX_WIFI].value_label == NULL) {
+        return;
+    }
+
+    connected = param_manager_get(PARAM_ID_WIFI_CONNECTED);
+    if (connected == 1) {
+        ssid = wifi_manager_get_connected_ssid();
+        if (ssid != NULL && ssid[0] != '\0' && strcmp(ssid, "未连接") != 0) {
+            lv_label_set_text(data->settings[SETTINGS_INDEX_WIFI].value_label, ssid);
+        } else {
+            lv_label_set_text(data->settings[SETTINGS_INDEX_WIFI].value_label, "已连接");
+        }
+    } else {
+        lv_label_set_text(data->settings[SETTINGS_INDEX_WIFI].value_label, "未连接");
+    }
 }
 
 static void show_confirm_dialog(page_system_settings_data_t* data, system_action_t action)
@@ -139,6 +163,10 @@ static void system_settings_param_cb(param_id_t id, int value, void* user_data)
     }
     if (id == PARAM_ID_AUTO_SLEEP) {
         update_auto_sleep_setting_value(data);
+        return;
+    }
+    if (id == PARAM_ID_WIFI_CONNECTED || id == PARAM_ID_WIFI_SIGNAL_DBM) {
+        update_wifi_setting_value(data);
     }
 }
 
@@ -453,6 +481,7 @@ void page_system_settings_create(void)
     param_manager_register_callback(system_settings_param_cb, data);
     update_volume_setting_value(data);
     update_auto_sleep_setting_value(data);
+    update_wifi_setting_value(data);
 }
 
 void page_system_settings_destroy(void)
@@ -488,6 +517,7 @@ void page_system_settings_show(void)
     MLOG_INFO("System settings page show");
     update_volume_setting_value(data);
     update_auto_sleep_setting_value(data);
+    update_wifi_setting_value(data);
     lv_obj_clear_flag(data->container, LV_OBJ_FLAG_HIDDEN);
 }
 

@@ -24,6 +24,8 @@ typedef enum {
     PARAM_ID_VOLUME, /* 音量 (0-100) */
     PARAM_ID_AUTO_SLEEP, /* 自动息屏开关：0关闭，1开启 */
     PARAM_ID_FOCUS_FRAME_STATE, /* 对焦框状态：0隐藏，1普通，2长按3秒状态 */
+    PARAM_ID_WIFI_CONNECTED, /* WiFi连接状态：0未连接，1已连接 */
+    PARAM_ID_WIFI_SIGNAL_DBM, /* WiFi信号强度：dBm，未连接为-1 */
     PARAM_ID_BUTT,
     PARAM_ID_NONE = -1 /* 无效ID，不同步到param_manager */
 } param_id_t;

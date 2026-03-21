@@ -1,4 +1,5 @@
 #include "core/wifi_manager.h"
+#include "core/param_manager.h"
 #include <string.h>
 
 typedef struct {
@@ -89,6 +90,19 @@ static int fill_scan_results(wifi_ap_info_t* out_list, int max_count)
 int wifi_manager_get_status(void)
 {
     return g_wifi_enabled;
+}
+
+void wifi_manager_poll(void)
+{
+    int connected = (g_wifi_enabled != 0 && g_connected_index >= 0 && g_connected_index < MOCK_AP_COUNT) ? 1 : 0;
+    int signal_dbm = -1;
+
+    if (connected) {
+        signal_dbm = g_mock_ap_table[g_connected_index].signal_level - 100;
+    }
+
+    (void)param_manager_set(PARAM_ID_WIFI_CONNECTED, connected);
+    (void)param_manager_set(PARAM_ID_WIFI_SIGNAL_DBM, signal_dbm);
 }
 
 int wifi_manager_set_enabled(int enabled)
