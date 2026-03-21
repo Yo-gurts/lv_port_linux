@@ -10,6 +10,7 @@
 #include "core/style_manager.h"
 #include "mlog.h"
 #include "ui/gesture_back.h"
+#include "ui/wifi_icon_helper.h"
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
@@ -48,6 +49,30 @@ static const char* get_battery_icon_path(int level)
         return "A:" RES_ICON_PATH "/battery-low.png";
     } else {
         return "A:" RES_ICON_PATH "/battery-low.png";
+    }
+}
+
+static void update_home_wifi_icon(home_page_data_t* data)
+{
+    int connected;
+    int signal_dbm;
+
+    if (data == NULL || data->lv_img_wifi == NULL) {
+        return;
+    }
+
+    connected = param_manager_get(PARAM_ID_WIFI_CONNECTED);
+    signal_dbm = param_manager_get(PARAM_ID_WIFI_SIGNAL_DBM);
+    lv_img_set_src(data->lv_img_wifi, wifi_icon_helper_get_path(connected, signal_dbm));
+}
+
+static void home_param_cb(param_id_t id, int value, void* user_data)
+{
+    home_page_data_t* data = (home_page_data_t*)user_data;
+    LV_UNUSED(value);
+
+    if (id == PARAM_ID_WIFI_CONNECTED || id == PARAM_ID_WIFI_SIGNAL_DBM) {
+        update_home_wifi_icon(data);
     }
 }
 
@@ -116,9 +141,7 @@ static void home_update_timer_cb(lv_timer_t* timer)
     strftime(time_str, sizeof(time_str), "%Y-%m-%d %H:%M:%S", tm_info);
     lv_label_set_text(data->lv_label_time, time_str);
 
-    /* TODO: 更新 WiFi 信号强度，改为 event callback 中处理 */
-    // int wifi_level = get_wifi_level();
-    // status_bar_set_wifi_icon(data->status_bar, wifi_level);
+    update_home_wifi_icon(data);
 
     /* TODO: 更新电池电量，改为 event callback 中处理 */
     // int battery_level = get_battery_level();
@@ -222,7 +245,7 @@ void page_home_create(void)
 
     /* Wifi icon - right */
     data->lv_img_wifi = lv_img_create(data->container);
-    lv_img_set_src(data->lv_img_wifi, "A:" RES_ICON_PATH "/wifi.png");
+    lv_img_set_src(data->lv_img_wifi, "A:" RES_ICON_PATH "/wifi-off.png");
     lv_obj_align(data->lv_img_wifi, LV_ALIGN_TOP_RIGHT, -70, 0);
 
     /* Battery icon - right */
@@ -270,6 +293,8 @@ void page_home_create(void)
 
     /* 保存 private_data，供 show/hide/destroy 使用 */
     page_set_private_data(data);
+    param_manager_register_callback(home_param_cb, data);
+    update_home_wifi_icon(data);
 }
 
 void page_home_destroy(void)
@@ -291,6 +316,7 @@ void page_home_destroy(void)
         data->container = NULL;
     }
 
+    param_manager_unregister_callback(home_param_cb);
     free(data);
 }
 
@@ -316,6 +342,7 @@ void page_home_show(void)
     if (data->lv_img_battery) {
         lv_img_set_src(data->lv_img_battery, get_battery_icon_path(80));
     }
+    update_home_wifi_icon(data);
 
     /* 立即更新时间 */
     if (data->home_update_timer) {

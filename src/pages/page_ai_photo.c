@@ -10,6 +10,7 @@
 #include "core/style_manager.h"
 #include "mlog.h"
 #include "ui/gesture_back.h"
+#include "ui/wifi_icon_helper.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -36,6 +37,30 @@ static const char* ai_mode_options[] = {
 // #############################################################################
 // ! #region 4. 内部工具函数（注意用static修饰）
 // #############################################################################
+
+static void update_ai_photo_wifi_icon(page_ai_photo_data_t* data)
+{
+    int connected;
+    int signal_dbm;
+
+    if (data == NULL || data->wifi_icon == NULL) {
+        return;
+    }
+
+    connected = param_manager_get(PARAM_ID_WIFI_CONNECTED);
+    signal_dbm = param_manager_get(PARAM_ID_WIFI_SIGNAL_DBM);
+    lv_img_set_src(data->wifi_icon, wifi_icon_helper_get_path(connected, signal_dbm));
+}
+
+static void ai_photo_param_cb(param_id_t id, int value, void* user_data)
+{
+    page_ai_photo_data_t* data = (page_ai_photo_data_t*)user_data;
+    LV_UNUSED(value);
+
+    if (id == PARAM_ID_WIFI_CONNECTED || id == PARAM_ID_WIFI_SIGNAL_DBM) {
+        update_ai_photo_wifi_icon(data);
+    }
+}
 
 // #endregion
 // #############################################################################
@@ -133,7 +158,7 @@ void page_ai_photo_create(void)
 
     /* WiFi图标 - SD卡和电池之间 */
     data->wifi_icon = lv_img_create(data->top_bar);
-    lv_img_set_src(data->wifi_icon, "A:" RES_ICON_PATH "/wifi.png");
+    lv_img_set_src(data->wifi_icon, "A:" RES_ICON_PATH "/wifi-off.png");
     lv_obj_align(data->wifi_icon, LV_ALIGN_RIGHT_MID, -65, 0);
 
     /* 电池图标 - 最右上角 */
@@ -186,6 +211,8 @@ void page_ai_photo_create(void)
 
     /* 保存 private_data，供 show/hide/destroy 使用 */
     page_set_private_data(data);
+    param_manager_register_callback(ai_photo_param_cb, data);
+    update_ai_photo_wifi_icon(data);
 }
 
 void page_ai_photo_destroy(void)
@@ -201,6 +228,7 @@ void page_ai_photo_destroy(void)
         data->container = NULL;
     }
 
+    param_manager_unregister_callback(ai_photo_param_cb);
     free(data);
 }
 
@@ -216,6 +244,7 @@ void page_ai_photo_show(void)
     MLOG_INFO("AI Photo page show");
     /* 显示 UI */
     lv_obj_clear_flag(data->container, LV_OBJ_FLAG_HIDDEN);
+    update_ai_photo_wifi_icon(data);
 }
 
 void page_ai_photo_hide(void)
