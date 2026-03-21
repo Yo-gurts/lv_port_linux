@@ -21,6 +21,7 @@
 /* 布局常量 */
 #define TOP_BAR_HEIGHT 50
 #define BOTTOM_BAR_HEIGHT 50
+#define RECORD_UI_UPDATE_PERIOD_MS 500
 
 /* 视频分辨率图标 - 与video_settings保持一致 */
 static const char* video_resolution_icons[] = {
@@ -68,6 +69,68 @@ static void update_zoom_buttons_display(page_video_data_t* data)
     zoom_bar_set_value(param_manager_get(PARAM_ID_ZOOM));
 }
 
+static void update_recording_indicator(page_video_data_t* data)
+{
+    char time_text[16];
+    uint32_t elapsed_ms;
+    uint32_t elapsed_sec;
+    uint32_t hours;
+    uint32_t minutes;
+    uint32_t seconds;
+    uint8_t dot_visible;
+
+    if (data == NULL || data->record_dot == NULL || data->record_time_label == NULL) {
+        return;
+    }
+
+    if (!data->is_recording) {
+        lv_obj_add_flag(data->record_dot, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_add_flag(data->record_time_label, LV_OBJ_FLAG_HIDDEN);
+        return;
+    }
+
+    lv_obj_clear_flag(data->record_dot, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_clear_flag(data->record_time_label, LV_OBJ_FLAG_HIDDEN);
+
+    elapsed_ms = lv_tick_elaps(data->record_start_tick);
+    elapsed_sec = elapsed_ms / 1000U;
+    hours = elapsed_sec / 3600U;
+    minutes = (elapsed_sec % 3600U) / 60U;
+    seconds = elapsed_sec % 60U;
+    lv_snprintf(time_text, sizeof(time_text), "%02u:%02u:%02u", (unsigned int)hours, (unsigned int)minutes, (unsigned int)seconds);
+    lv_label_set_text(data->record_time_label, time_text);
+
+    dot_visible = (uint8_t)(((elapsed_ms / 500U) % 2U) == 0U);
+    if (dot_visible == data->record_dot_visible) {
+        return;
+    }
+    data->record_dot_visible = dot_visible;
+    if (dot_visible) {
+        lv_obj_clear_flag(data->record_dot, LV_OBJ_FLAG_HIDDEN);
+        return;
+    }
+    lv_obj_add_flag(data->record_dot, LV_OBJ_FLAG_HIDDEN);
+}
+
+static void record_ui_timer_cb(lv_timer_t* timer)
+{
+    page_video_data_t* data;
+
+    if (timer == NULL) {
+        return;
+    }
+
+    data = (page_video_data_t*)lv_timer_get_user_data(timer);
+    if (data == NULL || data->container == NULL) {
+        return;
+    }
+    if (lv_obj_has_flag(data->container, LV_OBJ_FLAG_HIDDEN)) {
+        return;
+    }
+
+    update_recording_indicator(data);
+}
+
 static int page_video_stop_recording_if_needed(void* user_data)
 {
     page_video_data_t* data = (page_video_data_t*)user_data;
@@ -90,6 +153,7 @@ static int page_video_stop_recording_if_needed(void* user_data)
     }
 
     data->is_recording = 0;
+    update_recording_indicator(data);
     return 0;
 }
 
@@ -182,6 +246,10 @@ static void record_key_cb(key_id_t key, key_event_type_t event_type, void* user_
             return;
         }
         data->is_recording = 1;
+        data->record_start_tick = lv_tick_get();
+        data->record_dot_visible = 1U;
+        lv_label_set_text(data->record_time_label, "00:00:00");
+        update_recording_indicator(data);
         return;
     }
 
@@ -191,6 +259,7 @@ static void record_key_cb(key_id_t key, key_event_type_t event_type, void* user_
         return;
     }
     data->is_recording = 0;
+    update_recording_indicator(data);
 }
 
 // #endregion
@@ -319,6 +388,24 @@ void page_video_create(void)
     lv_img_set_src(menu_icon, "A:" RES_ICON_PATH "/menu.png");
     lv_obj_align(menu_icon, LV_ALIGN_CENTER, 0, 0);
 
+    /* 底部录制状态：[红点][00:00:00] */
+    data->record_dot = lv_obj_create(data->bottom_bar);
+    lv_obj_remove_style_all(data->record_dot);
+    lv_obj_set_size(data->record_dot, 18, 18);
+    lv_obj_set_style_radius(data->record_dot, LV_RADIUS_CIRCLE, LV_PART_MAIN);
+    lv_obj_set_style_bg_color(data->record_dot, lv_color_hex(0xFF2A2A), LV_PART_MAIN);
+    lv_obj_set_style_bg_opa(data->record_dot, LV_OPA_COVER, LV_PART_MAIN);
+    lv_obj_set_style_border_width(data->record_dot, 0, LV_PART_MAIN);
+    lv_obj_align(data->record_dot, LV_ALIGN_CENTER, -75, 0);
+
+    data->record_time_label = lv_label_create(data->bottom_bar);
+    lv_label_set_text(data->record_time_label, "00:00:00");
+    lv_obj_add_style(data->record_time_label, &NORMAL_SIZE, LV_PART_MAIN);
+    lv_obj_align(data->record_time_label, LV_ALIGN_CENTER, 6, 0);
+
+    lv_obj_add_flag(data->record_dot, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_add_flag(data->record_time_label, LV_OBJ_FLAG_HIDDEN);
+
     /* 启用整页事件冒泡，确保子对象按压事件传递到父容器。 */
     gesture_back_enable_event_bubble_recursive(data->container);
 
@@ -335,6 +422,10 @@ void page_video_destroy(void)
 
     (void)key_manager_unregister_callback(KEY_ID_CAMERA, KEY_EVENT_CLICK, record_key_cb, data);
     power_manager_unregister_shutdown_prepare_cb(page_video_stop_recording_if_needed, data);
+    if (data->record_ui_timer != NULL) {
+        lv_timer_del(data->record_ui_timer);
+        data->record_ui_timer = NULL;
+    }
     power_manager_enable_auto_sleep();
     filter_panel_hide();
     zoom_bar_hide();
@@ -363,6 +454,10 @@ void page_video_show(void)
     zoom_bar_show();
     update_resolution_display();
     update_zoom_buttons_display(data);
+    update_recording_indicator(data);
+    if (data->record_ui_timer == NULL) {
+        data->record_ui_timer = lv_timer_create(record_ui_timer_cb, RECORD_UI_UPDATE_PERIOD_MS, data);
+    }
     lv_obj_clear_flag(data->container, LV_OBJ_FLAG_HIDDEN);
 
     if (key_manager_register_callback(KEY_ID_CAMERA, KEY_EVENT_CLICK, record_key_cb, data) != 0) {
@@ -381,6 +476,10 @@ void page_video_hide(void)
     power_manager_enable_auto_sleep();
     power_manager_unregister_shutdown_prepare_cb(page_video_stop_recording_if_needed, data);
     (void)key_manager_unregister_callback(KEY_ID_CAMERA, KEY_EVENT_CLICK, record_key_cb, data);
+    if (data->record_ui_timer != NULL) {
+        lv_timer_del(data->record_ui_timer);
+        data->record_ui_timer = NULL;
+    }
     filter_panel_hide();
     zoom_bar_hide();
     lv_obj_add_flag(data->container, LV_OBJ_FLAG_HIDDEN);
@@ -388,9 +487,12 @@ void page_video_hide(void)
 
 void page_video_update(void)
 {
+    page_video_data_t* data = page_get_private_data();
+
     /* 更新分辨率显示 */
     update_resolution_display();
-    update_zoom_buttons_display(page_get_private_data());
+    update_zoom_buttons_display(data);
+    update_recording_indicator(data);
 }
 
 // #endregion
