@@ -89,6 +89,8 @@ static void take_photo_key_cb(key_id_t key, key_event_type_t event_type, void* u
     ai_mode = param_manager_get(PARAM_ID_AI_MODE);
     if (ai_mode == AI_MODE_STYLE_TRANSFER) {
         page_manager_navigate("ai_style_preview");
+    } else if (ai_mode == AI_MODE_OBJECT_RECOGNITION) {
+        page_manager_navigate("ai_recognition_preview");
     }
 }
 
