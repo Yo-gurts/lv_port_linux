@@ -80,8 +80,15 @@ static void setting_item_cb(lv_event_t* e)
     page_ai_photo_settings_data_t* data = (page_ai_photo_settings_data_t*)lv_event_get_user_data(e);
     uintptr_t user_data = (uintptr_t)lv_obj_get_user_data(lv_event_get_current_target(e));
     int index = (int)user_data;
+    int current_mode;
 
     if (index < 0 || index >= data->settings_count) {
+        return;
+    }
+
+    current_mode = param_manager_get(PARAM_ID_AI_MODE);
+    if (index == current_mode) {
+        page_manager_back();
         return;
     }
 
@@ -100,6 +107,7 @@ static void setting_item_cb(lv_event_t* e)
     param_manager_set(PARAM_ID_AI_MODE, index);
 
     MLOG_INFO("AI Setting '%s' selected", data->configs[index].title);
+    page_manager_back();
 }
 
 // #endregion
