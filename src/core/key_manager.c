@@ -149,7 +149,7 @@ static int key_manager_event_bucket(key_event_type_t event_type)
 
 static uint8_t key_manager_mask_normalize(uint8_t mask)
 {
-    return (uint8_t)(mask & (KEY_INPUT_BLOCK_TP | KEY_INPUT_BLOCK_POWER_KEY | KEY_INPUT_BLOCK_ADC_KEY2));
+    return (uint8_t)(mask & (KEY_INPUT_BLOCK_TP | KEY_INPUT_BLOCK_POWER_KEY | KEY_INPUT_BLOCK_ADC_KEY2 | KEY_INPUT_BLOCK_NON_CAMERA_KEYS));
 }
 
 static void key_manager_apply_touch_block(uint8_t block_mask)
@@ -180,7 +180,13 @@ static uint8_t key_manager_is_key_blocked(key_id_t key)
     if (key == KEY_ID_POWER) {
         return (g_input_block_mask & KEY_INPUT_BLOCK_POWER_KEY) != 0;
     }
-    return (g_input_block_mask & KEY_INPUT_BLOCK_ADC_KEY2) != 0;
+    if ((g_input_block_mask & KEY_INPUT_BLOCK_ADC_KEY2) != 0) {
+        return 1;
+    }
+    if ((g_input_block_mask & KEY_INPUT_BLOCK_NON_CAMERA_KEYS) != 0 && key != KEY_ID_CAMERA) {
+        return 1;
+    }
+    return 0;
 }
 
 /* 获取单调时钟毫秒时间戳，用于长按与连发判定。 */
@@ -530,6 +536,8 @@ void key_manager_set_block_non_power(uint8_t block_mask)
     uint8_t block_power_old = (old_mask & KEY_INPUT_BLOCK_POWER_KEY) != 0;
     uint8_t block_adc_new = (new_mask & KEY_INPUT_BLOCK_ADC_KEY2) != 0;
     uint8_t block_adc_old = (old_mask & KEY_INPUT_BLOCK_ADC_KEY2) != 0;
+    uint8_t block_non_camera_new = (new_mask & KEY_INPUT_BLOCK_NON_CAMERA_KEYS) != 0;
+    uint8_t block_non_camera_old = (old_mask & KEY_INPUT_BLOCK_NON_CAMERA_KEYS) != 0;
 
     if (old_mask == new_mask) {
         return;
@@ -541,6 +549,12 @@ void key_manager_set_block_non_power(uint8_t block_mask)
     }
     if (!block_adc_old && block_adc_new) {
         key_manager_clear_key_states(0, 1);
+    }
+    if (!block_non_camera_old && block_non_camera_new) {
+        memset(&g_key_states[KEY_ID_AI], 0, sizeof(g_key_states[KEY_ID_AI]));
+        memset(&g_key_states[KEY_ID_VOLUME_UP], 0, sizeof(g_key_states[KEY_ID_VOLUME_UP]));
+        memset(&g_key_states[KEY_ID_VOLUME_DOWN], 0, sizeof(g_key_states[KEY_ID_VOLUME_DOWN]));
+        memset(&g_key_states[KEY_ID_FOCUS], 0, sizeof(g_key_states[KEY_ID_FOCUS]));
     }
 
     key_manager_apply_touch_block(new_mask);

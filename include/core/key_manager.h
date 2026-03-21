@@ -37,6 +37,7 @@ typedef enum {
     KEY_INPUT_BLOCK_TP = (1U << 0),
     KEY_INPUT_BLOCK_POWER_KEY = (1U << 1),
     KEY_INPUT_BLOCK_ADC_KEY2 = (1U << 2),
+    KEY_INPUT_BLOCK_NON_CAMERA_KEYS = (1U << 3),
 } key_input_block_mask_t;
 
 int key_manager_init(void);

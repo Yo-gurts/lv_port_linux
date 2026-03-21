@@ -28,6 +28,8 @@ typedef struct {
     int is_recording; /* 是否正在录像 */
     uint32_t record_start_tick; /* 录像开始tick */
     uint8_t record_dot_visible; /* 红点当前可见状态 */
+    uint8_t record_input_prev_mask; /* 录像前输入屏蔽位图 */
+    uint8_t record_input_locked; /* 是否已加录像输入锁 */
 } page_video_data_t;
 
 void page_video_create(void);

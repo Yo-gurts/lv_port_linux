@@ -69,6 +69,33 @@ static void update_zoom_buttons_display(page_video_data_t* data)
     zoom_bar_set_value(param_manager_get(PARAM_ID_ZOOM));
 }
 
+static void update_recording_input_lock(page_video_data_t* data)
+{
+    uint8_t mask;
+
+    if (data == NULL) {
+        return;
+    }
+
+    if (data->is_recording) {
+        if (data->record_input_locked) {
+            return;
+        }
+        mask = key_manager_get_block_non_power();
+        data->record_input_prev_mask = mask;
+        key_manager_set_block_non_power(
+            (uint8_t)(mask | KEY_INPUT_BLOCK_TP | KEY_INPUT_BLOCK_NON_CAMERA_KEYS));
+        data->record_input_locked = 1U;
+        return;
+    }
+
+    if (!data->record_input_locked) {
+        return;
+    }
+    key_manager_set_block_non_power(data->record_input_prev_mask);
+    data->record_input_locked = 0U;
+}
+
 static void update_recording_indicator(page_video_data_t* data)
 {
     char time_text[16];
@@ -153,6 +180,7 @@ static int page_video_stop_recording_if_needed(void* user_data)
     }
 
     data->is_recording = 0;
+    update_recording_input_lock(data);
     update_recording_indicator(data);
     return 0;
 }
@@ -249,6 +277,7 @@ static void record_key_cb(key_id_t key, key_event_type_t event_type, void* user_
         data->record_start_tick = lv_tick_get();
         data->record_dot_visible = 1U;
         lv_label_set_text(data->record_time_label, "00:00:00");
+        update_recording_input_lock(data);
         update_recording_indicator(data);
         return;
     }
@@ -259,6 +288,7 @@ static void record_key_cb(key_id_t key, key_event_type_t event_type, void* user_
         return;
     }
     data->is_recording = 0;
+    update_recording_input_lock(data);
     update_recording_indicator(data);
 }
 
@@ -426,6 +456,10 @@ void page_video_destroy(void)
         lv_timer_del(data->record_ui_timer);
         data->record_ui_timer = NULL;
     }
+    if (data->record_input_locked) {
+        key_manager_set_block_non_power(data->record_input_prev_mask);
+        data->record_input_locked = 0U;
+    }
     power_manager_enable_auto_sleep();
     filter_panel_hide();
     zoom_bar_hide();
@@ -454,6 +488,7 @@ void page_video_show(void)
     zoom_bar_show();
     update_resolution_display();
     update_zoom_buttons_display(data);
+    update_recording_input_lock(data);
     update_recording_indicator(data);
     if (data->record_ui_timer == NULL) {
         data->record_ui_timer = lv_timer_create(record_ui_timer_cb, RECORD_UI_UPDATE_PERIOD_MS, data);
@@ -480,6 +515,10 @@ void page_video_hide(void)
         lv_timer_del(data->record_ui_timer);
         data->record_ui_timer = NULL;
     }
+    if (data->record_input_locked) {
+        key_manager_set_block_non_power(data->record_input_prev_mask);
+        data->record_input_locked = 0U;
+    }
     filter_panel_hide();
     zoom_bar_hide();
     lv_obj_add_flag(data->container, LV_OBJ_FLAG_HIDDEN);
@@ -492,6 +531,7 @@ void page_video_update(void)
     /* 更新分辨率显示 */
     update_resolution_display();
     update_zoom_buttons_display(data);
+    update_recording_input_lock(data);
     update_recording_indicator(data);
 }
 
