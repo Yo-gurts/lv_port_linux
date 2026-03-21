@@ -101,6 +101,29 @@ static int send_cmd(const char* cmd, char* resp, size_t resp_sz)
     return 0;
 }
 
+static int map_connect_error(const char* error)
+{
+    if (error == NULL) {
+        return WIFI_CONNECT_ERR_GENERIC;
+    }
+    if (strcmp(error, "NONE") == 0) {
+        return WIFI_CONNECT_OK;
+    }
+    if (strcmp(error, "CONNECT_AUTH_FAILED") == 0) {
+        return WIFI_CONNECT_ERR_AUTH;
+    }
+    if (strcmp(error, "CONNECT_TIMEOUT") == 0) {
+        return WIFI_CONNECT_ERR_TIMEOUT;
+    }
+    if (strcmp(error, "CONNECT_BUSY") == 0) {
+        return WIFI_CONNECT_ERR_BUSY;
+    }
+    if (strcmp(error, "WIFI_DISABLED") == 0) {
+        return WIFI_CONNECT_ERR_DISABLED;
+    }
+    return WIFI_CONNECT_ERR_GENERIC;
+}
+
 int wifi_manager_get_status(void)
 {
     char resp[128];
@@ -266,33 +289,120 @@ int wifi_manager_scan(wifi_ap_info_t* out_list, int max_count)
     return count;
 }
 
-int wifi_manager_connect(const char* ssid, const char* password)
+int wifi_manager_connect_async(const char* ssid, const char* password)
 {
     char resp[128];
     char cmd[256];
 
     if (ssid == NULL || ssid[0] == '\0') {
-        return -1;
+        return WIFI_CONNECT_ERR_GENERIC;
     }
-
     if (password == NULL) {
         password = "";
     }
 
-    MLOG_INFO("connecting to SSID: %s", ssid);
+    MLOG_INFO("start async connect to SSID: %s", ssid);
     snprintf(cmd, sizeof(cmd), "CONNECT\t%s\t%s\n", ssid, password);
     if (send_cmd(cmd, resp, sizeof(resp)) != 0) {
         MLOG_ERR("CONNECT failed");
+        return WIFI_CONNECT_ERR_GENERIC;
+    }
+
+    if (strncmp(resp, "OK\tCONNECTING", 13) == 0 || strncmp(resp, "OK\tCONNECTED", 12) == 0) {
+        return WIFI_CONNECT_OK;
+    }
+    if (strncmp(resp, "ERR\tWIFI_DISABLED", 17) == 0) {
+        return WIFI_CONNECT_ERR_DISABLED;
+    }
+    if (strncmp(resp, "ERR\tCONNECT_BUSY", 16) == 0) {
+        return WIFI_CONNECT_ERR_BUSY;
+    }
+    if (strncmp(resp, "ERR\tCONNECT_AUTH_FAILED", 23) == 0) {
+        return WIFI_CONNECT_ERR_AUTH;
+    }
+    if (strncmp(resp, "ERR\tCONNECT_TIMEOUT", 19) == 0) {
+        return WIFI_CONNECT_ERR_TIMEOUT;
+    }
+
+    MLOG_ERR("connect start failed: %s", resp);
+    return WIFI_CONNECT_ERR_GENERIC;
+}
+
+int wifi_manager_get_connect_result(int* out_state, int* out_error, char* out_ssid, int out_ssid_sz)
+{
+    char resp[256];
+    char* saveptr = NULL;
+    char* token;
+    int state;
+    const char* error = "NONE";
+    const char* ssid = "";
+
+    if (out_state == NULL || out_error == NULL || out_ssid == NULL || out_ssid_sz <= 0) {
         return -1;
     }
 
-    if (strncmp(resp, "OK\tCONNECTED", 12) == 0) {
-        MLOG_INFO("connected to %s success", ssid);
-        return 0;
+    if (send_cmd("GET_CONNECT_RESULT\n", resp, sizeof(resp)) != 0) {
+        return -1;
     }
 
-    MLOG_ERR("connect to %s failed: %s", ssid, resp);
-    return -1;
+    token = strtok_r(resp, "\t\n", &saveptr);
+    if (token == NULL || strcmp(token, "OK") != 0) {
+        return -1;
+    }
+    token = strtok_r(NULL, "\t\n", &saveptr);
+    if (token == NULL || strcmp(token, "CONNECT_RESULT") != 0) {
+        return -1;
+    }
+    token = strtok_r(NULL, "\t\n", &saveptr);
+    if (token == NULL) {
+        return -1;
+    }
+    state = atoi(token);
+
+    token = strtok_r(NULL, "\t\n", &saveptr);
+    if (token != NULL) {
+        error = token;
+    }
+    token = strtok_r(NULL, "\t\n", &saveptr);
+    if (token != NULL) {
+        ssid = token;
+    }
+
+    *out_state = state;
+    *out_error = map_connect_error(error);
+    strncpy(out_ssid, ssid, (size_t)out_ssid_sz - 1);
+    out_ssid[out_ssid_sz - 1] = '\0';
+    return 0;
+}
+
+int wifi_manager_connect(const char* ssid, const char* password)
+{
+    int ret;
+    int i;
+    int state = WIFI_CONNECT_STATE_IDLE;
+    int error = WIFI_CONNECT_ERR_GENERIC;
+    char result_ssid[WIFI_MANAGER_MAX_SSID_LEN];
+
+    ret = wifi_manager_connect_async(ssid, password);
+    if (ret != WIFI_CONNECT_OK) {
+        return ret;
+    }
+
+    for (i = 0; i < 60; i++) { /* up to ~12s */
+        if (wifi_manager_get_connect_result(&state, &error, result_ssid, sizeof(result_ssid)) != 0) {
+            usleep(200 * 1000);
+            continue;
+        }
+        if (state == WIFI_CONNECT_STATE_CONNECTED) {
+            return WIFI_CONNECT_OK;
+        }
+        if (state == WIFI_CONNECT_STATE_FAILED) {
+            return error;
+        }
+        usleep(200 * 1000);
+    }
+
+    return WIFI_CONNECT_ERR_TIMEOUT;
 }
 
 int wifi_manager_disconnect(void)

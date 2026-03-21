@@ -24,10 +24,13 @@ typedef struct {
     lv_obj_t* password_confirm_btn;
     lv_obj_t* password_kb;
     lv_timer_t* scan_timer;
+    lv_timer_t* connect_timer;
     uint8_t wifi_enabled;
     int pending_scan_id;
+    int connect_poll_count;
     int scan_count;
     char pending_ssid[WIFI_MANAGER_MAX_SSID_LEN];
+    char connecting_ssid[WIFI_MANAGER_MAX_SSID_LEN];
     wifi_ap_info_t scan_results[WIFI_LIST_MAX_AP_COUNT];
 } page_wifi_list_data_t;
 
