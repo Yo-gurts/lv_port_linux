@@ -15,6 +15,7 @@
 #include "mlog.h"
 #include "pages/page_ai_photo.h"
 #include "pages/page_ai_photo_settings.h"
+#include "pages/page_ai_style_preview.h"
 #include "pages/page_album.h"
 #include "pages/page_chat.h"
 #include "pages/page_home.h"
@@ -125,6 +126,14 @@ static page_interface_t ai_photo_page_interface = {
     .show = page_ai_photo_show,
     .hide = page_ai_photo_hide,
     .update = page_ai_photo_update,
+};
+
+static page_interface_t ai_style_preview_page_interface = {
+    .create = page_ai_style_preview_create,
+    .destroy = page_ai_style_preview_destroy,
+    .show = page_ai_style_preview_show,
+    .hide = page_ai_style_preview_hide,
+    .update = page_ai_style_preview_update,
 };
 
 static page_interface_t video_page_interface = {
@@ -243,6 +252,7 @@ int32_t ui_main(void)
     page_manager_register("home", &home_page_interface, NULL);
     page_manager_register("photo", &photo_page_interface, NULL);
     page_manager_register("ai_photo", &ai_photo_page_interface, NULL);
+    page_manager_register("ai_style_preview", &ai_style_preview_page_interface, NULL);
     page_manager_register("video", &video_page_interface, NULL);
     page_manager_register("photo_settings", &photo_settings_page_interface, NULL);
     page_manager_register("video_settings", &video_settings_page_interface, NULL);

@@ -5,6 +5,8 @@
 #include "pages/page_ai_photo.h"
 #include "config.h"
 #include "core/font_manager.h"
+#include "core/key_manager.h"
+#include "core/media_manager.h"
 #include "core/page_manager.h"
 #include "core/param_manager.h"
 #include "core/style_manager.h"
@@ -59,6 +61,34 @@ static void ai_photo_param_cb(param_id_t id, int value, void* user_data)
 
     if (id == PARAM_ID_WIFI_CONNECTED || id == PARAM_ID_WIFI_SIGNAL_DBM) {
         update_ai_photo_wifi_icon(data);
+    }
+}
+
+static void take_photo_key_cb(key_id_t key, key_event_type_t event_type, void* user_data)
+{
+    page_ai_photo_data_t* data = (page_ai_photo_data_t*)user_data;
+    int ret;
+    int ai_mode;
+
+    if (key != KEY_ID_CAMERA || event_type != KEY_EVENT_CLICK) {
+        return;
+    }
+    if (!data || !data->container) {
+        return;
+    }
+    if (lv_obj_has_flag(data->container, LV_OBJ_FLAG_HIDDEN)) {
+        return;
+    }
+
+    ret = media_manager_execute(MEDIA_OP_TAKE_PHOTO, 0);
+    if (ret != 0) {
+        MLOG_ERR("AI take photo failed: ret=%d", ret);
+        return;
+    }
+
+    ai_mode = param_manager_get(PARAM_ID_AI_MODE);
+    if (ai_mode == AI_MODE_STYLE_TRANSFER) {
+        page_manager_navigate("ai_style_preview");
     }
 }
 
@@ -228,6 +258,7 @@ void page_ai_photo_destroy(void)
         data->container = NULL;
     }
 
+    (void)key_manager_unregister_callback(KEY_ID_CAMERA, KEY_EVENT_CLICK, take_photo_key_cb, data);
     param_manager_unregister_callback(ai_photo_param_cb);
     free(data);
 }
@@ -244,6 +275,9 @@ void page_ai_photo_show(void)
     MLOG_INFO("AI Photo page show");
     /* 显示 UI */
     lv_obj_clear_flag(data->container, LV_OBJ_FLAG_HIDDEN);
+    if (key_manager_register_callback(KEY_ID_CAMERA, KEY_EVENT_CLICK, take_photo_key_cb, data) != 0) {
+        MLOG_WARN("register ai photo key callback failed");
+    }
     update_ai_photo_wifi_icon(data);
 }
 
@@ -257,6 +291,7 @@ void page_ai_photo_hide(void)
     MLOG_INFO("AI Photo page hide");
     /* 隐藏 UI */
     lv_obj_add_flag(data->container, LV_OBJ_FLAG_HIDDEN);
+    (void)key_manager_unregister_callback(KEY_ID_CAMERA, KEY_EVENT_CLICK, take_photo_key_cb, data);
 }
 
 void page_ai_photo_update(void)

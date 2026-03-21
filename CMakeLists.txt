@@ -82,6 +82,7 @@ set(SOURCES
     src/mock/power_manager.c
     src/pages/page_ai_photo_settings.c
     src/pages/page_ai_photo.c
+    src/pages/page_ai_style_preview.c
     src/pages/page_album.c
     src/pages/page_chat.c
     src/pages/page_home.c
