@@ -10,15 +10,20 @@
 #include <stdlib.h>
 #include <sys/ioctl.h>
 #include <unistd.h>
-
+#include <sys/mman.h> 
 // #endregion
 // #############################################################################
 // ! #region 2. 数据结构定义
 // #############################################################################
 
 struct framebuffer_manager_t {
-    int fbfd; // framebuffer 文件描述符
-    struct fb_var_screeninfo vinfo; // 可变屏幕信息
+    int fbfd;
+    struct fb_var_screeninfo vinfo;
+    uint8_t* fb_mem;       /* mmap 的 framebuffer */
+    uint8_t* fb_buf1;      /* framebuffer buffer 1 */
+    uint8_t* fb_buf2;      /* framebuffer buffer 2 */
+    size_t buf_size;
+    int current_fb;        /* 当前显示的 buffer (0 或 1) */
 };
 
 // #endregion
@@ -34,24 +39,31 @@ static framebuffer_manager_t* g_fb_mgr = NULL;
 // #############################################################################
 
 /**
- * LVGL flush 完成事件回调
- * 在 lv_display_flush_ready() 被调用后触发，此时数据已经拷贝到 framebuffer
+ * LVGL flush 回调函数
+ * 在 call_flush_cb() 被调用后触发
  * 我们在这里调用 FBIOPAN_DISPLAY 通知硬件刷新显示
  */
-static void flush_finish_event_cb(lv_event_t* event)
-{
-    LV_UNUSED(event);
-
-    if (g_fb_mgr == NULL || g_fb_mgr->fbfd < 0) {
-        return;
+static void custom_flush_cb(lv_display_t* disp, const lv_area_t* area, uint8_t* color_p)
+{   
+    LV_UNUSED(area);
+    /* 确定目标 framebuffer */
+    uint32_t new_yoffset;
+    
+    if (g_fb_mgr->current_fb == 0) {
+        memcpy(g_fb_mgr->fb_buf2, color_p, g_fb_mgr->buf_size);
+        new_yoffset = g_fb_mgr->vinfo.yres;
+        g_fb_mgr->current_fb = 1;
+    } else {
+        memcpy(g_fb_mgr->fb_buf1, color_p, g_fb_mgr->buf_size);
+        new_yoffset = 0;
+        g_fb_mgr->current_fb = 0;
     }
 
-    // 调用 FBIOPAN_DISPLAY 通知硬件显示内容已更新
-    if (ioctl(g_fb_mgr->fbfd, FBIOPAN_DISPLAY, &g_fb_mgr->vinfo) < 0) {
-        MLOG_ERR("FBIOPAN_DISPLAY failed");
-    }
+    /* 切换显示 */
+    g_fb_mgr->vinfo.yoffset = new_yoffset;
+    ioctl(g_fb_mgr->fbfd, FBIOPAN_DISPLAY, &g_fb_mgr->vinfo);
+    lv_display_flush_ready(disp);
 }
-
 // #endregion
 // #############################################################################
 // ! #region 5. 对外接口函数
@@ -82,7 +94,23 @@ framebuffer_manager_t* framebuffer_manager_create(const char* device, lv_display
         free(mgr);
         return NULL;
     }
-
+    mgr->vinfo.xres_virtual = mgr->vinfo.xres;
+    mgr->vinfo.yres_virtual = mgr->vinfo.yres * 2;
+    mgr->vinfo.activate = FB_ACTIVATE_NOW;
+    mgr->buf_size = mgr->vinfo.xres * mgr->vinfo.yres * (mgr->vinfo.bits_per_pixel >> 3);
+    size_t fb_total_size = mgr->buf_size * 2;
+    if (ioctl(mgr->fbfd, FBIOPUT_VSCREENINFO, &mgr->vinfo) < 0) {
+        MLOG_ERR("FBIOPUT_VSCREENINFO failed");
+        close(mgr->fbfd);
+        free(mgr);
+        return NULL;
+    }
+    mgr->fb_mem = mmap(NULL, fb_total_size, PROT_READ | PROT_WRITE, MAP_SHARED, mgr->fbfd, 0);
+    mgr->fb_buf1 = mgr->fb_mem;
+    mgr->fb_buf2 = mgr->fb_mem + mgr->buf_size;
+    mgr->current_fb = 0;
+    // 注册回调函数
+    lv_display_set_flush_cb(disp, custom_flush_cb);
     /* Make sure that the display is on. */
     if (ioctl(mgr->fbfd, FBIOBLANK, FB_BLANK_UNBLANK) != 0) {
         perror("ioctl(FBIOBLANK)");
@@ -90,10 +118,6 @@ framebuffer_manager_t* framebuffer_manager_create(const char* device, lv_display
     }
 
     g_fb_mgr = mgr;
-
-    // 注册 LV_EVENT_FLUSH_FINISH 事件回调
-    // 该事件在 flush_cb 返回后、lv_display_flush_ready() 内部触发
-    lv_display_add_event_cb(disp, flush_finish_event_cb, LV_EVENT_FLUSH_FINISH, NULL);
 
     MLOG_INFO("Framebuffer manager created: %s", device);
     return mgr;
@@ -104,7 +128,9 @@ void framebuffer_manager_destroy(framebuffer_manager_t* mgr)
     if (!mgr) {
         return;
     }
-
+    if (mgr->fb_mem && mgr->fb_mem != MAP_FAILED) {
+        munmap(mgr->fb_mem, mgr->buf_size * 2);
+    }
     if (mgr->fbfd >= 0) {
         close(mgr->fbfd);
     }
