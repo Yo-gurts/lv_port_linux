@@ -1207,6 +1207,13 @@ void page_album_show(void)
     if (!data || !data->container)
         return;
 
+    /* 检查存储是否就绪，未插入 SD 卡时提示并返回 */
+    if (!file_manager_is_storage_ready()) {
+        top_notice_show("SD卡未插入", TOP_NOTICE_TYPE_WARNING);
+        page_manager_back();
+        return;
+    }
+
     gesture_back_set_left_edge_swipe_cb(data->container, page_manager_back_cb);
 
     MLOG_INFO("Album page show");

@@ -528,3 +528,19 @@ int file_manager_format_sdcard(void)
     MLOG_INFO("file_manager: format sdcard done (mock)");
     return 0;
 }
+
+/* 检查照片存储是否就绪（mock: 检查照片目录是否存在） */
+int file_manager_is_storage_ready(void)
+{
+    const char* real_dir = to_real_path(PHOTO_ALBUM_IMAGE_PATH);
+    struct stat st;
+
+    if (!real_dir)
+        return 0;
+
+    /* 检查目录是否存在 */
+    if (stat(real_dir, &st) != 0)
+        return 0;
+
+    return S_ISDIR(st.st_mode) ? 1 : 0;
+}

@@ -9,6 +9,17 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+static int file_manager_is_photo_storage_ready(void)
+{
+    return FILEMNG_GetStorageStatus() == FILEMNG_STORAGE_STATE_SCAN_COMPLETED;
+}
+
+/* 检查照片存储是否就绪（已插入 SD 卡且扫描完成） */
+int file_manager_is_storage_ready(void)
+{
+    return file_manager_is_photo_storage_ready();
+}
+
 /* 将 LVGL 路径（A:/...）转换为真实文件系统路径（/...）。 */
 static const char* to_real_path(const char* path)
 {
@@ -159,6 +170,9 @@ int file_manager_refresh_photo_list(void)
 /* 获取照片总数。 */
 int file_manager_get_photo_count(void)
 {
+    if (!file_manager_is_photo_storage_ready())
+        return 0;
+
     uint32_t cnt = FILEMNG_GetDirFileCnt(0, FILEMNG_DIR_PHOTO);
     if (cnt == (uint32_t)-1)
         return 0;
@@ -171,6 +185,9 @@ int file_manager_get_photo_name(int index, char* out_name, size_t out_size)
     char filename[FILEMNG_PATH_MAX_LEN] = {0};
 
     if (!out_name || out_size == 0 || index < 0)
+        return -1;
+
+    if (!file_manager_is_photo_storage_ready())
         return -1;
 
     if (FILEMNG_GetFileNameByFileInx(0, FILEMNG_DIR_PHOTO, (uint32_t)index, &filename, 1) != 0)

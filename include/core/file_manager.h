@@ -18,6 +18,9 @@ typedef enum {
 /* 格式化 SD 卡（mock: 仅延时模拟处理） */
 int file_manager_format_sdcard(void);
 
+/* 检查照片存储是否就绪（已插入 SD 卡且扫描完成） */
+int file_manager_is_storage_ready(void);
+
 int file_manager_refresh_photo_list(void);
 int file_manager_get_photo_count(void);
 int file_manager_get_photo_name(int index, char* out_name, size_t out_size);

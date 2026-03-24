@@ -4,12 +4,14 @@
 
 #include "pages/page_home.h"
 #include "config.h"
+#include "core/file_manager.h"
 #include "core/font_manager.h"
 #include "core/media_manager.h"
 #include "core/param_manager.h"
 #include "core/style_manager.h"
 #include "mlog.h"
 #include "ui/gesture_back.h"
+#include "ui/top_notice.h"
 #include "ui/wifi_icon_helper.h"
 #include <stdlib.h>
 #include <string.h>
@@ -197,6 +199,10 @@ static void album_button_cb(lv_event_t* e)
 {
     LV_UNUSED(e);
     MLOG_INFO("album button clicked");
+    if (!file_manager_is_storage_ready()) {
+        top_notice_show("SD卡未插入", TOP_NOTICE_TYPE_WARNING);
+        return;
+    }
     page_manager_navigate("album");
 }
 
