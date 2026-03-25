@@ -21,9 +21,10 @@ typedef struct {
     char** names;
     int count;
     int capacity;
-} photo_list_t;
+} media_list_t;
 
-static photo_list_t g_photo_list = {0};
+static media_list_t g_photo_list = {0};
+static media_list_t g_video_list = {0};
 
 typedef enum {
     PHOTO_DERIVED_TYPE_THUMBNAIL = 0,
@@ -84,8 +85,24 @@ static int is_jpeg_file(const char* name)
     return (strcasecmp(dot, ".jpg") == 0 || strcasecmp(dot, ".jpeg") == 0);
 }
 
+/* 判断文件名是否为常见视频扩展名。 */
+static int is_video_file(const char* name)
+{
+    const char* dot;
+
+    if (!name)
+        return 0;
+
+    dot = strrchr(name, '.');
+    if (!dot)
+        return 0;
+
+    return (strcasecmp(dot, ".mp4") == 0 || strcasecmp(dot, ".mov") == 0 || strcasecmp(dot, ".avi") == 0 ||
+            strcasecmp(dot, ".mkv") == 0);
+}
+
 /* 照片文件名字典序比较函数，用于排序。 */
-static int photo_name_cmp(const void* a, const void* b)
+static int media_name_desc_cmp(const void* a, const void* b)
 {
     const char* lhs = *(const char* const*)a;
     const char* rhs = *(const char* const*)b;
@@ -94,7 +111,7 @@ static int photo_name_cmp(const void* a, const void* b)
 }
 
 /* 释放照片列表内存。 */
-static void free_photo_list(photo_list_t* list)
+static void free_media_list(media_list_t* list)
 {
     int i;
 
@@ -111,7 +128,7 @@ static void free_photo_list(photo_list_t* list)
 }
 
 /* 追加一个照片文件名到列表，必要时扩容。 */
-static int append_photo_name(photo_list_t* list, const char* name)
+static int append_media_name(media_list_t* list, const char* name)
 {
     char** new_names;
     char* dup_name;
@@ -229,12 +246,12 @@ static void get_photo_basename(const char* name, char* out_base, size_t out_size
 }
 
 /* 通过扫描文件系统刷新照片列表。 */
-static int refresh_photo_list_by_fs(const char* real_dir)
+static int refresh_media_list_by_fs(media_list_t* target_list, const char* real_dir, int (*filter_fn)(const char*))
 {
     char full_path[FILE_MANAGER_MAX_PATH_LEN];
     DIR* dir;
     struct dirent* ent;
-    photo_list_t new_list = {0};
+    media_list_t new_list = {0};
 
     if (!real_dir)
         return -1;
@@ -249,7 +266,7 @@ static int refresh_photo_list_by_fs(const char* real_dir)
         if (ent->d_name[0] == '.')
             continue;
 
-        if (!is_jpeg_file(ent->d_name))
+        if (!filter_fn || !filter_fn(ent->d_name))
             continue;
 
         if (snprintf(full_path, sizeof(full_path), "%s%s", real_dir, ent->d_name) >= (int)sizeof(full_path))
@@ -258,8 +275,8 @@ static int refresh_photo_list_by_fs(const char* real_dir)
         if (!is_regular_file_path(full_path))
             continue;
 
-        if (append_photo_name(&new_list, ent->d_name) != 0) {
-            free_photo_list(&new_list);
+        if (append_media_name(&new_list, ent->d_name) != 0) {
+            free_media_list(&new_list);
             closedir(dir);
             return -1;
         }
@@ -268,10 +285,10 @@ static int refresh_photo_list_by_fs(const char* real_dir)
     closedir(dir);
 
     if (new_list.count > 1)
-        qsort(new_list.names, (size_t)new_list.count, sizeof(char*), photo_name_cmp);
+        qsort(new_list.names, (size_t)new_list.count, sizeof(char*), media_name_desc_cmp);
 
-    free_photo_list(&g_photo_list);
-    g_photo_list = new_list;
+    free_media_list(target_list);
+    *target_list = new_list;
     return 0;
 }
 
@@ -403,12 +420,12 @@ int file_manager_refresh_photo_list(void)
         return -1;
     }
 
-    if (refresh_photo_list_by_fs(real_dir) == 0) {
+    if (refresh_media_list_by_fs(&g_photo_list, real_dir, is_jpeg_file) == 0) {
         MLOG_INFO("file_manager_refresh_photo_list done by FS scan: total=%d", g_photo_list.count);
         return 0;
     }
 
-    free_photo_list(&g_photo_list);
+    free_media_list(&g_photo_list);
     return -1;
 }
 
@@ -543,4 +560,166 @@ int file_manager_is_storage_ready(void)
         return 0;
 
     return S_ISDIR(st.st_mode) ? 1 : 0;
+}
+
+/* 刷新视频列表（mock 通过目录扫描实现）。 */
+int file_manager_refresh_video_list(void)
+{
+    const char* real_dir = to_real_path(VIDEO_ALBUM_VIDEO_PATH);
+
+    if (!real_dir) {
+        MLOG_WARN("file_manager_refresh_video_list real_dir is null");
+        return -1;
+    }
+
+    if (refresh_media_list_by_fs(&g_video_list, real_dir, is_video_file) == 0) {
+        MLOG_INFO("file_manager_refresh_video_list done by FS scan: total=%d", g_video_list.count);
+        return 0;
+    }
+
+    free_media_list(&g_video_list);
+    return -1;
+}
+
+/* 获取视频总数。 */
+int file_manager_get_video_count(void)
+{
+    return g_video_list.count;
+}
+
+/* 按索引获取视频文件名。 */
+int file_manager_get_video_name(int index, char* out_name, size_t out_size)
+{
+    if (!out_name || out_size == 0)
+        return -1;
+
+    if (index < 0 || index >= g_video_list.count)
+        return -1;
+
+    if (snprintf(out_name, out_size, "%s", g_video_list.names[index]) >= (int)out_size)
+        return -1;
+
+    return 0;
+}
+
+/* 按索引获取视频路径。 */
+int file_manager_get_video_path(int index, char* out_path, size_t out_size, file_manager_path_type_t path_type)
+{
+    char file_name[FILE_MANAGER_MAX_NAME_LEN];
+    char real_path[FILE_MANAGER_MAX_PATH_LEN];
+    const char* video_dir_real;
+
+    if (!out_path || out_size == 0)
+        return -1;
+
+    if (file_manager_get_video_name(index, file_name, sizeof(file_name)) != 0)
+        return -1;
+
+    video_dir_real = to_real_path(VIDEO_ALBUM_VIDEO_PATH);
+    if (!video_dir_real)
+        return -1;
+    if (snprintf(real_path, sizeof(real_path), "%s%s", video_dir_real, file_name) >= (int)sizeof(real_path))
+        return -1;
+    if (export_path_by_type(real_path, path_type, out_path, out_size) != 0)
+        return -1;
+
+    return 0;
+}
+
+/* 按索引获取视频缩略图路径。 */
+int file_manager_get_video_thumbnail_path(int index, char* out_path, size_t out_size, file_manager_path_type_t path_type)
+{
+    char file_name[FILE_MANAGER_MAX_NAME_LEN];
+    char base_name[FILE_MANAGER_MAX_NAME_LEN];
+    char thumb_real_path[FILE_MANAGER_MAX_PATH_LEN];
+    const char* thumb_dir_real;
+
+    if (!out_path || out_size == 0)
+        return -1;
+
+    if (file_manager_get_video_name(index, file_name, sizeof(file_name)) != 0)
+        return -1;
+
+    get_photo_basename(file_name, base_name, sizeof(base_name));
+    thumb_dir_real = to_real_path(VIDEO_ALBUM_VIDEO_THUMB_PATH);
+    if (!thumb_dir_real)
+        return -1;
+    if (snprintf(thumb_real_path, sizeof(thumb_real_path), "%s%s.jpg", thumb_dir_real, base_name) >= (int)sizeof(thumb_real_path))
+        return -1;
+
+    if (file_exists_and_valid(thumb_real_path))
+        return export_path_by_type(thumb_real_path, path_type, out_path, out_size);
+
+    return -1;
+}
+
+/* 按索引获取视频大图路径（video_large）。 */
+int file_manager_get_video_subpic_path(int index, char* out_path, size_t out_size, file_manager_path_type_t path_type)
+{
+    char file_name[FILE_MANAGER_MAX_NAME_LEN];
+    char base_name[FILE_MANAGER_MAX_NAME_LEN];
+    char subpic_real_path[FILE_MANAGER_MAX_PATH_LEN];
+    const char* subpic_dir_real;
+
+    if (!out_path || out_size == 0)
+        return -1;
+
+    if (file_manager_get_video_name(index, file_name, sizeof(file_name)) != 0)
+        return -1;
+
+    get_photo_basename(file_name, base_name, sizeof(base_name));
+    subpic_dir_real = to_real_path(VIDEO_ALBUM_VIDEO_SUBPIC_PATH);
+    if (!subpic_dir_real)
+        return -1;
+    if (snprintf(subpic_real_path, sizeof(subpic_real_path), "%s%s.jpg", subpic_dir_real, base_name) >= (int)sizeof(subpic_real_path))
+        return -1;
+
+    if (file_exists_and_valid(subpic_real_path))
+        return export_path_by_type(subpic_real_path, path_type, out_path, out_size);
+
+    return -1;
+}
+
+/* 按索引获取视频时长（秒）。mock 环境暂用可复现伪时长。 */
+int file_manager_get_video_duration_sec(int index, int* out_duration_sec)
+{
+    if (!out_duration_sec)
+        return -1;
+    if (index < 0 || index >= g_video_list.count)
+        return -1;
+
+    *out_duration_sec = 15 + (index * 13) % 331;
+    return 0;
+}
+
+/* 按索引删除视频文件，并同步更新内存列表。 */
+int file_manager_delete_video_by_index(int index)
+{
+    char file_name[FILE_MANAGER_MAX_NAME_LEN];
+    char src_lv_path[FILE_MANAGER_MAX_PATH_LEN];
+    const char* src_real_path;
+    char* removed_name;
+    int move_count;
+
+    if (file_manager_get_video_name(index, file_name, sizeof(file_name)) != 0)
+        return -1;
+
+    if (snprintf(src_lv_path, sizeof(src_lv_path), "%s%s", VIDEO_ALBUM_VIDEO_PATH, file_name) >= (int)sizeof(src_lv_path))
+        return -1;
+
+    src_real_path = to_real_path(src_lv_path);
+    if (unlink(src_real_path) != 0 && errno != ENOENT) {
+        MLOG_WARN("Delete video failed: index=%d file=%s path=%s errno=%d", index, file_name, src_real_path, errno);
+        return -1;
+    }
+
+    removed_name = g_video_list.names[index];
+    move_count = g_video_list.count - index - 1;
+    if (move_count > 0)
+        memmove(&g_video_list.names[index], &g_video_list.names[index + 1], (size_t)move_count * sizeof(char*));
+    g_video_list.count--;
+    free(removed_name);
+
+    MLOG_INFO("Delete video success: index=%d file=%s remain=%d", index, file_name, g_video_list.count);
+    return 0;
 }

@@ -18,17 +18,13 @@ extern "C" {
 /* =======================
  * 相册路径配置
  * ======================= */
-#ifndef PHOTO_ALBUM_IMAGE_PATH
+
+#define VIDEO_ALBUM_VIDEO_PATH "A:/mnt/sd/DCIM/MOVIE/"
 #define PHOTO_ALBUM_IMAGE_PATH "A:/mnt/sd/DCIM/PHOTO/"
-#endif
-
-#ifndef PHOTO_ALBUM_IMAGE_THUMB_PATH
 #define PHOTO_ALBUM_IMAGE_THUMB_PATH "A:/mnt/sd/.thumb/photo_small/"
-#endif
-
-#ifndef PHOTO_ALBUM_IMAGE_SUBPIC_PATH
+#define VIDEO_ALBUM_VIDEO_THUMB_PATH "A:/mnt/sd/.thumb/video_small/"
+#define VIDEO_ALBUM_VIDEO_SUBPIC_PATH "A:/mnt/sd/.thumb/video_large/"
 #define PHOTO_ALBUM_IMAGE_SUBPIC_PATH "A:/mnt/sd/.thumb/photo_large/"
-#endif
 
 /* =======================
  * 字体配置

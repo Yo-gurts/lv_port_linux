@@ -29,6 +29,15 @@ int file_manager_get_photo_thumbnail_path(int index, char* out_path, size_t out_
 int file_manager_get_photo_subpic_path(int index, char* out_path, size_t out_size, file_manager_path_type_t path_type);
 int file_manager_delete_photo_by_index(int index);
 
+int file_manager_refresh_video_list(void);
+int file_manager_get_video_count(void);
+int file_manager_get_video_name(int index, char* out_name, size_t out_size);
+int file_manager_get_video_path(int index, char* out_path, size_t out_size, file_manager_path_type_t path_type);
+int file_manager_get_video_thumbnail_path(int index, char* out_path, size_t out_size, file_manager_path_type_t path_type);
+int file_manager_get_video_subpic_path(int index, char* out_path, size_t out_size, file_manager_path_type_t path_type);
+int file_manager_get_video_duration_sec(int index, int* out_duration_sec);
+int file_manager_delete_video_by_index(int index);
+
 #ifdef __cplusplus
 }
 #endif

@@ -93,6 +93,8 @@ set(SOURCES
     src/pages/page_system_settings.c
     src/pages/page_version_info.c
     src/pages/page_video_settings.c
+    src/pages/page_video_album.c
+    src/pages/page_video_preview.c
     src/pages/page_video.c
     src/pages/page_wifi_list.c
     src/ui/filter_panel.c

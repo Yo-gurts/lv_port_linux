@@ -44,6 +44,8 @@ typedef struct {
     lv_obj_t* select_all_btn; /* 全选按钮（选择模式） */
     lv_obj_t* photo_btn; /* 拍照按钮 */
     lv_obj_t* video_btn; /* 录像按钮 */
+    lv_obj_t* photo_icon; /* 拍照图标 */
+    lv_obj_t* video_icon; /* 录像图标 */
     lv_obj_t* select_btn; /* 选择按钮（普通模式） */
     lv_obj_t* selected_count_label; /* 已选择数量文本 */
     lv_obj_t* delete_btn; /* 删除按钮 */

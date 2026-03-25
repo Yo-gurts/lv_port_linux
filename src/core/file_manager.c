@@ -105,6 +105,35 @@ static int get_photo_path_by_index(
     return 0;
 }
 
+/* 通过视频索引获取文件名与原路径（按 path_type 输出）。 */
+static int get_video_path_by_index(
+    int index,
+    char* out_name,
+    size_t name_size,
+    char* out_path,
+    size_t path_size,
+    file_manager_path_type_t path_type)
+{
+    char real_path[FILE_MANAGER_MAX_PATH_LEN];
+    const char* video_dir_real;
+
+    if (!out_name || name_size == 0 || !out_path || path_size == 0)
+        return -1;
+
+    if (file_manager_get_video_name(index, out_name, name_size) != 0)
+        return -1;
+
+    video_dir_real = to_real_path(VIDEO_ALBUM_VIDEO_PATH);
+    if (!video_dir_real)
+        return -1;
+    if (snprintf(real_path, sizeof(real_path), "%s%s", video_dir_real, out_name) >= (int)sizeof(real_path))
+        return -1;
+    if (export_path_by_type(real_path, path_type, out_path, path_size) != 0)
+        return -1;
+
+    return 0;
+}
+
 typedef enum {
     PHOTO_DERIVED_TYPE_THUMBNAIL = 0,
     PHOTO_DERIVED_TYPE_SUBPIC = 1,
@@ -266,5 +295,143 @@ int file_manager_format_sdcard(void)
     MLOG_INFO("file_manager: start format sdcard (mock)");
     usleep(1000 * 1000);
     MLOG_INFO("file_manager: format sdcard done (mock)");
+    return 0;
+}
+
+/* 刷新视频列表（真实环境由 FILEMNG/DTCF 维护，此处仅占位返回成功）。 */
+int file_manager_refresh_video_list(void)
+{
+    return 0;
+}
+
+/* 获取视频总数（当前真机接口未接入，先返回 0）。 */
+int file_manager_get_video_count(void)
+{
+    uint32_t cnt;
+
+    if (!file_manager_is_photo_storage_ready())
+        return 0;
+
+    cnt = FILEMNG_GetDirFileCnt(0, FILEMNG_DIR_NORMAL);
+    if (cnt == (uint32_t)-1)
+        return 0;
+    return (int)cnt;
+}
+
+/* 按索引获取视频文件名 */
+int file_manager_get_video_name(int index, char* out_name, size_t out_size)
+{
+    char filename[FILEMNG_PATH_MAX_LEN] = { 0 };
+
+    if (!out_name || out_size == 0 || index < 0)
+        return -1;
+    if (!file_manager_is_photo_storage_ready())
+        return -1;
+
+    if (FILEMNG_GetFileNameByFileInx(0, FILEMNG_DIR_NORMAL, (uint32_t)index, &filename, 1) != 0)
+        return -1;
+
+    if (snprintf(out_name, out_size, "%s", filename) >= (int)out_size)
+        return -1;
+    return 0;
+}
+
+/* 按索引获取视频路径 */
+int file_manager_get_video_path(int index, char* out_path, size_t out_size, file_manager_path_type_t path_type)
+{
+    char file_name[FILE_MANAGER_MAX_NAME_LEN];
+    char real_path[FILE_MANAGER_MAX_PATH_LEN];
+    const char* video_dir_real;
+
+    if (!out_path || out_size == 0)
+        return -1;
+
+    if (file_manager_get_video_name(index, file_name, sizeof(file_name)) != 0)
+        return -1;
+
+    video_dir_real = to_real_path(VIDEO_ALBUM_VIDEO_PATH);
+    if (!video_dir_real)
+        return -1;
+    if (snprintf(real_path, sizeof(real_path), "%s%s", video_dir_real, file_name) >= (int)sizeof(real_path))
+        return -1;
+    if (export_path_by_type(real_path, path_type, out_path, out_size) != 0)
+        return -1;
+
+    return 0;
+}
+
+/* 按索引获取视频缩略图路径（当前真机接口未接入）。 */
+int file_manager_get_video_thumbnail_path(int index, char* out_path, size_t out_size, file_manager_path_type_t path_type)
+{
+    char file_name[FILE_MANAGER_MAX_NAME_LEN];
+    char thumb_real_path[FILE_MANAGER_MAX_PATH_LEN];
+
+    if (!out_path || out_size == 0)
+        return -1;
+
+    if (file_manager_get_video_name(index, file_name, sizeof(file_name)) != 0)
+        return -1;
+
+    /* is_video=1, thumb_type=0(小图) */
+    if (FILEMNG_GetThumbPathByFile(file_name, 1, 0, thumb_real_path, sizeof(thumb_real_path)) != 0)
+        return -1;
+
+    if (!file_exists_and_valid(thumb_real_path))
+        return -1;
+
+    return export_path_by_type(thumb_real_path, path_type, out_path, out_size);
+}
+
+/* 按索引获取视频大图路径（video_large）。 */
+int file_manager_get_video_subpic_path(int index, char* out_path, size_t out_size, file_manager_path_type_t path_type)
+{
+    char file_name[FILE_MANAGER_MAX_NAME_LEN];
+    char subpic_real_path[FILE_MANAGER_MAX_PATH_LEN];
+
+    if (!out_path || out_size == 0)
+        return -1;
+
+    if (file_manager_get_video_name(index, file_name, sizeof(file_name)) != 0)
+        return -1;
+
+    /* is_video=1, thumb_type=1(大图) */
+    if (FILEMNG_GetThumbPathByFile(file_name, 1, 1, subpic_real_path, sizeof(subpic_real_path)) != 0)
+        return -1;
+
+    if (!file_exists_and_valid(subpic_real_path))
+        return -1;
+
+    return export_path_by_type(subpic_real_path, path_type, out_path, out_size);
+}
+
+/* 按索引获取视频时长（秒）（当前真机接口未接入）。 */
+int file_manager_get_video_duration_sec(int index, int* out_duration_sec)
+{
+    (void)index;
+    if (!out_duration_sec)
+        return -1;
+
+    *out_duration_sec = 0;
+    return -1;
+}
+
+int file_manager_delete_video_by_index(int index)
+{
+    char file_name[FILE_MANAGER_MAX_NAME_LEN];
+    char src_real_path[FILE_MANAGER_MAX_PATH_LEN];
+    int ret;
+
+    if (get_video_path_by_index(
+            index, file_name, sizeof(file_name), src_real_path, sizeof(src_real_path), FILE_PATH_REAL)
+        != 0) {
+        return -1;
+    }
+
+    ret = FILEMNG_DelFile(0, src_real_path);
+    if (ret != 0) {
+        MLOG_WARN("Delete video via FILEMNG failed: index=%d file=%s path=%s ret=%d", index, file_name, src_real_path, ret);
+        return -1;
+    }
+
     return 0;
 }

@@ -26,6 +26,8 @@
 #include "pages/page_system_settings.h"
 #include "pages/page_version_info.h"
 #include "pages/page_video.h"
+#include "pages/page_video_album.h"
+#include "pages/page_video_preview.h"
 #include "pages/page_video_settings.h"
 #include "pages/page_wifi_list.h"
 #include "ui/top_notice.h"
@@ -153,6 +155,22 @@ static page_interface_t video_page_interface = {
     .update = page_video_update,
 };
 
+static page_interface_t video_album_page_interface = {
+    .create = page_video_album_create,
+    .destroy = page_video_album_destroy,
+    .show = page_video_album_show,
+    .hide = page_video_album_hide,
+    .update = page_video_album_update,
+};
+
+static page_interface_t video_preview_page_interface = {
+    .create = page_video_preview_create,
+    .destroy = page_video_preview_destroy,
+    .show = page_video_preview_show,
+    .hide = page_video_preview_hide,
+    .update = page_video_preview_update,
+};
+
 static page_interface_t photo_settings_page_interface = {
     .create = page_photo_settings_create,
     .destroy = page_photo_settings_destroy,
@@ -264,6 +282,8 @@ int32_t ui_main(void)
     page_manager_register("ai_style_preview", &ai_style_preview_page_interface, NULL);
     page_manager_register("ai_recognition_preview", &ai_recognition_preview_page_interface, NULL);
     page_manager_register("video", &video_page_interface, NULL);
+    page_manager_register("video_album", &video_album_page_interface, NULL);
+    page_manager_register("video_preview", &video_preview_page_interface, NULL);
     page_manager_register("photo_settings", &photo_settings_page_interface, NULL);
     page_manager_register("video_settings", &video_settings_page_interface, NULL);
     page_manager_register("system_settings", &system_settings_page_interface, NULL);
