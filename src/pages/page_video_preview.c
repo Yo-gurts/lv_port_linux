@@ -426,6 +426,7 @@ void page_video_preview_create(void)
     lv_obj_set_size(data->control_layer, LV_PCT(100), LV_PCT(100));
     lv_obj_add_style(data->control_layer, &style_noboarder, LV_PART_MAIN);
     lv_obj_set_style_bg_opa(data->control_layer, LV_OPA_TRANSP, LV_PART_MAIN);
+    lv_obj_move_foreground(data->back_btn);
 
     data->file_name_label = lv_label_create(data->control_layer);
     lv_obj_set_width(data->file_name_label, H_RES - PREVIEW_BACK_BTN_SIZE - 80);
@@ -549,6 +550,7 @@ void page_video_preview_show(void)
     render_current_video(data, true);
     set_paused_state(data, true);
     lv_obj_clear_flag(data->container, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_move_foreground(data->back_btn);
 }
 
 void page_video_preview_hide(void)
