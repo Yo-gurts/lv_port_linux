@@ -651,7 +651,7 @@ static int create_item_pool(page_video_album_data_t* data)
         item->duration_bg = lv_obj_create(item->container);
         lv_obj_remove_style_all(item->duration_bg);
         lv_obj_set_size(item->duration_bg, LV_SIZE_CONTENT, 22);
-        lv_obj_align(item->duration_bg, LV_ALIGN_BOTTOM_RIGHT, -6, -6);
+        lv_obj_align(item->duration_bg, LV_ALIGN_BOTTOM_LEFT, 6, -6);
         lv_obj_set_style_bg_opa(item->duration_bg, LV_OPA_70, LV_PART_MAIN);
         lv_obj_set_style_bg_color(item->duration_bg, lv_color_black(), LV_PART_MAIN);
         lv_obj_set_style_radius(item->duration_bg, 10, LV_PART_MAIN);
