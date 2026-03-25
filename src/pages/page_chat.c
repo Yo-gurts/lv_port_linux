@@ -46,13 +46,6 @@
 // ! #region 7. 按键、手势、定时器 等事件回调函数
 // #############################################################################
 
-/* 返回按钮回调 */
-static void volume_btn_cb(lv_event_t* e)
-{
-    LV_UNUSED(e);
-    MLOG_INFO("Volume button clicked");
-}
-
 /* 按住说话按钮回调 */
 static void voice_btn_cb(lv_event_t* e)
 {
@@ -90,6 +83,8 @@ void page_chat_create(void)
     lv_obj_set_width(data->container, LV_PCT(100));
     lv_obj_set_height(data->container, LV_PCT(100));
     lv_obj_add_style(data->container, &style_page_container, LV_PART_MAIN);
+    lv_obj_set_style_bg_opa(data->container, LV_OPA_COVER, LV_PART_MAIN);
+    lv_obj_set_style_bg_color(data->container, lv_color_hex(0x000000), LV_PART_MAIN);
     lv_obj_set_layout(data->container, LV_LAYOUT_FLEX);
     lv_obj_set_flex_flow(data->container, LV_FLEX_FLOW_COLUMN);
     lv_obj_refr_size(data->container);
@@ -108,7 +103,7 @@ void page_chat_create(void)
     lv_obj_set_width(data->msg_container, lv_pct(100));
     lv_obj_set_flex_grow(data->msg_container, 1);
     lv_obj_set_style_bg_opa(data->msg_container, LV_OPA_COVER, LV_PART_MAIN);
-    lv_obj_set_style_bg_color(data->msg_container, lv_color_hex(0x121212), LV_PART_MAIN);
+    lv_obj_set_style_bg_color(data->msg_container, lv_color_hex(0x000000), LV_PART_MAIN);
     lv_obj_set_layout(data->msg_container, LV_LAYOUT_FLEX);
     lv_obj_set_flex_flow(data->msg_container, LV_FLEX_FLOW_COLUMN);
     lv_obj_set_flex_align(data->msg_container, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
@@ -139,16 +134,6 @@ void page_chat_create(void)
     lv_obj_t* back_icon = lv_img_create(data->back_btn);
     lv_img_set_src(back_icon, "A:" RES_ICON_PATH "/back-circle-white.png");
     lv_obj_align(back_icon, LV_ALIGN_CENTER, 0, 0);
-
-    /* 音量按钮 - 返回按钮右边 */
-    data->volume_btn = lv_btn_create(data->bottom_bar);
-    lv_obj_set_size(data->volume_btn, 50, 50);
-    lv_obj_add_style(data->volume_btn, &style_noboarder, LV_PART_MAIN);
-    lv_obj_add_event_cb(data->volume_btn, volume_btn_cb, LV_EVENT_CLICKED, NULL);
-    lv_obj_align(data->volume_btn, LV_ALIGN_LEFT_MID, 70, 0);
-    lv_obj_t* volume_icon = lv_img_create(data->volume_btn);
-    lv_img_set_src(volume_icon, "A:" RES_ICON_PATH "/volume.png");
-    lv_obj_align(volume_icon, LV_ALIGN_CENTER, 0, 0);
 
     /* 按住说话按钮 - 居中，大尺寸，圆角 */
     data->voice_btn = lv_btn_create(data->bottom_bar);

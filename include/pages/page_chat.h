@@ -12,7 +12,6 @@ typedef struct {
     lv_obj_t* back_btn; /* 返回按钮 */
     lv_obj_t* msg_container; /* 消息列表容器 */
     lv_obj_t* bottom_bar; /* 底部工具栏 */
-    lv_obj_t* volume_btn; /* 音量按钮 */
     lv_obj_t* voice_btn; /* 按住说话按钮 */
     lv_obj_t* voice_label; /* 按住说话文字 */
     lv_obj_t* voice_icon; /* 按住说话图标 */
