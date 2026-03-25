@@ -61,6 +61,8 @@ static int send_cmd(const char* cmd, char* resp, size_t resp_sz)
     int fd;
     struct sockaddr_un addr;
     ssize_t n;
+    size_t total = 0;
+    int got_data = 0;
     fd_set rfds;
     struct timeval tv;
 
@@ -90,26 +92,52 @@ static int send_cmd(const char* cmd, char* resp, size_t resp_sz)
         return -1;
     }
 
-    /* 使用 select 等待响应，设置超时 */
-    FD_ZERO(&rfds);
-    FD_SET(fd, &rfds);
-    tv.tv_sec = 5;
-    tv.tv_usec = 0;
+    /* 持续读取直到服务端关闭连接或短超时，避免只读到响应头。 */
+    while (total < resp_sz - 1) {
+        FD_ZERO(&rfds);
+        FD_SET(fd, &rfds);
 
-    if (select(fd + 1, &rfds, NULL, NULL, &tv) <= 0) {
+        tv.tv_sec = got_data ? 0 : 5;
+        tv.tv_usec = got_data ? 300 * 1000 : 0;
+
+        n = select(fd + 1, &rfds, NULL, NULL, &tv);
+        if (n < 0) {
+            if (errno == EINTR) {
+                continue;
+            }
+            close(fd);
+            return -1;
+        }
+        if (n == 0) {
+            if (got_data) {
+                break;
+            }
+            close(fd);
+            return -1;
+        }
+
+        n = read(fd, resp + total, resp_sz - 1 - total);
+        if (n > 0) {
+            total += (size_t)n;
+            got_data = 1;
+            continue;
+        }
+        if (n == 0) {
+            break;
+        }
+        if (errno == EINTR) {
+            continue;
+        }
+        if ((errno == EAGAIN || errno == EWOULDBLOCK) && got_data) {
+            break;
+        }
         close(fd);
         return -1;
     }
-
-    n = read(fd, resp, resp_sz - 1);
-    if (n > 0) {
-        resp[n] = '\0';
-    } else {
-        resp[0] = '\0';
-    }
+    resp[total] = '\0';
 
     close(fd);
-    return 0;
+    return got_data ? 0 : -1;
 }
 
 static int map_connect_error(const char* error)
