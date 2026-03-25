@@ -172,9 +172,9 @@ static void recognition_button_cb(lv_event_t* e)
         return;
     }
 
-    ret = media_manager_execute(MEDIA_OP_SET_PHOTO_RESOLUTION, PHOTO_RESOLUTION_8M);
+    ret = media_manager_execute(MEDIA_OP_SET_PHOTO_RESOLUTION, PHOTO_RESOLUTION_12M);
     if (ret != 0) {
-        MLOG_ERR("AI拍照入口设置8M分辨率失败: ret=%d", ret);
+        MLOG_ERR("AI拍照入口设置12M分辨率失败: ret=%d", ret);
         return;
     }
 
