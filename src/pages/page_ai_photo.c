@@ -199,7 +199,7 @@ void page_ai_photo_create(void)
     lv_obj_align(data->battery_icon, LV_ALIGN_RIGHT_MID, -10, 0);
 
     /* =======================
-     * 底部工具栏：[filter][...] [switch][menu]
+     * 底部工具栏：[filter][...] [menu]
      * ======================= */
     data->bottom_bar = lv_obj_create(data->container);
     lv_obj_set_width(data->bottom_bar, lv_pct(100));
@@ -217,16 +217,6 @@ void page_ai_photo_create(void)
     lv_obj_t* filter_icon = lv_img_create(data->filter_btn);
     lv_img_set_src(filter_icon, "A:" RES_ICON_PATH "/filter_default.png");
     lv_obj_align(filter_icon, LV_ALIGN_CENTER, 0, 0);
-
-    /* 摄像头切换按钮 - 右对齐 */
-    data->switch_btn = lv_btn_create(data->bottom_bar);
-    lv_obj_set_size(data->switch_btn, 50, 50);
-    lv_obj_add_style(data->switch_btn, &style_noboarder, LV_PART_MAIN);
-    lv_obj_add_event_cb(data->switch_btn, NULL, LV_EVENT_CLICKED, NULL);
-    lv_obj_align(data->switch_btn, LV_ALIGN_RIGHT_MID, -70, 0);
-    lv_obj_t* switch_icon = lv_img_create(data->switch_btn);
-    lv_img_set_src(switch_icon, "A:" RES_ICON_PATH "/switch.png");
-    lv_obj_align(switch_icon, LV_ALIGN_CENTER, 0, 0);
 
     /* 菜单按钮 - 最右侧 */
     data->menu_btn = lv_btn_create(data->bottom_bar);

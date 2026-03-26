@@ -20,7 +20,6 @@ typedef struct {
     lv_obj_t* mode_img; /* 拍照/录像模式图片 */
     lv_obj_t* menu_btn; /* 菜单按钮 */
     lv_obj_t* filter_btn; /* 滤镜按钮 */
-    lv_obj_t* switch_btn; /* 摄像头切换按钮 */
     lv_obj_t* focus_box; /* 对焦框 */
     lv_obj_t* focus_corners[4]; /* 对焦框四角 */
 } page_photo_data_t;

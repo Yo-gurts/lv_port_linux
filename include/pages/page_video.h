@@ -21,7 +21,6 @@ typedef struct {
     lv_obj_t* mode_img; /* 拍照/录像模式图片 */
     lv_obj_t* menu_btn; /* 菜单按钮 */
     lv_obj_t* filter_btn; /* 滤镜按钮 */
-    lv_obj_t* switch_btn; /* 摄像头切换按钮 */
     lv_obj_t* record_dot; /* 录像红点 */
     lv_obj_t* record_time_label; /* 底部录像时长标签 */
     lv_timer_t* record_ui_timer; /* 录像UI刷新定时器 */

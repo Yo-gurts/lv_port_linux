@@ -19,7 +19,6 @@ typedef struct {
     lv_obj_t* bottom_bar; /* 底部工具栏 */
     lv_obj_t* filter_btn; /* 滤镜按钮 */
     lv_obj_t* menu_btn; /* 菜单按钮 */
-    lv_obj_t* switch_btn; /* 摄像头切换按钮 */
 } page_ai_photo_data_t;
 
 void page_ai_photo_create(void);
