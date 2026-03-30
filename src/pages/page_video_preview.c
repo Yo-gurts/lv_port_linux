@@ -8,6 +8,7 @@
 #include "core/file_manager.h"
 #include "core/font_manager.h"
 #include "core/page_manager.h"
+#include "core/player_manager.h"
 #include "core/power_manager.h"
 #include "core/style_manager.h"
 #include "mlog.h"
@@ -185,13 +186,31 @@ static void set_auto_sleep_block(page_video_preview_data_t* data, bool blocked)
 
 static void set_paused_state(page_video_preview_data_t* data, bool paused)
 {
+    bool effective_paused;
+
     if (!data)
         return;
 
-    data->is_paused = paused;
-    set_auto_sleep_block(data, !paused);
+    effective_paused = data->is_paused;
+
+    if (!paused) {
+        if (player_manager_play() != 0) {
+            MLOG_WARN("video preview play failed, keep paused");
+        } else {
+            effective_paused = false;
+        }
+    } else {
+        if (player_manager_pause() != 0) {
+            MLOG_WARN("video preview pause failed");
+        } else {
+            effective_paused = true;
+        }
+    }
+
+    data->is_paused = effective_paused;
+    set_auto_sleep_block(data, !effective_paused);
     update_play_pause_symbol(data);
-    set_controls_visible(data, paused);
+    set_controls_visible(data, effective_paused);
 }
 
 static int get_current_video_index(const page_video_preview_data_t* data)
@@ -205,6 +224,7 @@ static int get_current_video_index(const page_video_preview_data_t* data)
 static void render_current_video(page_video_preview_data_t* data, bool reset_progress)
 {
     char image_path[FILE_MANAGER_MAX_PATH_LEN];
+    char video_path[FILE_MANAGER_MAX_PATH_LEN];
     char file_name[FILE_MANAGER_MAX_NAME_LEN];
     int duration_sec = 0;
     int video_index;
@@ -213,6 +233,7 @@ static void render_current_video(page_video_preview_data_t* data, bool reset_pro
         return;
 
     if (data->total_videos <= 0) {
+        (void)player_manager_stop();
         lv_img_set_src(data->image, NULL);
         lv_label_set_text(data->file_name_label, "");
         data->total_duration_sec = 0;
@@ -240,6 +261,13 @@ static void render_current_video(page_video_preview_data_t* data, bool reset_pro
     if (file_manager_get_video_duration_sec(video_index, &duration_sec) != 0 || duration_sec <= 0)
         duration_sec = PROGRESS_FALLBACK_SEC;
     data->total_duration_sec = duration_sec;
+
+    if (file_manager_get_video_path(video_index, video_path, sizeof(video_path), FILE_PATH_REAL) == 0) {
+        if (player_manager_prepare(video_path) != 0)
+            MLOG_WARN("video preview prepare failed: %s", video_path);
+    } else {
+        MLOG_WARN("video preview get video path failed: index=%d", video_index);
+    }
 
     if (reset_progress)
         data->current_sec = 0;
@@ -273,16 +301,21 @@ static void try_switch_video(page_video_preview_data_t* data, int delta)
 static void progress_timer_cb(lv_timer_t* timer)
 {
     page_video_preview_data_t* data = (page_video_preview_data_t*)lv_timer_get_user_data(timer);
+    int current_sec;
+    int total_sec;
 
     if (!data)
         return;
     if (data->is_paused || data->is_dragging_progress)
         return;
-    if (data->total_duration_sec <= 0)
+    if (player_manager_get_progress(&current_sec, &total_sec) != 0)
         return;
 
-    data->current_sec += 1;
-    if (data->current_sec >= data->total_duration_sec) {
+    if (total_sec > 0)
+        data->total_duration_sec = total_sec;
+    data->current_sec = current_sec;
+
+    if (data->total_duration_sec > 0 && data->current_sec >= data->total_duration_sec) {
         data->current_sec = data->total_duration_sec;
         update_progress_display(data);
         set_paused_state(data, true);
@@ -297,6 +330,7 @@ static void back_btn_cb(lv_event_t* e)
     LV_UNUSED(e);
     page_video_preview_data_t* data = (page_video_preview_data_t*)page_get_private_data();
     int current_video_index = get_current_video_index(data);
+    (void)player_manager_stop();
     if (current_video_index >= 0)
         page_video_album_set_focus_video_index(current_video_index);
     page_manager_back();
@@ -350,7 +384,11 @@ static void progress_slider_event_cb(lv_event_t* e)
     }
 
     if (code == LV_EVENT_RELEASED || code == LV_EVENT_PRESS_LOST)
+    {
         data->is_dragging_progress = false;
+        if (player_manager_seek_sec(data->current_sec) != 0)
+            MLOG_WARN("video preview seek failed: sec=%d", data->current_sec);
+    }
 }
 
 static void container_click_cb(lv_event_t* e)
@@ -385,6 +423,8 @@ void page_video_preview_create(void)
     memset(data, 0, sizeof(page_video_preview_data_t));
     data->current_display_index = 0;
     data->is_paused = true;
+    if (player_manager_init() != 0)
+        MLOG_WARN("video preview player manager init failed");
 
     data->container = lv_obj_create(lv_screen_active());
     lv_obj_set_size(data->container, LV_PCT(100), LV_PCT(100));
@@ -510,6 +550,9 @@ void page_video_preview_destroy(void)
     if (!data)
         return;
 
+    (void)player_manager_stop();
+    player_manager_deinit();
+
     if (data->progress_timer) {
         lv_timer_del(data->progress_timer);
         data->progress_timer = NULL;
@@ -533,6 +576,7 @@ void page_video_preview_show(void)
     gesture_back_set_left_edge_swipe_cb(data->container, back_btn_cb);
 
     if (!file_manager_is_storage_ready()) {
+        (void)player_manager_stop();
         page_manager_back();
         return;
     }
@@ -560,6 +604,9 @@ void page_video_preview_hide(void)
         return;
 
     set_paused_state(data, true);
+    (void)player_manager_stop();
+    data->current_sec = 0;
+    update_progress_display(data);
     lv_obj_add_flag(data->container, LV_OBJ_FLAG_HIDDEN);
 }
 

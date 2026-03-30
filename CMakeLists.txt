@@ -108,8 +108,10 @@ set(SOURCES
 # Framebuffer manager (only for FB mode)
 if(CONFIG STREQUAL "FB")
     list(APPEND SOURCES src/core/framebuffer_manager.c)
+    list(APPEND SOURCES src/core/player_manager.c)
     list(APPEND SOURCES src/core/wifi_manager.c)
 else()
+    list(APPEND SOURCES src/mock/player_manager.c)
     list(APPEND SOURCES src/mock/wifi_manager.c)
 endif()
 
