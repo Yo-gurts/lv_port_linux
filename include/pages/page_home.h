@@ -13,8 +13,6 @@ typedef struct {
     lv_obj_t* grid_container; /* 图标网格容器 */
     /* Status bar widgets */
     lv_obj_t* lv_label_time; /* 时间标签 */
-    lv_obj_t* lv_img_wifi; /* WiFi图标 */
-    lv_obj_t* lv_img_battery; /* 电池图标 */
     lv_timer_t* home_update_timer; /* 时间更新定时器 */
 } home_page_data_t;
 

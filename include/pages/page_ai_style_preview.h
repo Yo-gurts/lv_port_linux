@@ -15,7 +15,6 @@ typedef struct {
     lv_obj_t* image_area;
     lv_obj_t* image;
     lv_obj_t* back_btn;
-    lv_obj_t* wifi_icon;
 
     lv_obj_t* style_panel;
     lv_obj_t* style_list;

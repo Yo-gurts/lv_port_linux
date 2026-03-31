@@ -15,8 +15,6 @@ typedef struct {
     lv_obj_t* bottom_bar; /* 底部工具栏 */
     lv_obj_t* resolution_img; /* 分辨率图标 */
     lv_obj_t* time_label; /* 录像时长标签 */
-    lv_obj_t* sd_icon; /* SD卡图标 */
-    lv_obj_t* battery_icon; /* 电池图标 */
     lv_obj_t* mode_btn; /* 拍照/录像模式按钮 */
     lv_obj_t* mode_img; /* 拍照/录像模式图片 */
     lv_obj_t* menu_btn; /* 菜单按钮 */

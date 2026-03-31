@@ -37,6 +37,7 @@ static const int default_values[PARAM_ID_BUTT] = {
     [PARAM_ID_FOCUS_FRAME_STATE] = FOCUS_FRAME_STATE_HIDDEN, /* 默认隐藏 */
     [PARAM_ID_WIFI_CONNECTED] = 0, /* 默认未连接 */
     [PARAM_ID_WIFI_SIGNAL_DBM] = -1, /* 默认无信号 */
+    [PARAM_ID_BATTERY_VAL] = 0
 };
 
 /* 参数合法性规则：set 时按规则校验；get 不做合法性修正。
@@ -59,6 +60,7 @@ static const param_rule_t param_rules[PARAM_ID_BUTT] = {
     [PARAM_ID_FOCUS_FRAME_STATE] = { .min_value = FOCUS_FRAME_STATE_HIDDEN, .max_value = FOCUS_FRAME_STATE_LOCKING, .validate_enabled = 1 },
     [PARAM_ID_WIFI_CONNECTED] = { .min_value = 0, .max_value = 1, .validate_enabled = 1 },
     [PARAM_ID_WIFI_SIGNAL_DBM] = { .min_value = -150, .max_value = 0, .validate_enabled = 1 },
+    [PARAM_ID_BATTERY_VAL] = { .min_value = -1, .max_value = 100, .validate_enabled = 1 }
 };
 
 /* 参数当前值 */

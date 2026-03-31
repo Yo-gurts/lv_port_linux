@@ -13,9 +13,6 @@ typedef struct {
     lv_obj_t* back_btn; /* 返回按钮 */
     lv_obj_t* resolution_label; /* 分辨率标签 */
     lv_obj_t* photo_count_label; /* 照片数量标签 */
-    lv_obj_t* sd_icon; /* SD卡图标 */
-    lv_obj_t* wifi_icon; /* WiFi图标 */
-    lv_obj_t* battery_icon; /* 电池图标 */
     lv_obj_t* bottom_bar; /* 底部工具栏 */
     lv_obj_t* filter_btn; /* 滤镜按钮 */
     lv_obj_t* menu_btn; /* 菜单按钮 */

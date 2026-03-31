@@ -101,8 +101,8 @@ set(SOURCES
     src/ui/gesture_back.c
     src/ui/top_notice.c
     src/ui/volume_bar.c
-    src/ui/wifi_icon_helper.c
     src/ui/zoom_bar.c
+    src/ui/status_bar.c
 )
 
 # Framebuffer manager (only for FB mode)

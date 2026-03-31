@@ -13,8 +13,9 @@
 #include "core/style_manager.h"
 #include "mlog.h"
 #include "ui/filter_panel.h"
-#include "ui/zoom_bar.h"
 #include "ui/gesture_back.h"
+#include "ui/status_bar.h"
+#include "ui/zoom_bar.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -348,17 +349,7 @@ void page_photo_create(void)
     data->photo_count_label = lv_label_create(data->top_bar);
     lv_label_set_text(data->photo_count_label, "100");
     lv_obj_add_style(data->photo_count_label, &NORMAL_SIZE, LV_PART_MAIN);
-    lv_obj_align(data->photo_count_label, LV_ALIGN_RIGHT_MID, -110, 0);
-
-    /* SD卡图标 - 右上角 */
-    data->sd_icon = lv_img_create(data->top_bar);
-    lv_img_set_src(data->sd_icon, "A:" RES_ICON_PATH "/sd_online.png");
-    lv_obj_align(data->sd_icon, LV_ALIGN_RIGHT_MID, -60, 0);
-
-    /* 电池图标 - 最右上角 */
-    data->battery_icon = lv_img_create(data->top_bar);
-    lv_img_set_src(data->battery_icon, "A:" RES_ICON_PATH "/battery-charging.png");
-    lv_obj_align(data->battery_icon, LV_ALIGN_RIGHT_MID, -10, 0);
+    lv_obj_align(data->photo_count_label, LV_ALIGN_RIGHT_MID, -125, 0);
 
     /* =======================
      * 底部工具栏：[photo][filter] ... [menu]
@@ -449,6 +440,12 @@ void page_photo_show(void)
     zoom_bar_show();
     update_resolution_display(data);
     update_zoom_buttons_display(data);
+
+    /* 使用全局状态栏 */
+    status_bar_show(true);
+    status_bar_set_icons(STATUS_BAR_ICON_NONE, STATUS_BAR_ICON_SD, STATUS_BAR_ICON_BATTERY);
+    status_bar_refresh();
+
     lv_obj_clear_flag(data->container, LV_OBJ_FLAG_HIDDEN);
 
     if (key_manager_register_callback(KEY_ID_CAMERA, KEY_EVENT_CLICK, take_photo_key_cb, data) != 0) {
@@ -477,6 +474,7 @@ void page_photo_hide(void)
     power_manager_enable_auto_sleep();
     filter_panel_hide();
     zoom_bar_hide();
+    status_bar_show(false);
     lv_obj_add_flag(data->container, LV_OBJ_FLAG_HIDDEN);
     (void)key_manager_unregister_callback(KEY_ID_CAMERA, KEY_EVENT_CLICK, take_photo_key_cb, data);
     (void)key_manager_unregister_callback(KEY_ID_FOCUS, KEY_EVENT_PRESS, focus_key_cb, data);

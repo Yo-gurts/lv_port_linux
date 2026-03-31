@@ -11,7 +11,6 @@ extern "C" {
 typedef struct {
     lv_obj_t* container;
     lv_obj_t* back_btn;
-    lv_obj_t* wifi_icon;
     lv_obj_t* title_label;
 
     lv_obj_t* thumb_wrap;

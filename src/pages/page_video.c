@@ -13,8 +13,9 @@
 #include "core/style_manager.h"
 #include "mlog.h"
 #include "ui/filter_panel.h"
-#include "ui/zoom_bar.h"
 #include "ui/gesture_back.h"
+#include "ui/status_bar.h"
+#include "ui/zoom_bar.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -356,17 +357,7 @@ void page_video_create(void)
     data->time_label = lv_label_create(data->top_bar);
     lv_label_set_text(data->time_label, "00:00:00");
     lv_obj_add_style(data->time_label, &NORMAL_SIZE, LV_PART_MAIN);
-    lv_obj_align(data->time_label, LV_ALIGN_RIGHT_MID, -110, 0);
-
-    /* SD卡图标 - 右上角 */
-    data->sd_icon = lv_img_create(data->top_bar);
-    lv_img_set_src(data->sd_icon, "A:" RES_ICON_PATH "/sd_online.png");
-    lv_obj_align(data->sd_icon, LV_ALIGN_RIGHT_MID, -60, 0);
-
-    /* 电池图标 - 最右上角 */
-    data->battery_icon = lv_img_create(data->top_bar);
-    lv_img_set_src(data->battery_icon, "A:" RES_ICON_PATH "/battery-full.png");
-    lv_obj_align(data->battery_icon, LV_ALIGN_RIGHT_MID, -10, 0);
+    lv_obj_align(data->time_label, LV_ALIGN_RIGHT_MID, -125, 0);
 
     /* =======================
      * 底部工具栏：[photo][filter] ... [menu]
@@ -480,6 +471,12 @@ void page_video_show(void)
     update_zoom_buttons_display(data);
     update_recording_input_lock(data);
     update_recording_indicator(data);
+
+    /* 使用全局状态栏 */
+    status_bar_show(true);
+    status_bar_set_icons(STATUS_BAR_ICON_NONE, STATUS_BAR_ICON_SD, STATUS_BAR_ICON_BATTERY);
+    status_bar_refresh();
+
     if (data->record_ui_timer == NULL) {
         data->record_ui_timer = lv_timer_create(record_ui_timer_cb, RECORD_UI_UPDATE_PERIOD_MS, data);
     }
@@ -511,6 +508,7 @@ void page_video_hide(void)
     }
     filter_panel_hide();
     zoom_bar_hide();
+    status_bar_show(false);
     lv_obj_add_flag(data->container, LV_OBJ_FLAG_HIDDEN);
 }
 

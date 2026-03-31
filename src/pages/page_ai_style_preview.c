@@ -11,7 +11,7 @@
 #include "core/style_manager.h"
 #include "mlog.h"
 #include "ui/gesture_back.h"
-#include "ui/wifi_icon_helper.h"
+#include "ui/status_bar.h"
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -44,7 +44,6 @@ static const char* g_style_names[AI_STYLE_PREVIEW_STYLE_COUNT] = {
     "原图", "胶片", "日系", "赛博", "复古", "黑白"
 };
 
-static void update_wifi_icon(page_ai_style_preview_data_t* data);
 static void refresh_latest_photo(page_ai_style_preview_data_t* data);
 static void update_style_selection(page_ai_style_preview_data_t* data);
 static void scroll_to_style(page_ai_style_preview_data_t* data, int index, lv_anim_enable_t anim_en);
@@ -54,26 +53,12 @@ static void style_item_click_cb(lv_event_t* e);
 static void style_list_scroll_end_cb(lv_event_t* e);
 static void back_btn_cb(lv_event_t* e);
 static void gesture_event_cb(lv_event_t* e);
-static void style_preview_param_cb(param_id_t id, int value, void* user_data);
 
 // #endregion
 // #############################################################################
 // ! #region 4. 内部工具函数
 // #############################################################################
 
-static void update_wifi_icon(page_ai_style_preview_data_t* data)
-{
-    int connected;
-    int signal_dbm;
-
-    if (!data || !data->wifi_icon) {
-        return;
-    }
-
-    connected = param_manager_get(PARAM_ID_WIFI_CONNECTED);
-    signal_dbm = param_manager_get(PARAM_ID_WIFI_SIGNAL_DBM);
-    lv_img_set_src(data->wifi_icon, wifi_icon_helper_get_path(connected, signal_dbm));
-}
 
 static void refresh_latest_photo(page_ai_style_preview_data_t* data)
 {
@@ -295,16 +280,6 @@ static void gesture_event_cb(lv_event_t* e)
     lv_indev_wait_release(indev);
 }
 
-static void style_preview_param_cb(param_id_t id, int value, void* user_data)
-{
-    page_ai_style_preview_data_t* data = (page_ai_style_preview_data_t*)user_data;
-    LV_UNUSED(value);
-
-    if (id == PARAM_ID_WIFI_CONNECTED || id == PARAM_ID_WIFI_SIGNAL_DBM) {
-        update_wifi_icon(data);
-    }
-}
-
 // #endregion
 // #############################################################################
 // ! #region 8. 初始化、去初始化、资源管理
@@ -357,14 +332,6 @@ void page_ai_style_preview_create(void)
     lv_obj_t* back_icon = lv_img_create(data->back_btn);
     lv_img_set_src(back_icon, "A:" RES_ICON_PATH "/back-circle-white.png");
     lv_obj_center(back_icon);
-
-    // WiFi 图标
-    data->wifi_icon = lv_img_create(data->container);
-    lv_img_set_src(data->wifi_icon, "A:" RES_ICON_PATH "/wifi-off.png");
-    lv_obj_add_flag(data->wifi_icon, LV_OBJ_FLAG_IGNORE_LAYOUT);
-    lv_obj_add_flag(data->wifi_icon, LV_OBJ_FLAG_FLOATING);
-    lv_obj_set_size(data->wifi_icon, PREVIEW_WIFI_ICON_SIZE, PREVIEW_WIFI_ICON_SIZE);
-    lv_obj_align(data->wifi_icon, LV_ALIGN_TOP_RIGHT, -10, 2);
 
     // 样式选择面板
     data->style_panel = lv_obj_create(data->container);
@@ -443,8 +410,7 @@ void page_ai_style_preview_create(void)
     gesture_back_enable_event_bubble_recursive(data->container);
 
     page_set_private_data(data);
-    param_manager_register_callback(style_preview_param_cb, data);
-    update_wifi_icon(data);
+
 }
 
 void page_ai_style_preview_destroy(void)
@@ -454,8 +420,6 @@ void page_ai_style_preview_destroy(void)
     if (!data) {
         return;
     }
-
-    param_manager_unregister_callback(style_preview_param_cb);
 
     if (data->container) {
         lv_obj_del(data->container);
@@ -475,8 +439,12 @@ void page_ai_style_preview_show(void)
 
     gesture_back_set_left_edge_swipe_cb(data->container, back_btn_cb);
     refresh_latest_photo(data);
-    update_wifi_icon(data);
     set_style_panel_visible(data, true, LV_ANIM_OFF);
+
+    /* 使用全局状态栏 */
+    status_bar_show(true);
+    status_bar_set_icons(STATUS_BAR_ICON_SD, STATUS_BAR_ICON_WIFI, STATUS_BAR_ICON_BATTERY);
+
     lv_obj_clear_flag(data->container, LV_OBJ_FLAG_HIDDEN);
 }
 
@@ -488,6 +456,7 @@ void page_ai_style_preview_hide(void)
         return;
     }
 
+    status_bar_show(false);
     lv_obj_add_flag(data->container, LV_OBJ_FLAG_HIDDEN);
 }
 
@@ -499,7 +468,6 @@ void page_ai_style_preview_update(void)
         return;
     }
 
-    update_wifi_icon(data);
     refresh_latest_photo(data);
 }
 

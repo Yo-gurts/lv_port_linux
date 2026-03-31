@@ -12,11 +12,16 @@
 #include "mlog.h"
 #include <stdbool.h>
 #include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <sys/reboot.h>
 #include <time.h>
 #include <unistd.h>
 
+#define BATTERY_SYSFS_CAPA_PATH "/sys/devices/platform/battery-adc/power_supply/battery-adc/capacity"
+#define BATTERY_SYSFS_STAT_PATH "/sys/devices/platform/battery-adc/power_supply/battery-adc/status"
+#define BATTERY_POLL_INTERVAL_MS 1000
 
 // #endregion
 // #############################################################################
@@ -40,6 +45,7 @@ static uint8_t g_screen_on = 1;
 static uint8_t g_prev_touch_pressed = 0;
 static uint32_t g_disable_auto_sleep_depth = 0;
 static uint8_t g_wait_power_release = 0;
+static uint64_t g_last_battery_poll_ms = 0;
 static shutdown_prepare_entry_t g_shutdown_prepare = { 0 };
 
 // #endregion
@@ -207,6 +213,40 @@ static void power_manager_poll_touch_activity(void)
     g_prev_touch_pressed = pressed;
 }
 
+static int power_manager_read_battery_capacity(void)
+{
+    FILE* fp = fopen(BATTERY_SYSFS_CAPA_PATH, "r");
+    if (!fp) {
+        MLOG_WARN("打开电池 sysfs 失败: " BATTERY_SYSFS_CAPA_PATH);
+        return -1;
+    }
+    int capacity = -1;
+    if (fscanf(fp, "%d", &capacity) != 1) {
+        MLOG_WARN("读取电池电量失败");
+        fclose(fp);
+        return -1;
+    }
+    fclose(fp);
+    return capacity; // 0-100
+}
+
+static int power_manager_read_battery_status(void)
+{
+    FILE* fp = fopen(BATTERY_SYSFS_STAT_PATH, "r");
+    if (!fp) {
+        MLOG_WARN("打开电池 status 失败");
+        return -1;
+    }
+    char status[16] = { 0 };
+    if (fscanf(fp, "%15s", status) != 1) {
+        MLOG_WARN("读取电池 status 失败");
+        fclose(fp);
+        return -1;
+    }
+    fclose(fp);
+    return (strcmp(status, "Charging") == 0) ? 1 : 0; // 1=Charging, 0=其他
+}
+
 // #endregion
 // #############################################################################
 // ! #region 5. 对外接口函数
@@ -214,6 +254,8 @@ static void power_manager_poll_touch_activity(void)
 
 int power_manager_init(void)
 {
+    int battery_capacity;
+
     if (g_inited) {
         return 0;
     }
@@ -223,6 +265,7 @@ int power_manager_init(void)
     g_prev_touch_pressed = 0;
     g_disable_auto_sleep_depth = 0;
     g_wait_power_release = 0;
+    g_last_battery_poll_ms = 0;
     memset(&g_shutdown_prepare, 0, sizeof(g_shutdown_prepare));
 
     if (key_manager_register_callback(KEY_ID_ANY, KEY_EVENT_ANY, power_manager_on_key_activity, NULL) != 0) {
@@ -236,6 +279,14 @@ int power_manager_init(void)
     }
     if (key_manager_register_callback(KEY_ID_POWER, KEY_EVENT_CLICK, power_manager_on_power_key_click, NULL) != 0) {
         MLOG_WARN("注册电源键短按回调失败");
+    }
+
+    battery_capacity = power_manager_read_battery_capacity();
+    if (battery_capacity >= 0) {
+        MLOG_INFO("电池电量初始值: capacity=%d", battery_capacity);
+        (void)param_manager_set(PARAM_ID_BATTERY_VAL, battery_capacity);
+    } else {
+        MLOG_WARN("电池电量初始读取失败，使用默认值");
     }
 
     g_inited = 1;
@@ -259,9 +310,39 @@ void power_manager_poll(void)
 {
     int auto_sleep_enabled;
     uint64_t now_ms;
+    int battery_capacity;
+    int battery_status;
+    int current_battery_value;
+    int target_battery_value;
 
     if (!g_inited) {
         return;
+    }
+
+    now_ms = power_manager_now_ms();
+    if (now_ms - g_last_battery_poll_ms >= BATTERY_POLL_INTERVAL_MS) {
+        g_last_battery_poll_ms = now_ms;
+        battery_status = power_manager_read_battery_status();
+
+        if (battery_status == 1) {
+            target_battery_value = -1;
+        } else if (battery_status == 0) {
+            battery_capacity = power_manager_read_battery_capacity();
+            if (battery_capacity >= 0) {
+                target_battery_value = battery_capacity;
+            } else {
+                target_battery_value = param_manager_get(PARAM_ID_BATTERY_VAL);
+            }
+        } else {
+            target_battery_value = param_manager_get(PARAM_ID_BATTERY_VAL);
+        }
+
+        current_battery_value = param_manager_get(PARAM_ID_BATTERY_VAL);
+        if (target_battery_value != current_battery_value) {
+            (void)param_manager_set(PARAM_ID_BATTERY_VAL, target_battery_value);
+            MLOG_INFO("电池值变更: %d -> %d (charging=%d)",
+                current_battery_value, target_battery_value, battery_status);
+        }
     }
 
     power_manager_poll_touch_activity();

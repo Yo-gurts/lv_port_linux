@@ -12,7 +12,7 @@
 #include "core/style_manager.h"
 #include "mlog.h"
 #include "ui/gesture_back.h"
-#include "ui/wifi_icon_helper.h"
+#include "ui/status_bar.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -39,30 +39,6 @@ static const char* ai_mode_options[] = {
 // #############################################################################
 // ! #region 4. 内部工具函数（注意用static修饰）
 // #############################################################################
-
-static void update_ai_photo_wifi_icon(page_ai_photo_data_t* data)
-{
-    int connected;
-    int signal_dbm;
-
-    if (data == NULL || data->wifi_icon == NULL) {
-        return;
-    }
-
-    connected = param_manager_get(PARAM_ID_WIFI_CONNECTED);
-    signal_dbm = param_manager_get(PARAM_ID_WIFI_SIGNAL_DBM);
-    lv_img_set_src(data->wifi_icon, wifi_icon_helper_get_path(connected, signal_dbm));
-}
-
-static void ai_photo_param_cb(param_id_t id, int value, void* user_data)
-{
-    page_ai_photo_data_t* data = (page_ai_photo_data_t*)user_data;
-    LV_UNUSED(value);
-
-    if (id == PARAM_ID_WIFI_CONNECTED || id == PARAM_ID_WIFI_SIGNAL_DBM) {
-        update_ai_photo_wifi_icon(data);
-    }
-}
 
 static void take_photo_key_cb(key_id_t key, key_event_type_t event_type, void* user_data)
 {
@@ -181,22 +157,7 @@ void page_ai_photo_create(void)
     data->photo_count_label = lv_label_create(data->top_bar);
     lv_label_set_text(data->photo_count_label, "100");
     lv_obj_add_style(data->photo_count_label, &NORMAL_SIZE, LV_PART_MAIN);
-    lv_obj_align(data->photo_count_label, LV_ALIGN_RIGHT_MID, -170, 0);
-
-    /* SD卡图标 - 右上角 */
-    data->sd_icon = lv_img_create(data->top_bar);
-    lv_img_set_src(data->sd_icon, "A:" RES_ICON_PATH "/sd_online.png");
-    lv_obj_align(data->sd_icon, LV_ALIGN_RIGHT_MID, -120, 0);
-
-    /* WiFi图标 - SD卡和电池之间 */
-    data->wifi_icon = lv_img_create(data->top_bar);
-    lv_img_set_src(data->wifi_icon, "A:" RES_ICON_PATH "/wifi-off.png");
-    lv_obj_align(data->wifi_icon, LV_ALIGN_RIGHT_MID, -65, 0);
-
-    /* 电池图标 - 最右上角 */
-    data->battery_icon = lv_img_create(data->top_bar);
-    lv_img_set_src(data->battery_icon, "A:" RES_ICON_PATH "/battery-full.png");
-    lv_obj_align(data->battery_icon, LV_ALIGN_RIGHT_MID, -10, 0);
+    lv_obj_align(data->photo_count_label, LV_ALIGN_RIGHT_MID, -180, 0);
 
     /* =======================
      * 底部工具栏：[filter][...] [menu]
@@ -233,8 +194,6 @@ void page_ai_photo_create(void)
 
     /* 保存 private_data，供 show/hide/destroy 使用 */
     page_set_private_data(data);
-    param_manager_register_callback(ai_photo_param_cb, data);
-    update_ai_photo_wifi_icon(data);
 }
 
 void page_ai_photo_destroy(void)
@@ -251,7 +210,6 @@ void page_ai_photo_destroy(void)
     }
 
     (void)key_manager_unregister_callback(KEY_ID_CAMERA, KEY_EVENT_CLICK, take_photo_key_cb, data);
-    param_manager_unregister_callback(ai_photo_param_cb);
     free(data);
 }
 
@@ -267,10 +225,15 @@ void page_ai_photo_show(void)
     MLOG_INFO("AI Photo page show");
     /* 显示 UI */
     lv_obj_clear_flag(data->container, LV_OBJ_FLAG_HIDDEN);
+
+    /* 使用全局状态栏 */
+    status_bar_show(true);
+    status_bar_set_icons(STATUS_BAR_ICON_SD, STATUS_BAR_ICON_WIFI, STATUS_BAR_ICON_BATTERY);
+    status_bar_refresh();
+
     if (key_manager_register_callback(KEY_ID_CAMERA, KEY_EVENT_CLICK, take_photo_key_cb, data) != 0) {
         MLOG_WARN("register ai photo key callback failed");
     }
-    update_ai_photo_wifi_icon(data);
 }
 
 void page_ai_photo_hide(void)
@@ -283,6 +246,7 @@ void page_ai_photo_hide(void)
     MLOG_INFO("AI Photo page hide");
     /* 隐藏 UI */
     lv_obj_add_flag(data->container, LV_OBJ_FLAG_HIDDEN);
+    status_bar_show(false);
     (void)key_manager_unregister_callback(KEY_ID_CAMERA, KEY_EVENT_CLICK, take_photo_key_cb, data);
 }
 

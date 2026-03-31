@@ -11,12 +11,11 @@
 #include "core/style_manager.h"
 #include "mlog.h"
 #include "ui/gesture_back.h"
-#include "ui/wifi_icon_helper.h"
+#include "ui/status_bar.h"
 #include <stdlib.h>
 #include <string.h>
 
 #define PREVIEW_BACK_BTN_SIZE 50
-#define PREVIEW_WIFI_ICON_SIZE 45
 #define RECOG_THUMB_WIDTH 200
 #define RECOG_THUMB_HEIGHT 140
 #define RECOG_LEFT_X 30
@@ -38,30 +37,14 @@
 // ! #region 3. 全局变量 & 函数声明
 // #############################################################################
 
-static void update_wifi_icon(page_ai_recognition_preview_data_t* data);
 static void refresh_latest_thumbnail(page_ai_recognition_preview_data_t* data);
 static void back_btn_cb(lv_event_t* e);
 static void read_btn_cb(lv_event_t* e);
-static void recognition_param_cb(param_id_t id, int value, void* user_data);
 
 // #endregion
 // #############################################################################
 // ! #region 4. 内部工具函数
 // #############################################################################
-
-static void update_wifi_icon(page_ai_recognition_preview_data_t* data)
-{
-    int connected;
-    int signal_dbm;
-
-    if (data == NULL || data->wifi_icon == NULL) {
-        return;
-    }
-
-    connected = param_manager_get(PARAM_ID_WIFI_CONNECTED);
-    signal_dbm = param_manager_get(PARAM_ID_WIFI_SIGNAL_DBM);
-    lv_img_set_src(data->wifi_icon, wifi_icon_helper_get_path(connected, signal_dbm));
-}
 
 static void refresh_latest_thumbnail(page_ai_recognition_preview_data_t* data)
 {
@@ -121,16 +104,6 @@ static void read_btn_cb(lv_event_t* e)
     MLOG_INFO("Recognition preview read text clicked");
 }
 
-static void recognition_param_cb(param_id_t id, int value, void* user_data)
-{
-    page_ai_recognition_preview_data_t* data = (page_ai_recognition_preview_data_t*)user_data;
-    LV_UNUSED(value);
-
-    if (id == PARAM_ID_WIFI_CONNECTED || id == PARAM_ID_WIFI_SIGNAL_DBM) {
-        update_wifi_icon(data);
-    }
-}
-
 // #endregion
 // #############################################################################
 // ! #region 8. 初始化、去初始化、资源管理
@@ -172,13 +145,6 @@ void page_ai_recognition_preview_create(void)
     back_icon = lv_img_create(data->back_btn);
     lv_img_set_src(back_icon, "A:" RES_ICON_PATH "/back-circle-white.png");
     lv_obj_center(back_icon);
-
-    data->wifi_icon = lv_img_create(data->container);
-    lv_img_set_src(data->wifi_icon, "A:" RES_ICON_PATH "/wifi-off.png");
-    lv_obj_add_flag(data->wifi_icon, LV_OBJ_FLAG_FLOATING);
-    lv_obj_add_flag(data->wifi_icon, LV_OBJ_FLAG_IGNORE_LAYOUT);
-    lv_obj_set_size(data->wifi_icon, PREVIEW_WIFI_ICON_SIZE, PREVIEW_WIFI_ICON_SIZE);
-    lv_obj_align(data->wifi_icon, LV_ALIGN_TOP_RIGHT, -10, 2);
 
     data->title_label = lv_label_create(data->container);
     lv_label_set_text(data->title_label, "万物识别💥🛫⛔✔🤡");
@@ -261,8 +227,6 @@ void page_ai_recognition_preview_create(void)
     gesture_back_enable_event_bubble_recursive(data->container);
 
     page_set_private_data(data);
-    param_manager_register_callback(recognition_param_cb, data);
-    update_wifi_icon(data);
 }
 
 void page_ai_recognition_preview_destroy(void)
@@ -272,8 +236,6 @@ void page_ai_recognition_preview_destroy(void)
     if (data == NULL) {
         return;
     }
-
-    param_manager_unregister_callback(recognition_param_cb);
 
     if (data->container != NULL) {
         lv_obj_del(data->container);
@@ -293,7 +255,11 @@ void page_ai_recognition_preview_show(void)
 
     gesture_back_set_left_edge_swipe_cb(data->container, back_btn_cb);
     refresh_latest_thumbnail(data);
-    update_wifi_icon(data);
+
+    /* 使用全局状态栏 */
+    status_bar_show(true);
+    status_bar_set_icons(STATUS_BAR_ICON_SD, STATUS_BAR_ICON_WIFI, STATUS_BAR_ICON_BATTERY);
+
     lv_obj_clear_flag(data->container, LV_OBJ_FLAG_HIDDEN);
 }
 
@@ -305,6 +271,7 @@ void page_ai_recognition_preview_hide(void)
         return;
     }
 
+    status_bar_show(false);
     lv_obj_add_flag(data->container, LV_OBJ_FLAG_HIDDEN);
 }
 
@@ -316,7 +283,6 @@ void page_ai_recognition_preview_update(void)
         return;
     }
 
-    update_wifi_icon(data);
     refresh_latest_thumbnail(data);
 }
 
