@@ -18,12 +18,18 @@ typedef struct {
     MESSAGE_S msg;
     bool msg_processed;
     message_manager_result_cb_t result_cb;
+    TOPIC_ID success_topic;
+    TOPIC_ID failure_topic;
+    bool use_result_topics;
     pthread_mutex_t msg_mutex;
 } message_context_t;
 
 static message_context_t g_msg_ctx = {
     .msg_processed = true,
     .result_cb = NULL,
+    .success_topic = 0,
+    .failure_topic = 0,
+    .use_result_topics = false,
     .msg_mutex = PTHREAD_MUTEX_INITIALIZER,
 };
 
@@ -35,10 +41,35 @@ static EVENTHUB_SUBSCRIBER_S* g_subscriber_desc = NULL;
 static MW_PTR g_subscriber_hdl = NULL;
 static bool g_msgmgr_created = false;
 
+static void message_manager_reset_request_locked(bool processed)
+{
+    g_msg_ctx.msg_processed = processed;
+    g_msg_ctx.result_cb = NULL;
+    g_msg_ctx.success_topic = 0;
+    g_msg_ctx.failure_topic = 0;
+    g_msg_ctx.use_result_topics = false;
+}
+
 /* 同步发送模式下的回包处理：记录结果并唤醒等待线程。 */
 static int32_t message_manager_sync_result_proc(EVENT_S* evt)
 {
     g_sync_result = evt->s32Result;
+    g_sync_done = true;
+    pthread_cond_signal(&g_sync_cond);
+    return g_sync_result;
+}
+
+/* 等待成功/失败 topic 的同步回包处理。 */
+static int32_t message_manager_sync_topics_result_proc(EVENT_S* evt)
+{
+    if (evt->topic == g_msg_ctx.success_topic) {
+        g_sync_result = (evt->s32Result == 0) ? 0 : evt->s32Result;
+    } else if (evt->topic == g_msg_ctx.failure_topic) {
+        g_sync_result = (evt->s32Result != 0) ? evt->s32Result : MESSAGE_MANAGER_ESTATE;
+    } else {
+        g_sync_result = MESSAGE_MANAGER_ESTATE;
+    }
+
     g_sync_done = true;
     pthread_cond_signal(&g_sync_cond);
     return g_sync_result;
@@ -54,8 +85,15 @@ static int32_t message_manager_process_result_locked(EVENT_S* evt)
         return 0;
     }
 
-    /* 通过 (topic,arg1,arg2) 匹配回包，完成当前请求。 */
-    if ((g_msg_ctx.msg.topic == evt->topic) && (g_msg_ctx.msg.arg1 == evt->arg1) && (g_msg_ctx.msg.arg2 == evt->arg2)) {
+    if (g_msg_ctx.use_result_topics) {
+        if (evt->topic == g_msg_ctx.success_topic || evt->topic == g_msg_ctx.failure_topic) {
+            if (g_msg_ctx.result_cb != NULL) {
+                ret = g_msg_ctx.result_cb(evt);
+            }
+            g_msg_ctx.msg_processed = true;
+        }
+    } else if ((g_msg_ctx.msg.topic == evt->topic) && (g_msg_ctx.msg.arg1 == evt->arg1) && (g_msg_ctx.msg.arg2 == evt->arg2)) {
+        /* 通过 (topic,arg1,arg2) 匹配回包，完成当前请求。 */
         if (g_msg_ctx.result_cb != NULL) {
             ret = g_msg_ctx.result_cb(evt);
         }
@@ -232,8 +270,7 @@ void message_manager_destroy(void)
     }
 
     MUTEX_LOCK(g_msg_ctx.msg_mutex);
-    g_msg_ctx.msg_processed = true;
-    g_msg_ctx.result_cb = NULL;
+    message_manager_reset_request_locked(true);
     g_sync_done = true;
     pthread_cond_signal(&g_sync_cond);
     MUTEX_UNLOCK(g_msg_ctx.msg_mutex);
@@ -266,7 +303,7 @@ int32_t message_manager_send_async(const MESSAGE_S* msg, message_manager_result_
         return MESSAGE_MANAGER_EBUSY;
     }
 
-    g_msg_ctx.msg_processed = false;
+    message_manager_reset_request_locked(false);
     g_msg_ctx.result_cb = cb;
     g_msg_ctx.msg.topic = msg->topic;
     g_msg_ctx.msg.arg1 = msg->arg1;
@@ -275,8 +312,7 @@ int32_t message_manager_send_async(const MESSAGE_S* msg, message_manager_result_
 
     ret = MODEMNG_SendMessage(msg);
     if (ret != 0) {
-        g_msg_ctx.msg_processed = true;
-        g_msg_ctx.result_cb = NULL;
+        message_manager_reset_request_locked(true);
         MUTEX_UNLOCK(g_msg_ctx.msg_mutex);
         return MESSAGE_MANAGER_ESEND;
     }
@@ -307,7 +343,7 @@ int32_t message_manager_send_sync_timeout(const MESSAGE_S* msg, uint32_t timeout
 
     g_sync_done = false;
     g_sync_result = MESSAGE_MANAGER_ETIMEOUT;
-    g_msg_ctx.msg_processed = false;
+    message_manager_reset_request_locked(false);
     g_msg_ctx.result_cb = message_manager_sync_result_proc;
     g_msg_ctx.msg.topic = msg->topic;
     g_msg_ctx.msg.arg1 = msg->arg1;
@@ -316,8 +352,7 @@ int32_t message_manager_send_sync_timeout(const MESSAGE_S* msg, uint32_t timeout
 
     ret = MODEMNG_SendMessage(msg);
     if (ret != 0) {
-        g_msg_ctx.msg_processed = true;
-        g_msg_ctx.result_cb = NULL;
+        message_manager_reset_request_locked(true);
         MUTEX_UNLOCK(g_msg_ctx.msg_mutex);
         return MESSAGE_MANAGER_ESEND;
     }
@@ -334,8 +369,7 @@ int32_t message_manager_send_sync_timeout(const MESSAGE_S* msg, uint32_t timeout
         ret = pthread_cond_timedwait(&g_sync_cond, &g_msg_ctx.msg_mutex, &ts);
         if (ret == ETIMEDOUT) {
             /* 超时仅结束调用方等待；晚到回包仍可能到达，但会被忽略。 */
-            g_msg_ctx.msg_processed = true;
-            g_msg_ctx.result_cb = NULL;
+            message_manager_reset_request_locked(true);
             MUTEX_UNLOCK(g_msg_ctx.msg_mutex);
             MLOG_WARN("通过发送消息超时: topic=%s(0x%x) arg1=%d arg2=%d",
                 event_topic_get_name(msg->topic), msg->topic, msg->arg1, msg->arg2);
@@ -344,8 +378,78 @@ int32_t message_manager_send_sync_timeout(const MESSAGE_S* msg, uint32_t timeout
     }
 
     ret = g_sync_result;
-    g_msg_ctx.msg_processed = true;
-    g_msg_ctx.result_cb = NULL;
+    message_manager_reset_request_locked(true);
+    MUTEX_UNLOCK(g_msg_ctx.msg_mutex);
+
+    return ret;
+}
+
+/* 发送同步消息，并等待成功/失败 topic 之一返回。 */
+int32_t message_manager_send_sync_topics_timeout(
+    const MESSAGE_S* msg, TOPIC_ID success_topic, TOPIC_ID failure_topic, uint32_t timeout_ms)
+{
+    int32_t ret;
+    struct timespec ts;
+
+    if (msg == NULL || success_topic == 0 || failure_topic == 0) {
+        return MESSAGE_MANAGER_EINVAL;
+    }
+
+    if (!g_msgmgr_created) {
+        return MESSAGE_MANAGER_ESTATE;
+    }
+
+    MUTEX_LOCK(g_msg_ctx.msg_mutex);
+    if (!g_msg_ctx.msg_processed) {
+        MUTEX_UNLOCK(g_msg_ctx.msg_mutex);
+        return MESSAGE_MANAGER_EBUSY;
+    }
+
+    g_sync_done = false;
+    g_sync_result = MESSAGE_MANAGER_ETIMEOUT;
+    message_manager_reset_request_locked(false);
+    g_msg_ctx.result_cb = message_manager_sync_topics_result_proc;
+    g_msg_ctx.success_topic = success_topic;
+    g_msg_ctx.failure_topic = failure_topic;
+    g_msg_ctx.use_result_topics = true;
+    g_msg_ctx.msg.topic = msg->topic;
+    g_msg_ctx.msg.arg1 = msg->arg1;
+    g_msg_ctx.msg.arg2 = msg->arg2;
+    memcpy(g_msg_ctx.msg.aszPayload, msg->aszPayload, sizeof(g_msg_ctx.msg.aszPayload));
+
+    ret = MODEMNG_SendMessage(msg);
+    if (ret != 0) {
+        message_manager_reset_request_locked(true);
+        MUTEX_UNLOCK(g_msg_ctx.msg_mutex);
+        return MESSAGE_MANAGER_ESEND;
+    }
+
+    clock_gettime(CLOCK_REALTIME, &ts);
+    ts.tv_sec += timeout_ms / 1000;
+    ts.tv_nsec += (long)(timeout_ms % 1000) * 1000000L;
+    if (ts.tv_nsec >= 1000000000L) {
+        ts.tv_sec += ts.tv_nsec / 1000000000L;
+        ts.tv_nsec %= 1000000000L;
+    }
+
+    while (!g_sync_done) {
+        ret = pthread_cond_timedwait(&g_sync_cond, &g_msg_ctx.msg_mutex, &ts);
+        if (ret == ETIMEDOUT) {
+            message_manager_reset_request_locked(true);
+            MUTEX_UNLOCK(g_msg_ctx.msg_mutex);
+            MLOG_WARN("等待格式化结果超时: request=%s(0x%x) success=%s(0x%x) failure=%s(0x%x)",
+                event_topic_get_name(msg->topic),
+                msg->topic,
+                event_topic_get_name(success_topic),
+                success_topic,
+                event_topic_get_name(failure_topic),
+                failure_topic);
+            return MESSAGE_MANAGER_ETIMEOUT;
+        }
+    }
+
+    ret = g_sync_result;
+    message_manager_reset_request_locked(true);
     MUTEX_UNLOCK(g_msg_ctx.msg_mutex);
 
     return ret;

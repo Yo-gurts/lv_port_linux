@@ -1,6 +1,7 @@
 #include "core/file_manager.h"
 
 #include "config.h"
+#include "core/media_manager.h"
 #include "filemng.h"
 #include "mlog.h"
 #include "player.h"
@@ -365,12 +366,25 @@ int file_manager_delete_photo_by_index(int index)
     return 0;
 }
 
-/* 格式化 SD 卡（当前为 mock 延时实现）。 */
+/* 格式化 SD 卡。 */
 int file_manager_format_sdcard(void)
 {
-    MLOG_INFO("file_manager: start format sdcard (mock)");
-    usleep(1000 * 1000);
-    MLOG_INFO("file_manager: format sdcard done (mock)");
+    int ret;
+
+    if (FILEMNG_GetStorageStatus() == FILEMNG_STORAGE_STATE_NOT_AVAILABLE) {
+        MLOG_WARN("file_manager: format sdcard skipped, storage unavailable");
+        return -1;
+    }
+
+    MLOG_INFO("file_manager: start format sdcard");
+    ret = media_manager_execute(MEDIA_OP_FORMAT_STORAGE, 0);
+    if (ret != MEDIA_MANAGER_OK) {
+        MLOG_ERR("file_manager: format sdcard failed: ret=%d", ret);
+        return -1;
+    }
+
+    clear_video_duration_cache();
+    MLOG_INFO("file_manager: format sdcard done");
     return 0;
 }
 

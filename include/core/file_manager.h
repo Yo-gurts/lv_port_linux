@@ -15,7 +15,7 @@ typedef enum {
     FILE_PATH_LV = 1,
 } file_manager_path_type_t;
 
-/* 格式化 SD 卡（mock: 仅延时模拟处理） */
+/* 格式化 SD 卡。 */
 int file_manager_format_sdcard(void);
 
 /* 检查照片存储是否就绪（已插入 SD 卡且扫描完成） */

@@ -23,6 +23,8 @@ int32_t message_manager_create(void);
 void message_manager_destroy(void);
 int32_t message_manager_send_async(const MESSAGE_S* msg, message_manager_result_cb_t cb);
 int32_t message_manager_send_sync_timeout(const MESSAGE_S* msg, uint32_t timeout_ms);
+int32_t message_manager_send_sync_topics_timeout(
+    const MESSAGE_S* msg, uint32_t success_topic, uint32_t failure_topic, uint32_t timeout_ms);
 
 /* mock 初始化：保持空实现。 */
 int32_t message_manager_create(void)
@@ -63,6 +65,23 @@ int32_t message_manager_send_sync_timeout(const MESSAGE_S* msg, uint32_t timeout
         (unsigned int)msg->topic,
         (unsigned int)msg->arg1,
         (unsigned int)msg->arg2,
+        (unsigned int)timeout_ms);
+
+    return 0;
+}
+
+/* mock 同步发送并等待成功/失败 topic：仅打印消息关键信息并直接返回成功。 */
+int32_t message_manager_send_sync_topics_timeout(
+    const MESSAGE_S* msg, uint32_t success_topic, uint32_t failure_topic, uint32_t timeout_ms)
+{
+    if (msg == NULL) {
+        return MESSAGE_MANAGER_EINVAL;
+    }
+
+    printf("[message_manager_mock] sync-topics req=0x%x success=0x%x failure=0x%x timeout=%u ms\\n",
+        (unsigned int)msg->topic,
+        (unsigned int)success_topic,
+        (unsigned int)failure_topic,
         (unsigned int)timeout_ms);
 
     return 0;

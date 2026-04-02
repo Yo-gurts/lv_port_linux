@@ -10,6 +10,7 @@
 #define MEDIA_MANAGER_TAKE_PHOTO_TIMEOUT_MS 2000U
 #define MEDIA_MANAGER_MODE_SWITCH_TIMEOUT_MS 3000U
 #define MEDIA_MANAGER_SETTING_TIMEOUT_MS 3000U
+#define MEDIA_MANAGER_FORMAT_TIMEOUT_MS 20000U
 
 typedef int (*media_op_handler_t)(int32_t args);
 
@@ -32,6 +33,18 @@ static int media_manager_set_param_checked(param_id_t id, int value, const char*
         return MEDIA_MANAGER_ESTATE;
     }
     return MEDIA_MANAGER_OK;
+}
+
+static int media_manager_can_format_storage(void)
+{
+    switch (MODEMNG_GetCardState()) {
+    case CARD_STATE_AVAILABLE:
+    case CARD_STATE_FORMATED:
+    case CARD_STATE_FULL_SPACE:
+        return 1;
+    default:
+        return 0;
+    }
 }
 
 static int handle_switch_to_photo_mode(int32_t args)
@@ -249,8 +262,29 @@ static int handle_adjust_system_volume(int32_t args)
 
 static int handle_format_storage(int32_t args)
 {
+    MESSAGE_S msg = { 0 };
+    int32_t ret = 0;
+    uint8_t blocked_prev = 0;
+
     (void)args;
-    MLOG_INFO("格式化存储(占位实现)");
+
+    if (!media_manager_can_format_storage()) {
+        MLOG_ERR("格式化存储失败: 当前存储状态不允许格式化 card_state=%u", MODEMNG_GetCardState());
+        return MEDIA_MANAGER_ESTATE;
+    }
+
+    msg.topic = EVENT_MODEMNG_CARD_FORMAT;
+    blocked_prev = key_manager_get_block_non_power();
+    key_manager_set_block_non_power((uint8_t)(blocked_prev | KEY_INPUT_BLOCK_TP | KEY_INPUT_BLOCK_ADC_KEY2));
+    ret = message_manager_send_sync_topics_timeout(
+        &msg, EVENT_MODEMNG_CARD_FORMAT_SUCCESSED, EVENT_MODEMNG_CARD_FORMAT_FAILED, MEDIA_MANAGER_FORMAT_TIMEOUT_MS);
+    key_manager_set_block_non_power(blocked_prev);
+    if (ret != 0) {
+        MLOG_ERR("格式化存储失败: ret=%d", (int)ret);
+        return MEDIA_MANAGER_ESTATE;
+    }
+
+    MLOG_INFO("已完成存储格式化");
     return MEDIA_MANAGER_OK;
 }
 
