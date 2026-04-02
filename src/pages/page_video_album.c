@@ -8,6 +8,7 @@
 #include "core/file_manager.h"
 #include "core/font_manager.h"
 #include "core/key_manager.h"
+#include "core/media_manager.h"
 #include "core/page_manager.h"
 #include "core/style_manager.h"
 #include "mlog.h"
@@ -363,12 +364,28 @@ static int delete_selected_videos(page_video_album_data_t* data)
 
 static void show_video_preview(page_video_album_data_t* data, int video_index)
 {
+    int current_work_mode;
+    int ret;
+
     if (!data)
         return;
     if (video_index < 0 || video_index >= data->total_videos)
         return;
 
+    current_work_mode = media_manager_get_current_work_mode();
+    MLOG_INFO("Video album open preview: index=%d current_work_mode=%d", video_index, current_work_mode);
+
+    if (!media_manager_is_playback_work_mode(current_work_mode)) {
+        ret = media_manager_execute(MEDIA_OP_SWITCH_TO_PLAYBACK_MODE, 0);
+        if (ret != 0) {
+            MLOG_ERR("Video album switch to playback mode failed: ret=%d", ret);
+            top_notice_show("视频播放服务未就绪", TOP_NOTICE_TYPE_ERROR);
+            return;
+        }
+    }
+
     page_video_preview_set_initial_video_index(video_index);
+    page_video_preview_set_return_work_mode(current_work_mode);
     page_manager_navigate("video_preview");
 }
 

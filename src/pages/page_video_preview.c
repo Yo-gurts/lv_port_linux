@@ -7,6 +7,7 @@
 #include "config.h"
 #include "core/file_manager.h"
 #include "core/font_manager.h"
+#include "core/media_manager.h"
 #include "core/page_manager.h"
 #include "core/player_manager.h"
 #include "core/power_manager.h"
@@ -22,7 +23,6 @@
 #define PLAY_BTN_SIZE SIDE_BTN_SIZE
 #define CONTROL_ROW_GAP 110
 #define PROGRESS_TIMER_MS 1000
-#define PROGRESS_FALLBACK_SEC 180
 
 // #endregion
 // #############################################################################
@@ -30,6 +30,7 @@
 // #############################################################################
 
 static int g_initial_video_index = -1;
+static int g_return_work_mode = -1;
 
 static int clamp_int(int value, int min_value, int max_value);
 static int get_album_total_count(void);
@@ -41,6 +42,9 @@ static void set_controls_visible(page_video_preview_data_t* data, bool visible);
 static void set_auto_sleep_block(page_video_preview_data_t* data, bool blocked);
 static void set_paused_state(page_video_preview_data_t* data, bool paused);
 static int get_current_video_index(const page_video_preview_data_t* data);
+static int restore_work_mode(page_video_preview_data_t* data);
+static void update_progress_from_pointer(page_video_preview_data_t* data, lv_obj_t* slider, lv_anim_enable_t anim);
+static void reset_current_video_to_start(page_video_preview_data_t* data);
 static void render_current_video(page_video_preview_data_t* data, bool reset_progress);
 static void try_switch_video(page_video_preview_data_t* data, int delta);
 
@@ -64,6 +68,17 @@ static int clamp_int(int value, int min_value, int max_value)
     if (value > max_value)
         return max_value;
     return value;
+}
+
+static void set_obj_visible(lv_obj_t* obj, bool visible)
+{
+    if (!obj)
+        return;
+
+    if (visible)
+        lv_obj_clear_flag(obj, LV_OBJ_FLAG_HIDDEN);
+    else
+        lv_obj_add_flag(obj, LV_OBJ_FLAG_HIDDEN);
 }
 
 static int get_album_total_count(void)
@@ -157,13 +172,25 @@ static void update_progress_display(page_video_preview_data_t* data)
 
 static void set_controls_visible(page_video_preview_data_t* data, bool visible)
 {
+    bool show_progress;
+    bool show_cover_image;
+
     if (!data || !data->control_layer)
         return;
 
-    if (visible)
-        lv_obj_clear_flag(data->control_layer, LV_OBJ_FLAG_HIDDEN);
-    else
-        lv_obj_add_flag(data->control_layer, LV_OBJ_FLAG_HIDDEN);
+    show_progress = data->total_duration_sec > 0;
+    show_cover_image = visible && !data->has_played_current_video;
+
+    /* 封面图仅在首次未播放前显示；播放过后暂停时保留底层视频帧。 */
+    lv_obj_clear_flag(data->control_layer, LV_OBJ_FLAG_HIDDEN);
+    set_obj_visible(data->image, show_cover_image);
+    set_obj_visible(data->back_btn, visible);
+    set_obj_visible(data->file_name_label, visible);
+    set_obj_visible(data->center_play_pause_btn, visible);
+    set_obj_visible(data->prev_btn, visible);
+    set_obj_visible(data->next_btn, visible);
+    set_obj_visible(data->progress_slider, show_progress);
+    set_obj_visible(data->progress_time_label, show_progress);
 }
 
 static void set_auto_sleep_block(page_video_preview_data_t* data, bool blocked)
@@ -184,6 +211,92 @@ static void set_auto_sleep_block(page_video_preview_data_t* data, bool blocked)
     }
 }
 
+static int restore_work_mode(page_video_preview_data_t* data)
+{
+    int ret = MEDIA_MANAGER_OK;
+
+    if (!data || !data->switched_to_playback_mode) {
+        return MEDIA_MANAGER_OK;
+    }
+
+    MLOG_INFO("video preview restore work mode begin: return_mode=%d", data->return_work_mode);
+
+    ret = media_manager_restore_work_mode(data->return_work_mode);
+
+    if (ret == MEDIA_MANAGER_OK) {
+        data->switched_to_playback_mode = false;
+        MLOG_INFO("video preview restore work mode ok: return_mode=%d", data->return_work_mode);
+    } else {
+        MLOG_ERR("video preview restore work mode failed: return_mode=%d ret=%d",
+                 data->return_work_mode,
+                 ret);
+    }
+
+    return ret;
+}
+
+static void update_progress_from_pointer(page_video_preview_data_t* data, lv_obj_t* slider, lv_anim_enable_t anim)
+{
+    lv_indev_t* indev;
+    lv_point_t point;
+    lv_area_t slider_coords;
+    lv_coord_t slider_width;
+    lv_coord_t local_x;
+    int min_value;
+    int max_value;
+    int value;
+
+    if (!data || !slider || data->total_duration_sec <= 0)
+        return;
+
+    indev = lv_indev_active();
+    if (!indev)
+        return;
+
+    lv_indev_get_point(indev, &point);
+    lv_obj_get_coords(slider, &slider_coords);
+    slider_width = lv_area_get_width(&slider_coords);
+    if (slider_width <= 0)
+        return;
+
+    local_x = point.x - slider_coords.x1;
+    if (local_x < 0)
+        local_x = 0;
+    if (local_x > slider_width)
+        local_x = slider_width;
+
+    min_value = lv_slider_get_min_value(slider);
+    max_value = lv_slider_get_max_value(slider);
+    if (max_value <= min_value)
+        value = min_value;
+    else
+        value = min_value + (int)(((int64_t)local_x * (max_value - min_value)) / slider_width);
+
+    value = clamp_int(value, min_value, max_value);
+    lv_slider_set_value(slider, value, anim);
+    data->current_sec = value;
+    update_progress_display(data);
+}
+
+static void reset_current_video_to_start(page_video_preview_data_t* data)
+{
+    if (!data)
+        return;
+
+    MLOG_INFO("video preview reset current video to start: index=%d current=%d total=%d",
+              data->current_display_index,
+              data->current_sec,
+              data->total_duration_sec);
+
+    (void)player_manager_stop();
+    render_current_video(data, true);
+    data->is_paused = true;
+    set_auto_sleep_block(data, false);
+    update_play_pause_symbol(data);
+    set_controls_visible(data, true);
+    update_progress_display(data);
+}
+
 static void set_paused_state(page_video_preview_data_t* data, bool paused)
 {
     bool effective_paused;
@@ -191,12 +304,29 @@ static void set_paused_state(page_video_preview_data_t* data, bool paused)
     if (!data)
         return;
 
+    MLOG_INFO("video preview set_paused_state request: target_paused=%d index=%d current=%d total=%d paused=%d dragging=%d",
+              paused ? 1 : 0,
+              data->current_display_index,
+              data->current_sec,
+              data->total_duration_sec,
+              data->is_paused ? 1 : 0,
+              data->is_dragging_progress ? 1 : 0);
+
+    if (data->is_paused == paused) {
+        set_auto_sleep_block(data, paused ? false : true);
+        update_play_pause_symbol(data);
+        set_controls_visible(data, paused);
+        MLOG_INFO("video preview set_paused_state noop: paused=%d", data->is_paused ? 1 : 0);
+        return;
+    }
+
     effective_paused = data->is_paused;
 
     if (!paused) {
         if (player_manager_play() != 0) {
             MLOG_WARN("video preview play failed, keep paused");
         } else {
+            data->has_played_current_video = true;
             effective_paused = false;
         }
     } else {
@@ -211,6 +341,10 @@ static void set_paused_state(page_video_preview_data_t* data, bool paused)
     set_auto_sleep_block(data, !effective_paused);
     update_play_pause_symbol(data);
     set_controls_visible(data, effective_paused);
+    MLOG_INFO("video preview set_paused_state result: paused=%d current=%d total=%d",
+              data->is_paused ? 1 : 0,
+              data->current_sec,
+              data->total_duration_sec);
 }
 
 static int get_current_video_index(const page_video_preview_data_t* data)
@@ -233,11 +367,13 @@ static void render_current_video(page_video_preview_data_t* data, bool reset_pro
         return;
 
     if (data->total_videos <= 0) {
+        MLOG_INFO("video preview render_current_video: empty album");
         (void)player_manager_stop();
         lv_img_set_src(data->image, NULL);
         lv_label_set_text(data->file_name_label, "");
         data->total_duration_sec = 0;
         data->current_sec = 0;
+        data->has_played_current_video = false;
         update_switch_buttons_state(data);
         update_progress_display(data);
         return;
@@ -259,10 +395,16 @@ static void render_current_video(page_video_preview_data_t* data, bool reset_pro
         lv_label_set_text(data->file_name_label, "");
 
     if (file_manager_get_video_duration_sec(video_index, &duration_sec) != 0 || duration_sec <= 0)
-        duration_sec = PROGRESS_FALLBACK_SEC;
+        duration_sec = 0;
     data->total_duration_sec = duration_sec;
+    MLOG_INFO("video preview render_current_video: index=%d reset_progress=%d name=%s duration=%d",
+              video_index,
+              reset_progress ? 1 : 0,
+              file_name,
+              duration_sec);
 
     if (file_manager_get_video_path(video_index, video_path, sizeof(video_path), FILE_PATH_REAL) == 0) {
+        MLOG_INFO("video preview prepare path: %s", video_path);
         if (player_manager_prepare(video_path) != 0)
             MLOG_WARN("video preview prepare failed: %s", video_path);
     } else {
@@ -288,7 +430,12 @@ static void try_switch_video(page_video_preview_data_t* data, int delta)
     if (target_index < 0 || target_index >= data->total_videos)
         return;
 
+    MLOG_INFO("video preview switch video: from=%d to=%d delta=%d",
+              data->current_display_index,
+              target_index,
+              delta);
     data->current_display_index = target_index;
+    data->has_played_current_video = false;
     render_current_video(data, true);
     set_paused_state(data, true);
 }
@@ -303,22 +450,50 @@ static void progress_timer_cb(lv_timer_t* timer)
     page_video_preview_data_t* data = (page_video_preview_data_t*)lv_timer_get_user_data(timer);
     int current_sec;
     int total_sec;
+    int previous_sec;
+    bool used_fallback = false;
 
     if (!data)
         return;
     if (data->is_paused || data->is_dragging_progress)
         return;
-    if (player_manager_get_progress(&current_sec, &total_sec) != 0)
-        return;
+    previous_sec = data->current_sec;
 
-    if (total_sec > 0)
-        data->total_duration_sec = total_sec;
-    data->current_sec = current_sec;
+    if (player_manager_get_progress(&current_sec, &total_sec) == 0) {
+        if (total_sec > 0)
+            data->total_duration_sec = total_sec;
+
+        current_sec = clamp_int(current_sec, 0, data->total_duration_sec > 0 ? data->total_duration_sec : current_sec);
+
+        /*
+         * 真机回放模式下 PLAYER_SERVICE_SeekTime() 有时不会随播放推进。
+         * 此时退回到与旧 UI 一致的“按播放时钟+1s”策略，避免进度条停在原地。
+         */
+        if (current_sec <= previous_sec && data->total_duration_sec > 0 && previous_sec < data->total_duration_sec) {
+            data->current_sec = clamp_int(previous_sec + (PROGRESS_TIMER_MS / 1000), 0, data->total_duration_sec);
+            used_fallback = true;
+        } else {
+            data->current_sec = current_sec;
+        }
+    } else if (data->total_duration_sec > 0 && previous_sec < data->total_duration_sec) {
+        data->current_sec = clamp_int(previous_sec + (PROGRESS_TIMER_MS / 1000), 0, data->total_duration_sec);
+        used_fallback = true;
+    } else {
+        return;
+    }
+
+    if (used_fallback) {
+        MLOG_DBG("video preview progress fallback tick: prev=%d current=%d total=%d",
+                 previous_sec,
+                 data->current_sec,
+                 data->total_duration_sec);
+    }
 
     if (data->total_duration_sec > 0 && data->current_sec >= data->total_duration_sec) {
-        data->current_sec = data->total_duration_sec;
-        update_progress_display(data);
-        set_paused_state(data, true);
+        MLOG_INFO("video preview reached end: index=%d total=%d",
+                  data->current_display_index,
+                  data->total_duration_sec);
+        reset_current_video_to_start(data);
         return;
     }
 
@@ -330,6 +505,7 @@ static void back_btn_cb(lv_event_t* e)
     LV_UNUSED(e);
     page_video_preview_data_t* data = (page_video_preview_data_t*)page_get_private_data();
     int current_video_index = get_current_video_index(data);
+    MLOG_INFO("video preview back clicked: index=%d current=%d", current_video_index, data ? data->current_sec : -1);
     (void)player_manager_stop();
     if (current_video_index >= 0)
         page_video_album_set_focus_video_index(current_video_index);
@@ -342,6 +518,9 @@ static void center_play_pause_btn_cb(lv_event_t* e)
     if (!data)
         return;
 
+    MLOG_INFO("video preview center play/pause clicked: paused=%d current=%d",
+              data->is_paused ? 1 : 0,
+              data->current_sec);
     set_paused_state(data, !data->is_paused);
 }
 
@@ -351,6 +530,7 @@ static void prev_btn_cb(lv_event_t* e)
     if (!data)
         return;
 
+    MLOG_INFO("video preview prev clicked: index=%d", data->current_display_index);
     try_switch_video(data, -1);
 }
 
@@ -360,6 +540,7 @@ static void next_btn_cb(lv_event_t* e)
     if (!data)
         return;
 
+    MLOG_INFO("video preview next clicked: index=%d", data->current_display_index);
     try_switch_video(data, 1);
 }
 
@@ -372,8 +553,14 @@ static void progress_slider_event_cb(lv_event_t* e)
         return;
 
     if (code == LV_EVENT_PRESSED) {
+        MLOG_INFO("video preview progress pressed: current=%d", data->current_sec);
         data->is_dragging_progress = true;
-        set_paused_state(data, true);
+        update_progress_from_pointer(data, data->progress_slider, LV_ANIM_OFF);
+        return;
+    }
+
+    if (code == LV_EVENT_PRESSING) {
+        update_progress_from_pointer(data, data->progress_slider, LV_ANIM_OFF);
         return;
     }
 
@@ -386,6 +573,8 @@ static void progress_slider_event_cb(lv_event_t* e)
     if (code == LV_EVENT_RELEASED || code == LV_EVENT_PRESS_LOST)
     {
         data->is_dragging_progress = false;
+        update_progress_from_pointer(data, data->progress_slider, LV_ANIM_OFF);
+        MLOG_INFO("video preview progress released: seek_to=%d", data->current_sec);
         if (player_manager_seek_sec(data->current_sec) != 0)
             MLOG_WARN("video preview seek failed: sec=%d", data->current_sec);
     }
@@ -394,13 +583,20 @@ static void progress_slider_event_cb(lv_event_t* e)
 static void container_click_cb(lv_event_t* e)
 {
     page_video_preview_data_t* data = (page_video_preview_data_t*)lv_event_get_user_data(e);
+    lv_obj_t* target = lv_event_get_target(e);
 
     if (!data)
         return;
 
+    /* 仅在点击视频画面区域时执行“点屏暂停”，避免播放按钮事件冒泡后被立即暂停。 */
+    if (target != data->container && target != data->image_area && target != data->image && target != data->control_layer)
+        return;
+
     /* 播放中点击画面 -> 暂停并显示控制层 */
-    if (!data->is_paused)
+    if (!data->is_paused) {
+        MLOG_INFO("video preview container clicked while playing: current=%d", data->current_sec);
         set_paused_state(data, true);
+    }
 }
 
 // #endregion
@@ -411,6 +607,13 @@ static void container_click_cb(lv_event_t* e)
 void page_video_preview_set_initial_video_index(int video_index)
 {
     g_initial_video_index = video_index;
+    MLOG_INFO("video preview set initial index: %d", video_index);
+}
+
+void page_video_preview_set_return_work_mode(int work_mode)
+{
+    g_return_work_mode = work_mode;
+    MLOG_INFO("video preview set return work mode: %d", work_mode);
 }
 
 void page_video_preview_create(void)
@@ -423,6 +626,9 @@ void page_video_preview_create(void)
     memset(data, 0, sizeof(page_video_preview_data_t));
     data->current_display_index = 0;
     data->is_paused = true;
+    data->return_work_mode = -1;
+    data->switched_to_playback_mode = false;
+    MLOG_INFO("video preview create begin");
     if (player_manager_init() != 0)
         MLOG_WARN("video preview player manager init failed");
 
@@ -431,8 +637,7 @@ void page_video_preview_create(void)
     lv_obj_add_style(data->container, &style_page_container, LV_PART_MAIN);
     lv_obj_set_layout(data->container, LV_LAYOUT_FLEX);
     lv_obj_set_flex_flow(data->container, LV_FLEX_FLOW_COLUMN);
-    lv_obj_set_style_bg_color(data->container, lv_color_black(), LV_PART_MAIN);
-    lv_obj_set_style_bg_opa(data->container, LV_OPA_COVER, LV_PART_MAIN);
+    lv_obj_set_style_bg_opa(data->container, LV_OPA_TRANSP, LV_PART_MAIN);
     lv_obj_clear_flag(data->container, LV_OBJ_FLAG_GESTURE_BUBBLE);
     gesture_back_register_events(data->container);
     gesture_back_set_left_edge_swipe_cb(data->container, back_btn_cb);
@@ -525,6 +730,7 @@ void page_video_preview_create(void)
     lv_obj_set_style_bg_opa(data->progress_slider, LV_OPA_COVER, LV_PART_KNOB);
     lv_obj_set_style_bg_color(data->progress_slider, lv_color_white(), LV_PART_KNOB);
     lv_obj_add_event_cb(data->progress_slider, progress_slider_event_cb, LV_EVENT_PRESSED, data);
+    lv_obj_add_event_cb(data->progress_slider, progress_slider_event_cb, LV_EVENT_PRESSING, data);
     lv_obj_add_event_cb(data->progress_slider, progress_slider_event_cb, LV_EVENT_VALUE_CHANGED, data);
     lv_obj_add_event_cb(data->progress_slider, progress_slider_event_cb, LV_EVENT_RELEASED, data);
     lv_obj_add_event_cb(data->progress_slider, progress_slider_event_cb, LV_EVENT_PRESS_LOST, data);
@@ -541,7 +747,9 @@ void page_video_preview_create(void)
 
     update_play_pause_symbol(data);
     gesture_back_enable_event_bubble_recursive(data->container);
+    lv_obj_clear_flag(data->progress_slider, LV_OBJ_FLAG_EVENT_BUBBLE);
     page_set_private_data(data);
+    MLOG_INFO("video preview create ok");
 }
 
 void page_video_preview_destroy(void)
@@ -550,7 +758,11 @@ void page_video_preview_destroy(void)
     if (!data)
         return;
 
+    MLOG_INFO("video preview destroy begin: index=%d current=%d",
+              data->current_display_index,
+              data->current_sec);
     (void)player_manager_stop();
+    (void)restore_work_mode(data);
     player_manager_deinit();
 
     if (data->progress_timer) {
@@ -565,6 +777,7 @@ void page_video_preview_destroy(void)
 
     set_auto_sleep_block(data, false);
     free(data);
+    MLOG_INFO("video preview destroy ok");
 }
 
 void page_video_preview_show(void)
@@ -573,9 +786,14 @@ void page_video_preview_show(void)
     if (!data || !data->container)
         return;
 
+    MLOG_INFO("video preview show begin: initial_index=%d", g_initial_video_index);
     gesture_back_set_left_edge_swipe_cb(data->container, back_btn_cb);
+    data->return_work_mode = g_return_work_mode;
+    data->switched_to_playback_mode = (g_return_work_mode >= 0 && !media_manager_is_playback_work_mode(g_return_work_mode));
+    g_return_work_mode = -1;
 
     if (!file_manager_is_storage_ready()) {
+        MLOG_WARN("video preview show aborted: storage not ready");
         (void)player_manager_stop();
         page_manager_back();
         return;
@@ -591,10 +809,15 @@ void page_video_preview_show(void)
     g_initial_video_index = -1;
 
     data->is_dragging_progress = false;
+    data->resume_after_seek = false;
+    data->has_played_current_video = false;
     render_current_video(data, true);
     set_paused_state(data, true);
     lv_obj_clear_flag(data->container, LV_OBJ_FLAG_HIDDEN);
     lv_obj_move_foreground(data->back_btn);
+    MLOG_INFO("video preview show ok: total_videos=%d index=%d",
+              data->total_videos,
+              data->current_display_index);
 }
 
 void page_video_preview_hide(void)
@@ -603,11 +826,17 @@ void page_video_preview_hide(void)
     if (!data || !data->container)
         return;
 
+    MLOG_INFO("video preview hide begin: index=%d current=%d paused=%d",
+              data->current_display_index,
+              data->current_sec,
+              data->is_paused ? 1 : 0);
     set_paused_state(data, true);
     (void)player_manager_stop();
+    lv_obj_add_flag(data->container, LV_OBJ_FLAG_HIDDEN);
+    (void)restore_work_mode(data);
     data->current_sec = 0;
     update_progress_display(data);
-    lv_obj_add_flag(data->container, LV_OBJ_FLAG_HIDDEN);
+    MLOG_INFO("video preview hide ok");
 }
 
 void page_video_preview_update(void)

@@ -11,6 +11,7 @@ typedef enum {
     MEDIA_OP_SWITCH_TO_PHOTO_MODE = 0, /* 切换到拍照模式；args 忽略 */
     MEDIA_OP_SWITCH_TO_BOOT_MODE, /* 切换到启动/首页模式；args 忽略 */
     MEDIA_OP_SWITCH_TO_VIDEO_MODE, /* 切换到录像模式；args 忽略 */
+    MEDIA_OP_SWITCH_TO_PLAYBACK_MODE, /* 切换到回放模式；args 忽略 */
     MEDIA_OP_START_RECORD, /* 开始录像；args 忽略 */
     MEDIA_OP_STOP_RECORD, /* 停止录像；args 忽略 */
     MEDIA_OP_TAKE_PHOTO, /* 触发一次拍照；args 忽略 */
@@ -39,6 +40,9 @@ typedef enum {
 #define MEDIA_MANAGER_EUNSUP (-4)
 
 int media_manager_execute(media_operation_t op, int32_t args);
+int media_manager_get_current_work_mode(void);
+int media_manager_is_playback_work_mode(int work_mode);
+int media_manager_restore_work_mode(int work_mode);
 
 #ifdef __cplusplus
 }

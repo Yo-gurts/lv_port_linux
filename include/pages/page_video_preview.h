@@ -28,12 +28,17 @@ typedef struct {
     int current_display_index;
     int total_duration_sec;
     int current_sec;
+    int return_work_mode;
+    bool has_played_current_video;
+    bool resume_after_seek;
     bool is_paused;
     bool is_dragging_progress;
     bool auto_sleep_blocked;
+    bool switched_to_playback_mode;
 } page_video_preview_data_t;
 
 void page_video_preview_set_initial_video_index(int video_index);
+void page_video_preview_set_return_work_mode(int work_mode);
 
 void page_video_preview_create(void);
 void page_video_preview_destroy(void);

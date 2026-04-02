@@ -3,11 +3,22 @@
 #include "config.h"
 #include "filemng.h"
 #include "mlog.h"
+#include "player.h"
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
 #include <unistd.h>
+
+typedef struct {
+    char name[FILE_MANAGER_MAX_NAME_LEN];
+    int duration_sec;
+    int status; /* 0=unknown, 1=success, -1=failed */
+} video_duration_cache_entry_t;
+
+static video_duration_cache_entry_t* g_video_duration_cache = NULL;
+static int g_video_duration_cache_count = 0;
 
 static int file_manager_is_photo_storage_ready(void)
 {
@@ -74,6 +85,71 @@ static int export_path_by_type(const char* real_path, file_manager_path_type_t p
     }
 
     return to_lv_path(real_path, out_path, out_size);
+}
+
+static void clear_video_duration_cache(void)
+{
+    free(g_video_duration_cache);
+    g_video_duration_cache = NULL;
+    g_video_duration_cache_count = 0;
+}
+
+static int ensure_video_duration_cache_capacity(int required_count)
+{
+    video_duration_cache_entry_t* new_cache;
+
+    if (required_count <= 0)
+        return 0;
+    if (g_video_duration_cache_count >= required_count)
+        return 0;
+
+    new_cache = (video_duration_cache_entry_t*)realloc(
+        g_video_duration_cache, (size_t)required_count * sizeof(video_duration_cache_entry_t));
+    if (!new_cache)
+        return -1;
+
+    memset(new_cache + g_video_duration_cache_count,
+           0,
+           (size_t)(required_count - g_video_duration_cache_count) * sizeof(video_duration_cache_entry_t));
+    g_video_duration_cache = new_cache;
+    g_video_duration_cache_count = required_count;
+    return 0;
+}
+
+static int probe_video_duration_sec(const char* real_path, int* out_duration_sec)
+{
+    PLAYER_HANDLE_T player = NULL;
+    PLAYER_MEDIA_INFO_S info;
+    int ret = -1;
+
+    if (!real_path || !out_duration_sec)
+        return -1;
+
+    *out_duration_sec = 0;
+    memset(&info, 0, sizeof(info));
+
+    if (PLAYER_Create(&player) != 0 || !player) {
+        MLOG_WARN("Probe video duration create player failed: %s", real_path);
+        goto cleanup;
+    }
+
+    if (PLAYER_SetDataSource(player, real_path) != 0) {
+        MLOG_WARN("Probe video duration set source failed: %s", real_path);
+        goto cleanup;
+    }
+
+    if (PLAYER_GetMediaInfo(player, &info) != 0) {
+        MLOG_WARN("Probe video duration get media info failed: %s", real_path);
+        goto cleanup;
+    }
+
+    *out_duration_sec = info.duration_sec > 0.0 ? (int)(info.duration_sec + 0.5) : 0;
+    ret = 0;
+
+cleanup:
+    if (player)
+        (void)PLAYER_Destroy(&player);
+    return ret;
 }
 
 /* 通过照片索引获取文件名与原图路径（按 path_type 输出）。 */
@@ -301,6 +377,7 @@ int file_manager_format_sdcard(void)
 /* 刷新视频列表（真实环境由 FILEMNG/DTCF 维护，此处仅占位返回成功）。 */
 int file_manager_refresh_video_list(void)
 {
+    clear_video_duration_cache();
     return 0;
 }
 
@@ -404,15 +481,60 @@ int file_manager_get_video_subpic_path(int index, char* out_path, size_t out_siz
     return export_path_by_type(subpic_real_path, path_type, out_path, out_size);
 }
 
-/* 按索引获取视频时长（秒）（当前真机接口未接入）。 */
+/* 按索引获取视频时长（秒）。 */
 int file_manager_get_video_duration_sec(int index, int* out_duration_sec)
 {
-    (void)index;
+    char file_name[FILE_MANAGER_MAX_NAME_LEN];
+    char real_path[FILE_MANAGER_MAX_PATH_LEN];
+    video_duration_cache_entry_t* cache_entry = NULL;
+    int video_count;
+
     if (!out_duration_sec)
+        return -1;
+    if (index < 0)
         return -1;
 
     *out_duration_sec = 0;
-    return -1;
+    if (!file_manager_is_photo_storage_ready())
+        return -1;
+
+    video_count = file_manager_get_video_count();
+    if (index >= video_count)
+        return -1;
+
+    if (file_manager_get_video_name(index, file_name, sizeof(file_name)) != 0)
+        return -1;
+
+    if (ensure_video_duration_cache_capacity(video_count) == 0)
+        cache_entry = &g_video_duration_cache[index];
+
+    if (cache_entry && cache_entry->status != 0 && strcmp(cache_entry->name, file_name) == 0) {
+        *out_duration_sec = cache_entry->duration_sec;
+        return cache_entry->status > 0 ? 0 : -1;
+    }
+
+    if (get_video_path_by_index(
+            index, file_name, sizeof(file_name), real_path, sizeof(real_path), FILE_PATH_REAL)
+        != 0) {
+        return -1;
+    }
+
+    if (probe_video_duration_sec(real_path, out_duration_sec) != 0) {
+        if (cache_entry) {
+            snprintf(cache_entry->name, sizeof(cache_entry->name), "%s", file_name);
+            cache_entry->duration_sec = 0;
+            cache_entry->status = -1;
+        }
+        return -1;
+    }
+
+    if (cache_entry) {
+        snprintf(cache_entry->name, sizeof(cache_entry->name), "%s", file_name);
+        cache_entry->duration_sec = *out_duration_sec;
+        cache_entry->status = 1;
+    }
+
+    return 0;
 }
 
 int file_manager_delete_video_by_index(int index)
@@ -433,5 +555,6 @@ int file_manager_delete_video_by_index(int index)
         return -1;
     }
 
+    clear_video_duration_cache();
     return 0;
 }

@@ -98,6 +98,14 @@ int player_manager_prepare(const char* video_path)
 
     real_path = player_manager_to_real_path(video_path);
     g_player_ctx.total_sec = 0;
+    MLOG_DBG("player_manager_prepare request: path=%s", real_path);
+
+    if (g_player_ctx.prepared) {
+        MLOG_DBG("player_manager_prepare replace current source");
+        (void)PLAYER_SERVICE_Stop(handle);
+        g_player_ctx.prepared = false;
+        g_player_ctx.paused = true;
+    }
 
     MAPI_AO_SetAmplifier(media->SysHandle.aohdl, CVI_FALSE);
     MAPI_AO_Mute(media->SysHandle.aohdl);
@@ -136,6 +144,7 @@ int player_manager_prepare(const char* video_path)
 
     g_player_ctx.prepared = true;
     g_player_ctx.paused = true;
+    MLOG_DBG("player_manager_prepare ok: path=%s total_sec=%d", real_path, g_player_ctx.total_sec);
     return PLAYER_MANAGER_OK;
 }
 
@@ -155,6 +164,9 @@ int player_manager_play(void)
         return PLAYER_MANAGER_ESTATE;
     }
 
+    MLOG_DBG("player_manager_play request: prepared=%d paused=%d",
+        g_player_ctx.prepared ? 1 : 0,
+        g_player_ctx.paused ? 1 : 0);
     MAPI_AO_Unmute(media->SysHandle.aohdl);
     MAPI_AO_SetAmplifier(media->SysHandle.aohdl, CVI_TRUE);
 
@@ -165,6 +177,7 @@ int player_manager_play(void)
     }
 
     g_player_ctx.paused = false;
+    MLOG_DBG("player_manager_play ok");
     return PLAYER_MANAGER_OK;
 }
 
@@ -182,6 +195,9 @@ int player_manager_pause(void)
         return PLAYER_MANAGER_ESTATE;
     }
 
+    MLOG_DBG("player_manager_pause request: prepared=%d paused=%d",
+        g_player_ctx.prepared ? 1 : 0,
+        g_player_ctx.paused ? 1 : 0);
     ret = PLAYER_SERVICE_Pause(handle);
     if (ret != 0) {
         MLOG_ERR("player_manager_pause failed: ret=%d", (int)ret);
@@ -189,6 +205,7 @@ int player_manager_pause(void)
     }
 
     g_player_ctx.paused = true;
+    MLOG_DBG("player_manager_pause ok");
     return PLAYER_MANAGER_OK;
 }
 
@@ -200,6 +217,10 @@ int player_manager_stop(void)
         return PLAYER_MANAGER_EINVAL;
     }
 
+    MLOG_DBG("player_manager_stop request: prepared=%d paused=%d total_sec=%d",
+        g_player_ctx.prepared ? 1 : 0,
+        g_player_ctx.paused ? 1 : 0,
+        g_player_ctx.total_sec);
     handle = player_manager_get_handle();
     if (handle) {
         (void)PLAYER_SERVICE_Stop(handle);
@@ -208,6 +229,7 @@ int player_manager_stop(void)
     g_player_ctx.prepared = false;
     g_player_ctx.paused = true;
     g_player_ctx.total_sec = 0;
+    MLOG_DBG("player_manager_stop ok");
     return PLAYER_MANAGER_OK;
 }
 
@@ -231,6 +253,7 @@ int player_manager_seek_sec(int sec)
         return PLAYER_MANAGER_ESTATE;
     }
 
+    MLOG_DBG("player_manager_seek_sec request: sec=%d paused=%d", sec, g_player_ctx.paused ? 1 : 0);
     if (g_player_ctx.paused) {
         ret = PLAYER_SERVICE_TouchSeekPause(handle, seek_ms);
     } else {
@@ -242,6 +265,7 @@ int player_manager_seek_sec(int sec)
         return PLAYER_MANAGER_ESTATE;
     }
 
+    MLOG_DBG("player_manager_seek_sec ok: sec=%d", sec);
     return PLAYER_MANAGER_OK;
 }
 

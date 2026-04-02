@@ -74,17 +74,20 @@ int player_manager_init(void)
     g_player_ctx.total_sec = 180;
     g_player_ctx.current_sec = 0;
     g_player_ctx.last_tick_ms = 0;
+    MLOG_DBG("mock player_manager_init ok");
     return PLAYER_MANAGER_OK;
 }
 
 void player_manager_deinit(void)
 {
+    MLOG_DBG("mock player_manager_deinit begin");
     g_player_ctx.inited = false;
     g_player_ctx.prepared = false;
     g_player_ctx.paused = true;
     g_player_ctx.total_sec = 180;
     g_player_ctx.current_sec = 0;
     g_player_ctx.last_tick_ms = 0;
+    MLOG_DBG("mock player_manager_deinit ok");
 }
 
 int player_manager_prepare(const char* video_path)
@@ -93,13 +96,15 @@ int player_manager_prepare(const char* video_path)
         return PLAYER_MANAGER_EINVAL;
     }
 
+    MLOG_DBG("mock player_manager_prepare request: path=%s", video_path);
+
     g_player_ctx.prepared = true;
     g_player_ctx.paused = true;
     g_player_ctx.current_sec = 0;
     g_player_ctx.total_sec = 180;
     g_player_ctx.last_tick_ms = player_manager_now_ms();
 
-    MLOG_INFO("mock player prepare: %s", video_path);
+    MLOG_DBG("mock player_manager_prepare ok: path=%s total_sec=%d", video_path, g_player_ctx.total_sec);
     return PLAYER_MANAGER_OK;
 }
 
@@ -109,8 +114,12 @@ int player_manager_play(void)
         return PLAYER_MANAGER_EINVAL;
     }
 
+    MLOG_DBG("mock player_manager_play request: current_sec=%d paused=%d",
+        g_player_ctx.current_sec,
+        g_player_ctx.paused ? 1 : 0);
     g_player_ctx.paused = false;
     g_player_ctx.last_tick_ms = player_manager_now_ms();
+    MLOG_DBG("mock player_manager_play ok");
     return PLAYER_MANAGER_OK;
 }
 
@@ -120,8 +129,12 @@ int player_manager_pause(void)
         return PLAYER_MANAGER_EINVAL;
     }
 
+    MLOG_DBG("mock player_manager_pause request: current_sec=%d paused=%d",
+        g_player_ctx.current_sec,
+        g_player_ctx.paused ? 1 : 0);
     player_manager_update_progress_locked();
     g_player_ctx.paused = true;
+    MLOG_DBG("mock player_manager_pause ok: current_sec=%d", g_player_ctx.current_sec);
     return PLAYER_MANAGER_OK;
 }
 
@@ -131,10 +144,14 @@ int player_manager_stop(void)
         return PLAYER_MANAGER_EINVAL;
     }
 
+    MLOG_DBG("mock player_manager_stop request: prepared=%d current_sec=%d",
+        g_player_ctx.prepared ? 1 : 0,
+        g_player_ctx.current_sec);
     g_player_ctx.prepared = false;
     g_player_ctx.paused = true;
     g_player_ctx.current_sec = 0;
     g_player_ctx.last_tick_ms = 0;
+    MLOG_DBG("mock player_manager_stop ok");
     return PLAYER_MANAGER_OK;
 }
 
@@ -152,8 +169,10 @@ int player_manager_seek_sec(int sec)
         sec = g_player_ctx.total_sec;
     }
 
+    MLOG_DBG("mock player_manager_seek_sec request: sec=%d paused=%d", sec, g_player_ctx.paused ? 1 : 0);
     g_player_ctx.current_sec = sec;
     g_player_ctx.last_tick_ms = player_manager_now_ms();
+    MLOG_DBG("mock player_manager_seek_sec ok: current_sec=%d", g_player_ctx.current_sec);
     return PLAYER_MANAGER_OK;
 }
 

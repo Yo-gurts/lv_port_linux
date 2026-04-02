@@ -4,6 +4,15 @@
 
 typedef int (*media_op_handler_t)(int32_t args);
 
+enum {
+    MOCK_WORK_MODE_BOOT = 0,
+    MOCK_WORK_MODE_PHOTO = 1,
+    MOCK_WORK_MODE_VIDEO = 2,
+    MOCK_WORK_MODE_PLAYBACK = 3,
+};
+
+static int g_mock_work_mode = MOCK_WORK_MODE_BOOT;
+
 static int media_manager_clamp_volume(int value)
 {
     if (value < 0) {
@@ -28,6 +37,7 @@ static int media_manager_set_param_checked(param_id_t id, int value, const char*
 static int handle_switch_to_photo_mode(int32_t args)
 {
     (void)args;
+    g_mock_work_mode = MOCK_WORK_MODE_PHOTO;
     MLOG_INFO("media_manager 切换拍照模式(占位实现)");
     return MEDIA_MANAGER_OK;
 }
@@ -35,6 +45,7 @@ static int handle_switch_to_photo_mode(int32_t args)
 static int handle_switch_to_boot_mode(int32_t args)
 {
     (void)args;
+    g_mock_work_mode = MOCK_WORK_MODE_BOOT;
     MLOG_INFO("media_manager 切换boot模式(占位实现)");
     return MEDIA_MANAGER_OK;
 }
@@ -42,7 +53,16 @@ static int handle_switch_to_boot_mode(int32_t args)
 static int handle_switch_to_video_mode(int32_t args)
 {
     (void)args;
+    g_mock_work_mode = MOCK_WORK_MODE_VIDEO;
     MLOG_INFO("media_manager 切换录像模式(占位实现)");
+    return MEDIA_MANAGER_OK;
+}
+
+static int handle_switch_to_playback_mode(int32_t args)
+{
+    (void)args;
+    g_mock_work_mode = MOCK_WORK_MODE_PLAYBACK;
+    MLOG_INFO("media_manager 切换回放模式(占位实现)");
     return MEDIA_MANAGER_OK;
 }
 
@@ -175,6 +195,7 @@ static const media_op_handler_t g_media_handlers[MEDIA_OP_BUTT] = {
     [MEDIA_OP_SWITCH_TO_PHOTO_MODE] = handle_switch_to_photo_mode,
     [MEDIA_OP_SWITCH_TO_BOOT_MODE] = handle_switch_to_boot_mode,
     [MEDIA_OP_SWITCH_TO_VIDEO_MODE] = handle_switch_to_video_mode,
+    [MEDIA_OP_SWITCH_TO_PLAYBACK_MODE] = handle_switch_to_playback_mode,
     [MEDIA_OP_START_RECORD] = handle_start_record,
     [MEDIA_OP_STOP_RECORD] = handle_stop_record,
     [MEDIA_OP_TAKE_PHOTO] = handle_take_photo,
@@ -211,4 +232,21 @@ int media_manager_execute(media_operation_t op, int32_t args)
     }
 
     return handler(args);
+}
+
+int media_manager_get_current_work_mode(void)
+{
+    return g_mock_work_mode;
+}
+
+int media_manager_is_playback_work_mode(int work_mode)
+{
+    return work_mode == MOCK_WORK_MODE_PLAYBACK ? 1 : 0;
+}
+
+int media_manager_restore_work_mode(int work_mode)
+{
+    g_mock_work_mode = work_mode;
+    MLOG_INFO("media_manager 恢复模式(占位实现): mode=%d", work_mode);
+    return MEDIA_MANAGER_OK;
 }

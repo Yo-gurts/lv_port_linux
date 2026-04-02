@@ -100,6 +100,28 @@ static int handle_switch_to_video_mode(int32_t args)
     return MEDIA_MANAGER_OK;
 }
 
+static int handle_switch_to_playback_mode(int32_t args)
+{
+    (void)args;
+    MESSAGE_S msg = { 0 };
+    int32_t ret = 0;
+    uint8_t blocked_prev = 0;
+
+    msg.topic = EVENT_MODEMNG_MODESWITCH;
+    msg.arg1 = WORK_MODE_PLAYBACK;
+    blocked_prev = key_manager_get_block_non_power();
+    key_manager_set_block_non_power((uint8_t)(blocked_prev | KEY_INPUT_BLOCK_TP | KEY_INPUT_BLOCK_ADC_KEY2));
+    ret = message_manager_send_sync_timeout(&msg, MEDIA_MANAGER_MODE_SWITCH_TIMEOUT_MS);
+    key_manager_set_block_non_power(blocked_prev);
+    if (ret != 0) {
+        MLOG_ERR("切换到回放模式失败: ret=%d", (int)ret);
+        return MEDIA_MANAGER_ESTATE;
+    }
+
+    MLOG_INFO("已请求切换到回放模式");
+    return MEDIA_MANAGER_OK;
+}
+
 static int handle_start_record(int32_t args)
 {
     MESSAGE_S msg = { 0 };
@@ -489,6 +511,7 @@ static const media_op_handler_t g_media_handlers[MEDIA_OP_BUTT] = {
     [MEDIA_OP_SWITCH_TO_PHOTO_MODE] = handle_switch_to_photo_mode,
     [MEDIA_OP_SWITCH_TO_BOOT_MODE] = handle_switch_to_boot_mode,
     [MEDIA_OP_SWITCH_TO_VIDEO_MODE] = handle_switch_to_video_mode,
+    [MEDIA_OP_SWITCH_TO_PLAYBACK_MODE] = handle_switch_to_playback_mode,
     [MEDIA_OP_START_RECORD] = handle_start_record,
     [MEDIA_OP_STOP_RECORD] = handle_stop_record,
     [MEDIA_OP_TAKE_PHOTO] = handle_take_photo,
@@ -525,4 +548,32 @@ int media_manager_execute(media_operation_t op, int32_t args)
     }
 
     return handler(args);
+}
+
+int media_manager_get_current_work_mode(void)
+{
+    return MODEMNG_GetCurWorkMode();
+}
+
+int media_manager_is_playback_work_mode(int work_mode)
+{
+    return work_mode == WORK_MODE_PLAYBACK ? 1 : 0;
+}
+
+int media_manager_restore_work_mode(int work_mode)
+{
+    switch (work_mode) {
+    case WORK_MODE_BOOT:
+        return media_manager_execute(MEDIA_OP_SWITCH_TO_BOOT_MODE, 0);
+    case WORK_MODE_PHOTO:
+        return media_manager_execute(MEDIA_OP_SWITCH_TO_PHOTO_MODE, 0);
+    case WORK_MODE_MOVIE:
+        return media_manager_execute(MEDIA_OP_SWITCH_TO_VIDEO_MODE, 0);
+    case WORK_MODE_PLAYBACK:
+    case WORK_MODE_BUTT:
+        return MEDIA_MANAGER_OK;
+    default:
+        MLOG_WARN("不支持恢复到该模式: %d", work_mode);
+        return MEDIA_MANAGER_EUNSUP;
+    }
 }
