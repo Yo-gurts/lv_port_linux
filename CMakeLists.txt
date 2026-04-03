@@ -80,6 +80,7 @@ set(SOURCES
     src/mock/media_manager.c
     src/mock/message_manager.c
     src/mock/power_manager.c
+    src/mock/player_manager.c
     src/pages/page_ai_photo_settings.c
     src/pages/page_ai_recognition_preview.c
     src/pages/page_ai_photo.c
@@ -108,10 +109,8 @@ set(SOURCES
 # Framebuffer manager (only for FB mode)
 if(CONFIG STREQUAL "FB")
     list(APPEND SOURCES src/core/framebuffer_manager.c)
-    list(APPEND SOURCES src/core/player_manager.c)
     list(APPEND SOURCES src/core/wifi_manager.c)
 else()
-    list(APPEND SOURCES src/mock/player_manager.c)
     list(APPEND SOURCES src/mock/wifi_manager.c)
 endif()
 
