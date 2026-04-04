@@ -9,7 +9,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # Project Configuration
 #=======================
 if(CMAKE_C_COMPILER_TARGET MATCHES "arm-none-linux" OR CMAKE_SYSTEM_PROCESSOR MATCHES "arm")
-    set(PROJECT_PATH_STR "/mnt/data/bin")
+    set(PROJECT_PATH_STR "/app")
 else()
     set(PROJECT_PATH_STR "${CMAKE_CURRENT_SOURCE_DIR}")
 endif()
