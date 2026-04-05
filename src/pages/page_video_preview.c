@@ -548,12 +548,14 @@ static void progress_slider_event_cb(lv_event_t* e)
 {
     page_video_preview_data_t* data = (page_video_preview_data_t*)lv_event_get_user_data(e);
     lv_event_code_t code = lv_event_get_code(e);
+    bool need_resume;
 
     if (!data || !data->progress_slider)
         return;
 
     if (code == LV_EVENT_PRESSED) {
         MLOG_INFO("video preview progress pressed: current=%d", data->current_sec);
+        data->resume_after_seek = data->is_paused;
         data->is_dragging_progress = true;
         update_progress_from_pointer(data, data->progress_slider, LV_ANIM_OFF);
         return;
@@ -572,11 +574,17 @@ static void progress_slider_event_cb(lv_event_t* e)
 
     if (code == LV_EVENT_RELEASED || code == LV_EVENT_PRESS_LOST)
     {
+        need_resume = data->resume_after_seek;
+        data->resume_after_seek = false;
         data->is_dragging_progress = false;
         update_progress_from_pointer(data, data->progress_slider, LV_ANIM_OFF);
-        MLOG_INFO("video preview progress released: seek_to=%d", data->current_sec);
+        MLOG_INFO("video preview progress released: seek_to=%d need_resume=%d",
+                  data->current_sec,
+                  need_resume ? 1 : 0);
         if (player_manager_seek_sec(data->current_sec) != 0)
             MLOG_WARN("video preview seek failed: sec=%d", data->current_sec);
+        if (need_resume)
+            set_paused_state(data, false);
     }
 }
 
