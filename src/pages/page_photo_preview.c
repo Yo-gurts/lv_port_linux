@@ -288,8 +288,10 @@ static void swipe_event_cb(lv_event_t* e)
             return;
 
         lv_indev_get_point(indev, &point);
+        width = lv_obj_get_width(data->container);
         data->drag_active = 1;
-        data->drag_ignore = 0;
+        data->drag_ignore = (point.x <= SWIPE_BACK_EDGE_THRESHOLD_PX
+                             || point.x >= (width - SWIPE_BACK_EDGE_THRESHOLD_PX));
         data->drag_start_x = point.x;
         data->drag_last_x = point.x;
         data->drag_offset_x = 0;
@@ -300,7 +302,7 @@ static void swipe_event_cb(lv_event_t* e)
     }
 
     if (code == LV_EVENT_PRESSING) {
-        if (!indev || !data->drag_active || data->drag_ignore || data->swipe_anim_running)
+        if (!indev || !data->drag_active || data->swipe_anim_running)
             return;
 
         lv_indev_get_point(indev, &point);
@@ -331,8 +333,16 @@ static void swipe_event_cb(lv_event_t* e)
                 return;
             }
 
+            if (data->drag_ignore) {
+                return;
+            }
+
             set_image_by_index(data->target_image, data->drag_target_index);
             lv_obj_clear_flag(data->target_slide, LV_OBJ_FLAG_HIDDEN);
+        }
+
+        if (data->drag_ignore) {
+            return;
         }
 
         if (data->drag_direction == PREVIEW_DRAG_DIR_NEXT && offset_x > 0)
@@ -356,7 +366,7 @@ static void swipe_event_cb(lv_event_t* e)
         }
 
         data->drag_active = 0;
-        if (data->drag_ignore || data->drag_direction == PREVIEW_DRAG_DIR_NONE) {
+        if (data->drag_direction == PREVIEW_DRAG_DIR_NONE) {
             reset_swipe_state(data);
             return;
         }
@@ -368,6 +378,21 @@ static void swipe_event_cb(lv_event_t* e)
         same_direction = (final_direction == data->drag_direction);
 
         if (!same_direction) {
+            reset_swipe_state(data);
+            return;
+        }
+
+        /* 边缘起点手势仅用于返回，不显示或提交翻页。 */
+        if (data->drag_ignore) {
+            container_width = lv_obj_get_width(data->container);
+            from_left_edge = (data->drag_start_x <= SWIPE_BACK_EDGE_THRESHOLD_PX);
+            from_right_edge = (data->drag_start_x >= (container_width - SWIPE_BACK_EDGE_THRESHOLD_PX));
+            if ((from_left_edge && data->drag_direction == PREVIEW_DRAG_DIR_PREV)
+                || (from_right_edge && data->drag_direction == PREVIEW_DRAG_DIR_NEXT)) {
+                back_btn_cb(NULL);
+                return;
+            }
+
             reset_swipe_state(data);
             return;
         }
