@@ -1,13 +1,15 @@
 #include "core/media_manager.h"
+#include "core/file_manager.h"
 #include "core/key_manager.h"
 #include "core/message_manager.h"
 #include "core/param_manager.h"
 #include "mlog.h"
 #include "mode.h"
 #include "param.h"
+#include "ui/top_notice.h"
 #include <stdio.h>
 
-#define MEDIA_MANAGER_TAKE_PHOTO_TIMEOUT_MS 2000U
+#define MEDIA_MANAGER_TAKE_PHOTO_TIMEOUT_MS 5000U
 #define MEDIA_MANAGER_MODE_SWITCH_TIMEOUT_MS 3000U
 #define MEDIA_MANAGER_SETTING_TIMEOUT_MS 3000U
 #define MEDIA_MANAGER_FORMAT_TIMEOUT_MS 20000U
@@ -174,20 +176,34 @@ static int handle_take_photo(int32_t args)
     MESSAGE_S msg = { 0 };
     int32_t ret = 0;
     uint8_t blocked_prev = 0;
+    char latest_name[FILE_MANAGER_MAX_NAME_LEN] = { 0 };
+    char notice_text[96] = { 0 };
 
     (void)args;
+
+    if (!file_manager_is_storage_ready()) {
+        top_notice_show_for("SD卡未就绪", TOP_NOTICE_TYPE_WARNING, 2000);
+        MLOG_WARN("拍照失败: SD卡未就绪");
+        return MEDIA_MANAGER_ESTATE;
+    }
 
     msg.topic = EVENT_MODEMNG_START_PIV;
     blocked_prev = key_manager_get_block_non_power();
     key_manager_set_block_non_power((uint8_t)(blocked_prev | KEY_INPUT_BLOCK_TP | KEY_INPUT_BLOCK_ADC_KEY2));
-    ret = message_manager_send_sync_timeout(&msg, MEDIA_MANAGER_TAKE_PHOTO_TIMEOUT_MS);
+    ret = message_manager_send_sync_topics_timeout(
+        &msg, EVENT_MODEMNG_PHOTO_INDEXED, EVENT_MODEMNG_PHOTO_INDEX_FAILED, MEDIA_MANAGER_TAKE_PHOTO_TIMEOUT_MS);
     key_manager_set_block_non_power(blocked_prev);
     if (ret != 0) {
         MLOG_ERR("拍照失败: ret=%d", (int)ret);
         return MEDIA_MANAGER_ESTATE;
     }
 
-    MLOG_INFO("已触发拍照");
+    if (file_manager_get_photo_name(0, latest_name, sizeof(latest_name)) == 0 && latest_name[0] != '\0') {
+        snprintf(notice_text, sizeof(notice_text), "已拍摄：%s", latest_name);
+        top_notice_show_for(notice_text, TOP_NOTICE_TYPE_SUCCESS, 2000);
+        MLOG_INFO("拍照成功，最新文件：%s", latest_name);
+    }
+
     return MEDIA_MANAGER_OK;
 }
 

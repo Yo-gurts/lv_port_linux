@@ -3,6 +3,7 @@
 #include "core/message_manager.h"
 #include "appcomm.h"
 #include "mlog.h"
+#include "photomng.h"
 #include <errno.h>
 #include <pthread.h>
 #include <stdlib.h>
@@ -138,6 +139,11 @@ static int32_t message_manager_dispatch_event(EVENT_S* evt)
     case EVENT_MODEMNG_SET_WHITE_BALANCE:
     case EVENT_MODEMNG_SET_ISO:
     case EVENT_MODEMNG_SET_EXPOSURE:
+    case EVENT_MODEMNG_PHOTO_INDEXED:
+    case EVENT_MODEMNG_PHOTO_INDEX_FAILED:
+    case EVENT_PHOTOMNG_PIV_START:
+    case EVENT_PHOTOMNG_PIV_END:
+    case EVENT_PHOTOMNG_PIV_ERROR:
         MLOG_DBG("处理 topic=%s(0x%x) result=%d", event_topic_get_name(evt->topic), evt->topic, evt->s32Result);
         break;
     default:
@@ -199,6 +205,11 @@ static int32_t message_manager_subscribe(void)
         EVENT_MODEMNG_SET_WHITE_BALANCE,
         EVENT_MODEMNG_SET_ISO,
         EVENT_MODEMNG_SET_EXPOSURE,
+        EVENT_MODEMNG_PHOTO_INDEXED,
+        EVENT_MODEMNG_PHOTO_INDEX_FAILED,
+        EVENT_PHOTOMNG_PIV_START,
+        EVENT_PHOTOMNG_PIV_END,
+        EVENT_PHOTOMNG_PIV_ERROR,
         EVENT_UI_TOUCH,
     };
 
@@ -437,7 +448,7 @@ int32_t message_manager_send_sync_topics_timeout(
         if (ret == ETIMEDOUT) {
             message_manager_reset_request_locked(true);
             MUTEX_UNLOCK(g_msg_ctx.msg_mutex);
-            MLOG_WARN("等待格式化结果超时: request=%s(0x%x) success=%s(0x%x) failure=%s(0x%x)",
+            MLOG_WARN("等待消息结果超时: request=%s(0x%x) success=%s(0x%x) failure=%s(0x%x)",
                 event_topic_get_name(msg->topic),
                 msg->topic,
                 event_topic_get_name(success_topic),

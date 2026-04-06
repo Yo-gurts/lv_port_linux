@@ -89,6 +89,7 @@ static void refresh_latest_photo(page_ai_style_preview_data_t* data)
 
     lv_img_set_src(data->image, data->latest_photo_path);
     lv_obj_center(data->image);
+    MLOG_INFO("Style preview showing photo: %s", data->latest_photo_path);
 }
 
 static void update_style_selection(page_ai_style_preview_data_t* data)
