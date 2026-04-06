@@ -2,6 +2,7 @@
 #define __FILE_MANAGER_H__
 
 #include <stddef.h>
+#include <stdint.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -20,6 +21,7 @@ int file_manager_format_sdcard(void);
 
 /* 检查照片存储是否就绪（已插入 SD 卡且扫描完成） */
 int file_manager_is_storage_ready(void);
+int file_manager_get_storage_space_bytes(uint64_t* available_bytes);
 
 int file_manager_refresh_photo_list(void);
 int file_manager_get_photo_count(void);

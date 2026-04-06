@@ -5,6 +5,7 @@
 #include "pages/page_photo.h"
 #include "config.h"
 #include "core/font_manager.h"
+#include "core/file_manager.h"
 #include "core/key_manager.h"
 #include "core/media_manager.h"
 #include "core/page_manager.h"
@@ -16,6 +17,7 @@
 #include "ui/gesture_back.h"
 #include "ui/status_bar.h"
 #include "ui/zoom_bar.h"
+#include <limits.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -42,6 +44,15 @@ static const char* resolution_options[] = {
     "8M", "12M", "24M", "48M", "64M"
 };
 
+/* 单张照片估算大小，单位 Byte。行: 分辨率(8M~64M)；列: 画质(超高/高/普通)。 */
+static const uint32_t g_photo_estimated_bytes[PHOTO_RESOLUTION_BUTT][QUALITY_BUTT] = {
+    {2726297U, 1279262U, 1121976U}, /* 8M */
+    {3250585U, 1572864U, 1363148U}, /* 12M */
+    {5557452U, 2726297U, 2359296U}, /* 24M */
+    {9227468U, 4718592U, 3879731U}, /* 48M */
+    {11114905U, 5557452U, 4613734U}, /* 64M */
+};
+
 // #endregion
 // #############################################################################
 // ! #region 4. 内部工具函数（注意用static修饰）
@@ -58,6 +69,64 @@ static void update_resolution_display(page_photo_data_t* data)
 
     resolution_index = param_manager_get(PARAM_ID_RESOLUTION);
     lv_label_set_text(data->resolution_label, resolution_options[resolution_index]);
+}
+
+static uint32_t get_estimated_photo_size_bytes(void)
+{
+    int res_idx = param_manager_get(PARAM_ID_RESOLUTION);
+    int quality_idx = param_manager_get(PARAM_ID_QUALITY);
+
+    if (res_idx < PHOTO_RESOLUTION_8M || res_idx >= PHOTO_RESOLUTION_BUTT) {
+        res_idx = PHOTO_RESOLUTION_8M;
+    }
+    if (quality_idx < QUALITY_SUPER || quality_idx >= QUALITY_BUTT) {
+        quality_idx = QUALITY_SUPER;
+    }
+
+    return g_photo_estimated_bytes[res_idx][quality_idx];
+}
+
+static uint32_t calculate_remaining_photo_count(void)
+{
+    uint64_t available_bytes = 0U;
+    uint64_t temp_count;
+    uint32_t estimated_size_bytes;
+
+    if (param_manager_get(PARAM_ID_SD_READY) != SD_READY_TRUE) {
+        return 0U;
+    }
+
+    if (file_manager_get_storage_space_bytes(&available_bytes) != 0) {
+        return 0U;
+    }
+    if (available_bytes == 0U) {
+        return 0U;
+    }
+
+    estimated_size_bytes = get_estimated_photo_size_bytes();
+    if (estimated_size_bytes == 0U) {
+        return 0U;
+    }
+
+    temp_count = available_bytes / (uint64_t)estimated_size_bytes;
+    if (temp_count > (uint64_t)UINT_MAX) {
+        return UINT_MAX;
+    }
+    return (uint32_t)temp_count;
+}
+
+static void update_photo_count_display(page_photo_data_t* data)
+{
+    uint32_t remaining;
+    char text_buf[16];
+
+    if (data == NULL || data->photo_count_label == NULL) {
+        return;
+    }
+
+    remaining = calculate_remaining_photo_count();
+    lv_snprintf(text_buf, sizeof(text_buf), "%u", (unsigned int)remaining);
+    lv_label_set_text(data->photo_count_label, text_buf);
 }
 
 static void update_focus_box_display(page_photo_data_t* data, focus_frame_state_t state)
@@ -105,6 +174,13 @@ static void photo_param_cb(param_id_t id, int value, void* user_data)
     if (id == PARAM_ID_RESOLUTION) {
         LV_UNUSED(value);
         update_resolution_display(data);
+        update_photo_count_display(data);
+        return;
+    }
+
+    if (id == PARAM_ID_QUALITY || id == PARAM_ID_SD_READY) {
+        LV_UNUSED(value);
+        update_photo_count_display(data);
         return;
     }
 
@@ -181,7 +257,9 @@ static void take_photo_key_cb(key_id_t key, key_event_type_t event_type, void* u
     ret = media_manager_execute(MEDIA_OP_TAKE_PHOTO, 0);
     if (ret != 0) {
         MLOG_ERR("Take photo by key failed: ret=%d", ret);
+        return;
     }
+    update_photo_count_display(data);
 }
 
 /* 对焦键回调：在拍照页触发对焦动作 */
@@ -347,9 +425,10 @@ void page_photo_create(void)
 
     /* 剩余照片数量 Label - 右上角 */
     data->photo_count_label = lv_label_create(data->top_bar);
-    lv_label_set_text(data->photo_count_label, "100");
+    lv_label_set_text(data->photo_count_label, "0");
     lv_obj_add_style(data->photo_count_label, &NORMAL_SIZE, LV_PART_MAIN);
     lv_obj_align(data->photo_count_label, LV_ALIGN_RIGHT_MID, -125, 0);
+    update_photo_count_display(data);
 
     /* =======================
      * 底部工具栏：[photo][filter] ... [menu]
@@ -447,6 +526,7 @@ void page_photo_show(void)
     status_bar_refresh();
 
     lv_obj_clear_flag(data->container, LV_OBJ_FLAG_HIDDEN);
+    update_photo_count_display(data);
 
     if (key_manager_register_callback(KEY_ID_CAMERA, KEY_EVENT_CLICK, take_photo_key_cb, data) != 0) {
         MLOG_WARN("register photo key callback failed");
@@ -488,6 +568,7 @@ void page_photo_update(void)
     page_photo_data_t* data = page_get_private_data();
     update_resolution_display(data);
     update_zoom_buttons_display(data);
+    update_photo_count_display(data);
 }
 
 // #endregion

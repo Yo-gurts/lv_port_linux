@@ -32,6 +32,18 @@ int file_manager_is_storage_ready(void)
     return file_manager_is_photo_storage_ready();
 }
 
+int file_manager_get_storage_space_bytes(uint64_t* available_bytes)
+{
+    if (available_bytes == NULL) {
+        return -1;
+    }
+
+    if (FILEMNG_GetAvailableSizeAfterReserveBytes(available_bytes) != 0) {
+        return -1;
+    }
+    return 0;
+}
+
 /* 将 LVGL 路径（A:/...）转换为真实文件系统路径（/...）。 */
 static const char* to_real_path(const char* path)
 {

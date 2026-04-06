@@ -10,6 +10,7 @@
 #include <string.h>
 #include <strings.h>
 #include <sys/stat.h>
+#include <sys/statvfs.h>
 #include <sys/types.h>
 #include <unistd.h>
 
@@ -560,6 +561,37 @@ int file_manager_is_storage_ready(void)
         return 0;
 
     return S_ISDIR(st.st_mode) ? 1 : 0;
+}
+
+int file_manager_get_storage_space_bytes(uint64_t* available_bytes)
+{
+    struct statvfs st;
+    const char* real_dir;
+    uint64_t total;
+    uint64_t reserve;
+
+    if (available_bytes == NULL) {
+        return -1;
+    }
+
+    real_dir = to_real_path(PHOTO_ALBUM_IMAGE_PATH);
+    if (real_dir == NULL) {
+        return -1;
+    }
+
+    if (statvfs(real_dir, &st) != 0 || st.f_frsize == 0U) {
+        return -1;
+    }
+
+    total = (uint64_t)st.f_blocks * (uint64_t)st.f_frsize;
+    reserve = total * 5U / 100U;
+    *available_bytes = (uint64_t)st.f_bavail * (uint64_t)st.f_frsize;
+    if (*available_bytes > reserve) {
+        *available_bytes -= reserve;
+    } else {
+        *available_bytes = 0U;
+    }
+    return 0;
 }
 
 /* 刷新视频列表（mock 通过目录扫描实现）。 */
