@@ -4,6 +4,8 @@
 #include "appcomm.h"
 #include "mlog.h"
 #include "photomng.h"
+#include "ui/status_bar.h"
+#include "ui/top_notice.h"
 #include <errno.h>
 #include <pthread.h>
 #include <stdlib.h>
@@ -41,6 +43,62 @@ static bool g_sync_done = false;
 static EVENTHUB_SUBSCRIBER_S* g_subscriber_desc = NULL;
 static MW_PTR g_subscriber_hdl = NULL;
 static bool g_msgmgr_created = false;
+
+static bool handle_sd_card_event_notice(TOPIC_ID topic)
+{
+    const char* notice_text = NULL;
+    top_notice_type_t notice_type = TOP_NOTICE_TYPE_INFO;
+    uint32_t notice_duration_ms = 2000;
+
+    switch (topic) {
+    case EVENT_MODEMNG_CARD_REMOVE:
+        notice_text = "SD卡已拔出";
+        notice_type = TOP_NOTICE_TYPE_WARNING;
+        break;
+    case EVENT_MODEMNG_CARD_AVAILABLE:
+        notice_text = "SD卡已就绪";
+        notice_type = TOP_NOTICE_TYPE_SUCCESS;
+        break;
+    case EVENT_MODEMNG_CARD_CHECKING:
+        notice_text = "SD卡检测中...";
+        notice_duration_ms = 1500;
+        break;
+    case EVENT_MODEMNG_CARD_UNAVAILABLE:
+    case EVENT_MODEMNG_CARD_ERROR:
+    case EVENT_MODEMNG_CARD_FSERROR:
+    case EVENT_MODEMNG_CARD_MOUNT_FAILED:
+        notice_text = "SD卡不可用";
+        notice_type = TOP_NOTICE_TYPE_ERROR;
+        break;
+    case EVENT_MODEMNG_CARD_READ_ONLY:
+        notice_text = "SD卡为只读模式";
+        notice_type = TOP_NOTICE_TYPE_WARNING;
+        break;
+    case EVENT_MODEMNG_CARD_SLOW:
+        notice_text = "SD卡速度较慢";
+        notice_type = TOP_NOTICE_TYPE_WARNING;
+        break;
+    case EVENT_MODEMNG_CARD_FORMAT:
+    case EVENT_MODEMNG_CARD_FORMATING:
+        notice_text = "SD卡格式化中...";
+        notice_duration_ms = 1500;
+        break;
+    case EVENT_MODEMNG_CARD_FORMAT_SUCCESSED:
+        notice_text = "SD卡格式化完成";
+        notice_type = TOP_NOTICE_TYPE_SUCCESS;
+        break;
+    case EVENT_MODEMNG_CARD_FORMAT_FAILED:
+        notice_text = "SD卡格式化失败";
+        notice_type = TOP_NOTICE_TYPE_ERROR;
+        break;
+    default:
+        return false;
+    }
+
+    status_bar_refresh();
+    top_notice_show_for(notice_text, notice_type, notice_duration_ms);
+    return true;
+}
 
 static void message_manager_reset_request_locked(bool processed)
 {
@@ -107,6 +165,8 @@ static int32_t message_manager_process_result_locked(EVENT_S* evt)
 /* 统一分发订阅到的事件，处理默认日志与后续扩展入口。 */
 static int32_t message_manager_dispatch_event(EVENT_S* evt)
 {
+    (void)handle_sd_card_event_notice(evt->topic);
+
     switch (evt->topic) {
     case EVENT_MODEMNG_RESET:
     case EVENT_MODEMNG_MODEOPEN:
@@ -114,19 +174,6 @@ static int32_t message_manager_dispatch_event(EVENT_S* evt)
     case EVENT_MODEMNG_MODESWITCH:
     case EVENT_MODEMNG_START_PIV:
     case EVENT_MODEMNG_SETTING:
-    case EVENT_MODEMNG_CARD_REMOVE:
-    case EVENT_MODEMNG_CARD_AVAILABLE:
-    case EVENT_MODEMNG_CARD_UNAVAILABLE:
-    case EVENT_MODEMNG_CARD_ERROR:
-    case EVENT_MODEMNG_CARD_FSERROR:
-    case EVENT_MODEMNG_CARD_SLOW:
-    case EVENT_MODEMNG_CARD_CHECKING:
-    case EVENT_MODEMNG_CARD_READ_ONLY:
-    case EVENT_MODEMNG_CARD_MOUNT_FAILED:
-    case EVENT_MODEMNG_CARD_FORMAT:
-    case EVENT_MODEMNG_CARD_FORMATING:
-    case EVENT_MODEMNG_CARD_FORMAT_SUCCESSED:
-    case EVENT_MODEMNG_CARD_FORMAT_FAILED:
     case EVENT_MODEMNG_RECODER_STARTSTATU:
     case EVENT_MODEMNG_RECODER_STOPSTATU:
     case EVENT_MODEMNG_RECODER_SPLITREC:
