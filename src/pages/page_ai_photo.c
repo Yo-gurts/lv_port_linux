@@ -4,6 +4,7 @@
 
 #include "pages/page_ai_photo.h"
 #include "config.h"
+#include "core/file_manager.h"
 #include "core/font_manager.h"
 #include "core/key_manager.h"
 #include "core/media_manager.h"
@@ -19,6 +20,10 @@
 /* 布局常量 */
 #define TOP_BAR_HEIGHT 50
 #define BOTTOM_BAR_HEIGHT 50
+#define FOCUS_BOX_WIDTH 120
+#define FOCUS_BOX_HEIGHT 120
+#define FOCUS_BOX_BORDER_WIDTH 3
+#define FOCUS_CORNER_LEN 30
 
 /* AI模式选项 - 与ai_photo_settings保持一致 */
 static const char* ai_mode_options[] = {
@@ -39,6 +44,80 @@ static const char* ai_mode_options[] = {
 // #############################################################################
 // ! #region 4. 内部工具函数（注意用static修饰）
 // #############################################################################
+
+static void update_photo_count_display(page_ai_photo_data_t* data)
+{
+    uint32_t remaining = 0U;
+    char text_buf[16];
+    int resolution_index;
+    int quality_index;
+
+    if (data == NULL || data->photo_count_label == NULL) {
+        return;
+    }
+
+    if (param_manager_get(PARAM_ID_SD_READY) != SD_READY_TRUE) {
+        lv_label_set_text(data->photo_count_label, "0");
+        return;
+    }
+
+    resolution_index = param_manager_get(PARAM_ID_RESOLUTION);
+    quality_index = param_manager_get(PARAM_ID_QUALITY);
+    (void)file_manager_get_remaining_photo_count(resolution_index, quality_index, &remaining);
+    lv_snprintf(text_buf, sizeof(text_buf), "%u", (unsigned int)remaining);
+    lv_label_set_text(data->photo_count_label, text_buf);
+}
+
+static void update_focus_box_display(page_ai_photo_data_t* data, focus_frame_state_t state)
+{
+    lv_color_t border_color;
+    int i;
+
+    if (data == NULL || data->focus_box == NULL) {
+        return;
+    }
+
+    if (state == FOCUS_FRAME_STATE_HIDDEN) {
+        lv_obj_add_flag(data->focus_box, LV_OBJ_FLAG_HIDDEN);
+        return;
+    }
+
+    lv_obj_clear_flag(data->focus_box, LV_OBJ_FLAG_HIDDEN);
+    border_color = (state == FOCUS_FRAME_STATE_LOCKING) ? lv_color_hex(0xF05A28) : lv_color_hex(0xF09F20);
+
+    for (i = 0; i < 4; i++) {
+        if (data->focus_corners[i] == NULL) {
+            continue;
+        }
+        lv_obj_set_style_border_color(data->focus_corners[i], border_color, LV_PART_MAIN);
+    }
+}
+
+static void ai_photo_param_cb(param_id_t id, int value, void* user_data)
+{
+    page_ai_photo_data_t* data = (page_ai_photo_data_t*)user_data;
+
+    if (data == NULL) {
+        return;
+    }
+
+    if (id == PARAM_ID_AI_MODE) {
+        if (data->resolution_label != NULL) {
+            lv_label_set_text(data->resolution_label, ai_mode_options[value]);
+        }
+        return;
+    }
+
+    if (id == PARAM_ID_RESOLUTION || id == PARAM_ID_QUALITY || id == PARAM_ID_SD_READY) {
+        LV_UNUSED(value);
+        update_photo_count_display(data);
+        return;
+    }
+
+    if (id == PARAM_ID_FOCUS_FRAME_STATE) {
+        update_focus_box_display(data, (focus_frame_state_t)value);
+    }
+}
 
 static void take_photo_key_cb(key_id_t key, key_event_type_t event_type, void* user_data)
 {
@@ -61,12 +140,49 @@ static void take_photo_key_cb(key_id_t key, key_event_type_t event_type, void* u
         MLOG_ERR("AI take photo failed: ret=%d", ret);
         return;
     }
+    update_photo_count_display(data);
 
     ai_mode = param_manager_get(PARAM_ID_AI_MODE);
     if (ai_mode == AI_MODE_STYLE_TRANSFER) {
         page_manager_navigate("ai_style_preview");
     } else if (ai_mode == AI_MODE_OBJECT_RECOGNITION) {
         page_manager_navigate("ai_recognition_preview");
+    }
+}
+
+static void focus_key_cb(key_id_t key, key_event_type_t event_type, void* user_data)
+{
+    page_ai_photo_data_t* data = (page_ai_photo_data_t*)user_data;
+    int ret = 0;
+
+    if (key != KEY_ID_FOCUS) {
+        return;
+    }
+    if (!data || !data->container) {
+        return;
+    }
+    if (lv_obj_has_flag(data->container, LV_OBJ_FLAG_HIDDEN)) {
+        return;
+    }
+
+    if (event_type == KEY_EVENT_PRESS) {
+        ret = media_manager_execute(MEDIA_OP_FOCUS_ONCE, 0);
+        if (ret != 0) {
+            MLOG_ERR("AI focus by key failed: ret=%d", ret);
+        }
+        (void)param_manager_set(PARAM_ID_FOCUS_FRAME_STATE, FOCUS_FRAME_STATE_NORMAL);
+    } else if (event_type == KEY_EVENT_LONG_PRESS_3S) {
+        ret = media_manager_execute(MEDIA_OP_SET_FOCUS_ENABLE, 0);
+        if (ret != 0) {
+            MLOG_ERR("AI disable AF by key long-press failed: ret=%d", ret);
+        }
+        (void)param_manager_set(PARAM_ID_FOCUS_FRAME_STATE, FOCUS_FRAME_STATE_LOCKING);
+    } else if (event_type == KEY_EVENT_RELEASE) {
+        ret = media_manager_execute(MEDIA_OP_SET_FOCUS_ENABLE, 1);
+        if (ret != 0) {
+            MLOG_ERR("AI enable AF by key release failed: ret=%d", ret);
+        }
+        (void)param_manager_set(PARAM_ID_FOCUS_FRAME_STATE, FOCUS_FRAME_STATE_HIDDEN);
     }
 }
 
@@ -145,6 +261,45 @@ void page_ai_photo_create(void)
     gesture_back_register_events(data->container);
     gesture_back_set_left_edge_swipe_cb(data->container, page_manager_back_cb);
 
+    /* 中央对焦框（默认隐藏），由 param 回调驱动显示/颜色切换。 */
+    data->focus_box = lv_obj_create(data->container);
+    lv_obj_set_size(data->focus_box, FOCUS_BOX_WIDTH, FOCUS_BOX_HEIGHT);
+    lv_obj_align(data->focus_box, LV_ALIGN_CENTER, 0, 0);
+    lv_obj_clear_flag(data->focus_box, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_set_scrollbar_mode(data->focus_box, LV_SCROLLBAR_MODE_OFF);
+    lv_obj_set_style_bg_opa(data->focus_box, LV_OPA_TRANSP, LV_PART_MAIN);
+    lv_obj_set_style_border_width(data->focus_box, 0, LV_PART_MAIN);
+    lv_obj_set_style_pad_all(data->focus_box, 0, LV_PART_MAIN);
+
+    data->focus_corners[0] = lv_obj_create(data->focus_box); /* top-left */
+    data->focus_corners[1] = lv_obj_create(data->focus_box); /* top-right */
+    data->focus_corners[2] = lv_obj_create(data->focus_box); /* bottom-left */
+    data->focus_corners[3] = lv_obj_create(data->focus_box); /* bottom-right */
+
+    int i;
+    for (i = 0; i < 4; i++) {
+        lv_obj_t* corner = data->focus_corners[i];
+        lv_obj_set_size(corner, FOCUS_CORNER_LEN, FOCUS_CORNER_LEN);
+        lv_obj_set_scrollbar_mode(corner, LV_SCROLLBAR_MODE_OFF);
+        lv_obj_clear_flag(corner, LV_OBJ_FLAG_CLICKABLE);
+        lv_obj_set_style_bg_opa(corner, LV_OPA_TRANSP, LV_PART_MAIN);
+        lv_obj_set_style_radius(corner, 0, LV_PART_MAIN);
+        lv_obj_set_style_border_width(corner, FOCUS_BOX_BORDER_WIDTH, LV_PART_MAIN);
+        lv_obj_set_style_border_opa(corner, LV_OPA_COVER, LV_PART_MAIN);
+        lv_obj_set_style_pad_all(corner, 0, LV_PART_MAIN);
+    }
+
+    lv_obj_set_style_border_side(data->focus_corners[0], LV_BORDER_SIDE_TOP | LV_BORDER_SIDE_LEFT, LV_PART_MAIN);
+    lv_obj_set_style_border_side(data->focus_corners[1], LV_BORDER_SIDE_TOP | LV_BORDER_SIDE_RIGHT, LV_PART_MAIN);
+    lv_obj_set_style_border_side(data->focus_corners[2], LV_BORDER_SIDE_BOTTOM | LV_BORDER_SIDE_LEFT, LV_PART_MAIN);
+    lv_obj_set_style_border_side(data->focus_corners[3], LV_BORDER_SIDE_BOTTOM | LV_BORDER_SIDE_RIGHT, LV_PART_MAIN);
+
+    lv_obj_align(data->focus_corners[0], LV_ALIGN_TOP_LEFT, 0, 0);
+    lv_obj_align(data->focus_corners[1], LV_ALIGN_TOP_RIGHT, 0, 0);
+    lv_obj_align(data->focus_corners[2], LV_ALIGN_BOTTOM_LEFT, 0, 0);
+    lv_obj_align(data->focus_corners[3], LV_ALIGN_BOTTOM_RIGHT, 0, 0);
+    update_focus_box_display(data, FOCUS_FRAME_STATE_HIDDEN);
+
     /* =======================
      * 顶部状态栏：[back][AI] 在左边，剩余拍照数 [SD][battery] 在右边
      * ======================= */
@@ -172,9 +327,10 @@ void page_ai_photo_create(void)
 
     /* 剩余照片数量 Label - 右上角 */
     data->photo_count_label = lv_label_create(data->top_bar);
-    lv_label_set_text(data->photo_count_label, "100");
+    lv_label_set_text(data->photo_count_label, "0");
     lv_obj_add_style(data->photo_count_label, &NORMAL_SIZE, LV_PART_MAIN);
     lv_obj_align(data->photo_count_label, LV_ALIGN_RIGHT_MID, -180, 0);
+    update_photo_count_display(data);
 
     /* =======================
      * 底部工具栏：[filter][...] [menu]
@@ -211,6 +367,7 @@ void page_ai_photo_create(void)
 
     /* 保存 private_data，供 show/hide/destroy 使用 */
     page_set_private_data(data);
+    param_manager_register_callback(ai_photo_param_cb, data);
 }
 
 void page_ai_photo_destroy(void)
@@ -227,7 +384,11 @@ void page_ai_photo_destroy(void)
     }
 
     (void)key_manager_unregister_callback(KEY_ID_CAMERA, KEY_EVENT_CLICK, take_photo_key_cb, data);
+    (void)key_manager_unregister_callback(KEY_ID_FOCUS, KEY_EVENT_PRESS, focus_key_cb, data);
+    (void)key_manager_unregister_callback(KEY_ID_FOCUS, KEY_EVENT_RELEASE, focus_key_cb, data);
+    (void)key_manager_unregister_callback(KEY_ID_FOCUS, KEY_EVENT_LONG_PRESS_3S, focus_key_cb, data);
     (void)key_manager_unregister_callback(KEY_ID_AI, KEY_EVENT_CLICK, ai_key_cb, data);
+    param_manager_unregister_callback(ai_photo_param_cb);
     free(data);
 }
 
@@ -248,9 +409,20 @@ void page_ai_photo_show(void)
     status_bar_show(true);
     status_bar_set_icons(STATUS_BAR_ICON_SD, STATUS_BAR_ICON_WIFI, STATUS_BAR_ICON_BATTERY);
     status_bar_refresh();
+    update_photo_count_display(data);
+    update_focus_box_display(data, (focus_frame_state_t)param_manager_get(PARAM_ID_FOCUS_FRAME_STATE));
 
     if (key_manager_register_callback(KEY_ID_CAMERA, KEY_EVENT_CLICK, take_photo_key_cb, data) != 0) {
         MLOG_WARN("register ai photo key callback failed");
+    }
+    if (key_manager_register_callback(KEY_ID_FOCUS, KEY_EVENT_PRESS, focus_key_cb, data) != 0) {
+        MLOG_WARN("register ai focus key callback failed");
+    }
+    if (key_manager_register_callback(KEY_ID_FOCUS, KEY_EVENT_RELEASE, focus_key_cb, data) != 0) {
+        MLOG_WARN("register ai focus key release callback failed");
+    }
+    if (key_manager_register_callback(KEY_ID_FOCUS, KEY_EVENT_LONG_PRESS_3S, focus_key_cb, data) != 0) {
+        MLOG_WARN("register ai focus key long-press callback failed");
     }
     if (key_manager_register_callback(KEY_ID_AI, KEY_EVENT_CLICK, ai_key_cb, data) != 0) {
         MLOG_WARN("register ai key callback failed");
@@ -269,7 +441,11 @@ void page_ai_photo_hide(void)
     lv_obj_add_flag(data->container, LV_OBJ_FLAG_HIDDEN);
     status_bar_show(false);
     (void)key_manager_unregister_callback(KEY_ID_CAMERA, KEY_EVENT_CLICK, take_photo_key_cb, data);
+    (void)key_manager_unregister_callback(KEY_ID_FOCUS, KEY_EVENT_PRESS, focus_key_cb, data);
+    (void)key_manager_unregister_callback(KEY_ID_FOCUS, KEY_EVENT_RELEASE, focus_key_cb, data);
+    (void)key_manager_unregister_callback(KEY_ID_FOCUS, KEY_EVENT_LONG_PRESS_3S, focus_key_cb, data);
     (void)key_manager_unregister_callback(KEY_ID_AI, KEY_EVENT_CLICK, ai_key_cb, data);
+    (void)param_manager_set(PARAM_ID_FOCUS_FRAME_STATE, FOCUS_FRAME_STATE_HIDDEN);
 }
 
 void page_ai_photo_update(void)
@@ -282,6 +458,8 @@ void page_ai_photo_update(void)
     /* 从param_manager更新AI模式显示 */
     int ai_mode = param_manager_get(PARAM_ID_AI_MODE);
     lv_label_set_text(data->resolution_label, ai_mode_options[ai_mode]);
+    update_photo_count_display(data);
+    update_focus_box_display(data, (focus_frame_state_t)param_manager_get(PARAM_ID_FOCUS_FRAME_STATE));
 }
 
 // #endregion

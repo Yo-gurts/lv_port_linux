@@ -1,6 +1,7 @@
 #include "core/file_manager.h"
 
 #include "config.h"
+#include "core/param_manager.h"
 #include "mlog.h"
 
 #include <dirent.h>
@@ -26,6 +27,15 @@ typedef struct {
 
 static media_list_t g_photo_list = {0};
 static media_list_t g_video_list = {0};
+
+/* 单张照片估算大小，单位 Byte。行: 分辨率(8M~64M)；列: 画质(超高/高/普通)。 */
+static const uint32_t g_photo_estimated_bytes[PHOTO_RESOLUTION_BUTT][QUALITY_BUTT] = {
+    {2726297U, 1279262U, 1121976U}, /* 8M */
+    {3250585U, 1572864U, 1363148U}, /* 12M */
+    {5557452U, 2726297U, 2359296U}, /* 24M */
+    {9227468U, 4718592U, 3879731U}, /* 48M */
+    {11114905U, 5557452U, 4613734U}, /* 64M */
+};
 
 typedef enum {
     PHOTO_DERIVED_TYPE_THUMBNAIL = 0,
@@ -590,6 +600,43 @@ int file_manager_get_storage_space_bytes(uint64_t* available_bytes)
         *available_bytes -= reserve;
     } else {
         *available_bytes = 0U;
+    }
+    return 0;
+}
+
+int file_manager_get_remaining_photo_count(int resolution_index, int quality_index, uint32_t* out_count)
+{
+    uint64_t available_bytes = 0U;
+    uint64_t temp_count;
+    uint32_t estimated_size_bytes;
+
+    if (out_count == NULL) {
+        return -1;
+    }
+
+    if (resolution_index < PHOTO_RESOLUTION_8M || resolution_index >= PHOTO_RESOLUTION_BUTT) {
+        resolution_index = PHOTO_RESOLUTION_8M;
+    }
+    if (quality_index < QUALITY_SUPER || quality_index >= QUALITY_BUTT) {
+        quality_index = QUALITY_SUPER;
+    }
+
+    if (file_manager_get_storage_space_bytes(&available_bytes) != 0 || available_bytes == 0U) {
+        *out_count = 0U;
+        return 0;
+    }
+
+    estimated_size_bytes = g_photo_estimated_bytes[resolution_index][quality_index];
+    if (estimated_size_bytes == 0U) {
+        *out_count = 0U;
+        return 0;
+    }
+
+    temp_count = available_bytes / (uint64_t)estimated_size_bytes;
+    if (temp_count > (uint64_t)UINT32_MAX) {
+        *out_count = UINT32_MAX;
+    } else {
+        *out_count = (uint32_t)temp_count;
     }
     return 0;
 }
