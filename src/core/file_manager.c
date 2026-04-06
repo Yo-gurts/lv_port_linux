@@ -31,6 +31,14 @@ static const uint32_t g_photo_estimated_bytes[PHOTO_RESOLUTION_BUTT][QUALITY_BUT
     {11114905U, 5557452U, 4613734U}, /* 64M */
 };
 
+/* 单位秒视频估算大小，单位 Byte。顺序: 4K/2.7K/1080P/720P。 */
+static const uint32_t g_video_estimated_bytes_per_sec[VIDEO_RESOLUTION_BUTT] = {
+    4096000U,
+    2048000U,
+    1024000U,
+    1024000U,
+};
+
 static int file_manager_is_photo_storage_ready(void)
 {
     return FILEMNG_GetStorageStatus() == FILEMNG_STORAGE_STATE_SCAN_COMPLETED;
@@ -87,6 +95,40 @@ int file_manager_get_remaining_photo_count(int resolution_index, int quality_ind
         *out_count = UINT32_MAX;
     } else {
         *out_count = (uint32_t)temp_count;
+    }
+    return 0;
+}
+
+int file_manager_get_remaining_video_seconds(int video_resolution_index, uint32_t* out_seconds)
+{
+    uint64_t available_bytes = 0U;
+    uint64_t temp_seconds;
+    uint32_t estimated_bytes_per_sec;
+
+    if (out_seconds == NULL) {
+        return -1;
+    }
+
+    if (video_resolution_index < VIDEO_RESOLUTION_4K || video_resolution_index >= VIDEO_RESOLUTION_BUTT) {
+        video_resolution_index = VIDEO_RESOLUTION_4K;
+    }
+
+    if (file_manager_get_storage_space_bytes(&available_bytes) != 0 || available_bytes == 0U) {
+        *out_seconds = 0U;
+        return 0;
+    }
+
+    estimated_bytes_per_sec = g_video_estimated_bytes_per_sec[video_resolution_index];
+    if (estimated_bytes_per_sec == 0U) {
+        *out_seconds = 0U;
+        return 0;
+    }
+
+    temp_seconds = available_bytes / (uint64_t)estimated_bytes_per_sec;
+    if (temp_seconds > (uint64_t)UINT32_MAX) {
+        *out_seconds = UINT32_MAX;
+    } else {
+        *out_seconds = (uint32_t)temp_seconds;
     }
     return 0;
 }

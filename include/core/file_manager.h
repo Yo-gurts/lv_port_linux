@@ -23,6 +23,7 @@ int file_manager_format_sdcard(void);
 int file_manager_is_storage_ready(void);
 int file_manager_get_storage_space_bytes(uint64_t* available_bytes);
 int file_manager_get_remaining_photo_count(int resolution_index, int quality_index, uint32_t* out_count);
+int file_manager_get_remaining_video_seconds(int video_resolution_index, uint32_t* out_seconds);
 
 int file_manager_refresh_photo_list(void);
 int file_manager_get_photo_count(void);

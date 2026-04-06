@@ -5,6 +5,7 @@
 #include "pages/page_video.h"
 #include "config.h"
 #include "core/font_manager.h"
+#include "core/file_manager.h"
 #include "core/key_manager.h"
 #include "core/media_manager.h"
 #include "core/page_manager.h"
@@ -23,6 +24,7 @@
 #define TOP_BAR_HEIGHT 50
 #define BOTTOM_BAR_HEIGHT 50
 #define RECORD_UI_UPDATE_PERIOD_MS 500
+#define REMAINING_TIME_UPDATE_PERIOD_MS 5000
 
 /* 视频分辨率图标 - 与video_settings保持一致 */
 static const char* video_resolution_icons[] = {
@@ -70,6 +72,39 @@ static void update_zoom_buttons_display(page_video_data_t* data)
     zoom_bar_set_value(param_manager_get(PARAM_ID_ZOOM));
 }
 
+static void format_hhmmss(uint32_t total_sec, char* out, size_t out_size)
+{
+    uint32_t hours = total_sec / 3600U;
+    uint32_t minutes = (total_sec % 3600U) / 60U;
+    uint32_t seconds = total_sec % 60U;
+
+    if (out == NULL || out_size == 0U) {
+        return;
+    }
+
+    lv_snprintf(out, out_size, "%02u:%02u:%02u", (unsigned int)hours, (unsigned int)minutes, (unsigned int)seconds);
+}
+
+static void update_remaining_record_time(page_video_data_t* data)
+{
+    int resolution_index;
+    uint32_t remaining_sec = 0U;
+    char time_text[16];
+
+    if (data == NULL || data->time_label == NULL) {
+        return;
+    }
+
+    resolution_index = param_manager_get(PARAM_ID_VIDEO_RESOLUTION);
+    if (file_manager_get_remaining_video_seconds(resolution_index, &remaining_sec) != 0) {
+        lv_label_set_text(data->time_label, "00:00:00");
+        return;
+    }
+
+    format_hhmmss(remaining_sec, time_text, sizeof(time_text));
+    lv_label_set_text(data->time_label, time_text);
+}
+
 static void update_recording_input_lock(page_video_data_t* data)
 {
     uint8_t mask;
@@ -102,9 +137,6 @@ static void update_recording_indicator(page_video_data_t* data)
     char time_text[16];
     uint32_t elapsed_ms;
     uint32_t elapsed_sec;
-    uint32_t hours;
-    uint32_t minutes;
-    uint32_t seconds;
     uint8_t dot_visible;
 
     if (data == NULL || data->record_dot == NULL || data->record_time_label == NULL) {
@@ -122,10 +154,7 @@ static void update_recording_indicator(page_video_data_t* data)
 
     elapsed_ms = lv_tick_elaps(data->record_start_tick);
     elapsed_sec = elapsed_ms / 1000U;
-    hours = elapsed_sec / 3600U;
-    minutes = (elapsed_sec % 3600U) / 60U;
-    seconds = elapsed_sec % 60U;
-    lv_snprintf(time_text, sizeof(time_text), "%02u:%02u:%02u", (unsigned int)hours, (unsigned int)minutes, (unsigned int)seconds);
+    format_hhmmss(elapsed_sec, time_text, sizeof(time_text));
     lv_label_set_text(data->record_time_label, time_text);
 
     dot_visible = (uint8_t)(((elapsed_ms / 500U) % 2U) == 0U);
@@ -157,6 +186,25 @@ static void record_ui_timer_cb(lv_timer_t* timer)
     }
 
     update_recording_indicator(data);
+}
+
+static void remaining_time_timer_cb(lv_timer_t* timer)
+{
+    page_video_data_t* data;
+
+    if (timer == NULL) {
+        return;
+    }
+
+    data = (page_video_data_t*)lv_timer_get_user_data(timer);
+    if (data == NULL || data->container == NULL) {
+        return;
+    }
+    if (lv_obj_has_flag(data->container, LV_OBJ_FLAG_HIDDEN)) {
+        return;
+    }
+
+    update_remaining_record_time(data);
 }
 
 static int page_video_stop_recording_if_needed(void* user_data)
@@ -280,6 +328,7 @@ static void record_key_cb(key_id_t key, key_event_type_t event_type, void* user_
         lv_label_set_text(data->record_time_label, "00:00:00");
         update_recording_input_lock(data);
         update_recording_indicator(data);
+        update_remaining_record_time(data);
         return;
     }
 
@@ -291,6 +340,7 @@ static void record_key_cb(key_id_t key, key_event_type_t event_type, void* user_
     data->is_recording = 0;
     update_recording_input_lock(data);
     update_recording_indicator(data);
+    update_remaining_record_time(data);
 }
 
 // #endregion
@@ -437,6 +487,10 @@ void page_video_destroy(void)
         lv_timer_del(data->record_ui_timer);
         data->record_ui_timer = NULL;
     }
+    if (data->remaining_time_timer != NULL) {
+        lv_timer_del(data->remaining_time_timer);
+        data->remaining_time_timer = NULL;
+    }
     if (data->record_input_locked) {
         key_manager_set_block_non_power(data->record_input_prev_mask);
         data->record_input_locked = 0U;
@@ -471,6 +525,7 @@ void page_video_show(void)
     update_zoom_buttons_display(data);
     update_recording_input_lock(data);
     update_recording_indicator(data);
+    update_remaining_record_time(data);
 
     /* 使用全局状态栏 */
     status_bar_show(true);
@@ -479,6 +534,9 @@ void page_video_show(void)
 
     if (data->record_ui_timer == NULL) {
         data->record_ui_timer = lv_timer_create(record_ui_timer_cb, RECORD_UI_UPDATE_PERIOD_MS, data);
+    }
+    if (data->remaining_time_timer == NULL) {
+        data->remaining_time_timer = lv_timer_create(remaining_time_timer_cb, REMAINING_TIME_UPDATE_PERIOD_MS, data);
     }
     lv_obj_clear_flag(data->container, LV_OBJ_FLAG_HIDDEN);
 
@@ -502,6 +560,10 @@ void page_video_hide(void)
         lv_timer_del(data->record_ui_timer);
         data->record_ui_timer = NULL;
     }
+    if (data->remaining_time_timer != NULL) {
+        lv_timer_del(data->remaining_time_timer);
+        data->remaining_time_timer = NULL;
+    }
     if (data->record_input_locked) {
         key_manager_set_block_non_power(data->record_input_prev_mask);
         data->record_input_locked = 0U;
@@ -521,6 +583,7 @@ void page_video_update(void)
     update_zoom_buttons_display(data);
     update_recording_input_lock(data);
     update_recording_indicator(data);
+    update_remaining_record_time(data);
 }
 
 // #endregion
