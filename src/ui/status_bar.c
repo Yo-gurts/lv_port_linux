@@ -46,11 +46,11 @@ static const char* get_battery_icon_path(int level)
     if (level < 0) {
         return "A:" RES_ICON_PATH "/battery-charging.png";
     }
-    if (level >= 100) {
+    if (level >= 80) {
         return "A:" RES_ICON_PATH "/battery-full.png";
-    } else if (level >= 66) {
+    } else if (level >= 50) {
         return "A:" RES_ICON_PATH "/battery-half.png";
-    } else if (level >= 33) {
+    } else if (level >= 20) {
         return "A:" RES_ICON_PATH "/battery-low.png";
     } else {
         return "A:" RES_ICON_PATH "/battery-low.png";
