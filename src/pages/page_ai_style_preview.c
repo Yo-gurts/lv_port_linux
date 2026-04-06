@@ -6,12 +6,14 @@
 #include "config.h"
 #include "core/file_manager.h"
 #include "core/font_manager.h"
+#include "core/image_process_manager.h"
+#include "core/key_manager.h"
 #include "core/page_manager.h"
-#include "core/param_manager.h"
 #include "core/style_manager.h"
 #include "mlog.h"
 #include "ui/gesture_back.h"
 #include "ui/status_bar.h"
+#include "ui/top_notice.h"
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -29,7 +31,6 @@
 // #############################################################################
 
 #define PREVIEW_BACK_BTN_SIZE 50
-#define PREVIEW_WIFI_ICON_SIZE 45
 #define STYLE_PANEL_HEIGHT 116
 #define STYLE_PANEL_BOTTOM_OFFSET 10
 #define STYLE_THUMB_WIDTH 80
@@ -40,8 +41,44 @@
 #define STYLE_PANEL_BOTTOM_PAD 2
 #define STYLE_FOCUS_Y_OFFSET -1
 
+#define STYLE_PROCESS_POLL_MS 100
+
 static const char* g_style_names[AI_STYLE_PREVIEW_STYLE_COUNT] = {
-    "原图", "胶片", "日系", "赛博", "复古", "黑白"
+    "原图", "3D风格", "写实风", "天使风", "动漫风",
+    "日漫风", "公主风", "梦幻风", "水墨风", "新莫奈花园风",
+    "水彩风", "莫奈花园风", "精致美漫", "赛博机械", "精致韩漫",
+    "国风-水墨", "浪漫光影", "瓷娃娃", "中国红", "丑萌粘土",
+    "可爱玩偶", "3D游戏Z世代风", "动画电影", "玩偶", "青年15岁",
+    "中年35岁", "老年80岁"
+};
+
+static const char* g_style_prompts[AI_STYLE_PREVIEW_STYLE_COUNT - 1] = {
+    "将这张照片重绘成 3D 风格",
+    "将这张照片重绘成 写实风 风格",
+    "将这张照片重绘成 天使风 风格",
+    "将这张照片重绘成 动漫风 风格",
+    "将这张照片重绘成 日漫风 风格",
+    "将这张照片重绘成 公主风 风格",
+    "将这张照片重绘成 梦幻风 风格",
+    "将这张照片重绘成 水墨风 风格",
+    "将这张照片重绘成 新莫奈花园风 风格",
+    "将这张照片重绘成 水彩风 风格",
+    "将这张照片重绘成 莫奈花园风 风格",
+    "将这张照片重绘成 精致美漫 风格",
+    "将这张照片重绘成 赛博机械 风格",
+    "将这张照片重绘成 精致韩漫 风格",
+    "将这张照片重绘成 国风-水墨 风格",
+    "将这张照片重绘成 浪漫光影 风格",
+    "将这张照片重绘成 瓷娃娃 风格",
+    "将这张照片重绘成 中国红 风格",
+    "将这张照片重绘成 丑萌粘土 风格",
+    "将这张照片重绘成 可爱玩偶 风格",
+    "将这张照片重绘成 3D游戏Z世代风 风格",
+    "将这张照片重绘成 动画电影 风格",
+    "将这张照片重绘成 玩偶 风格",
+    "将这张照片重绘成 青年15岁 风格，年轻，稚嫩",
+    "将这张照片重绘成 中年35岁 风格，成熟，稳重",
+    "将这张照片重绘成 老年80岁 风格，白发，皱纹",
 };
 
 static void refresh_latest_photo(page_ai_style_preview_data_t* data);
@@ -49,16 +86,21 @@ static void update_style_selection(page_ai_style_preview_data_t* data);
 static void scroll_to_style(page_ai_style_preview_data_t* data, int index, lv_anim_enable_t anim_en);
 static void set_style_panel_visible(page_ai_style_preview_data_t* data, bool visible, lv_anim_enable_t anim_en);
 static void align_focus_frame(page_ai_style_preview_data_t* data);
+static void set_loading_visible(page_ai_style_preview_data_t* data, bool visible);
+static void stop_process_poll_timer(page_ai_style_preview_data_t* data);
+static void start_style_process(page_ai_style_preview_data_t* data);
+
 static void style_item_click_cb(lv_event_t* e);
 static void style_list_scroll_end_cb(lv_event_t* e);
 static void back_btn_cb(lv_event_t* e);
 static void gesture_event_cb(lv_event_t* e);
+static void process_poll_timer_cb(lv_timer_t* timer);
+static void ai_key_cb(key_id_t key, key_event_type_t event_type, void* user_data);
 
 // #endregion
 // #############################################################################
 // ! #region 4. 内部工具函数
 // #############################################################################
-
 
 static void refresh_latest_photo(page_ai_style_preview_data_t* data)
 {
@@ -74,22 +116,34 @@ static void refresh_latest_photo(page_ai_style_preview_data_t* data)
 
     total_photos = file_manager_get_photo_count();
     if (total_photos <= 0) {
-        data->latest_photo_path[0] = '\0';
+        data->latest_photo_display_path[0] = '\0';
+        data->latest_photo_real_path[0] = '\0';
         lv_img_set_src(data->image, NULL);
         return;
     }
 
-    if (file_manager_get_photo_subpic_path(0, data->latest_photo_path, sizeof(data->latest_photo_path), FILE_PATH_LV) != 0) {
-        if (file_manager_get_photo_path(0, data->latest_photo_path, sizeof(data->latest_photo_path), FILE_PATH_LV) != 0) {
-            data->latest_photo_path[0] = '\0';
+    if (file_manager_get_photo_subpic_path(0, data->latest_photo_display_path, sizeof(data->latest_photo_display_path),
+            FILE_PATH_LV)
+        != 0) {
+        if (file_manager_get_photo_path(0, data->latest_photo_display_path, sizeof(data->latest_photo_display_path),
+                FILE_PATH_LV)
+            != 0) {
+            data->latest_photo_display_path[0] = '\0';
+            data->latest_photo_real_path[0] = '\0';
             lv_img_set_src(data->image, NULL);
             return;
         }
     }
 
-    lv_img_set_src(data->image, data->latest_photo_path);
+    if (file_manager_get_photo_path(0, data->latest_photo_real_path, sizeof(data->latest_photo_real_path),
+            FILE_PATH_REAL)
+        != 0) {
+        data->latest_photo_real_path[0] = '\0';
+    }
+
+    lv_img_set_src(data->image, data->latest_photo_display_path);
     lv_obj_center(data->image);
-    MLOG_INFO("Style preview showing photo: %s", data->latest_photo_path);
+    MLOG_INFO("Style preview showing photo: %s", data->latest_photo_display_path);
 }
 
 static void update_style_selection(page_ai_style_preview_data_t* data)
@@ -194,6 +248,79 @@ static void align_focus_frame(page_ai_style_preview_data_t* data)
     lv_obj_align(data->style_focus_frame, LV_ALIGN_TOP_MID, 0, y_in_panel + STYLE_FOCUS_Y_OFFSET);
 }
 
+static void set_loading_visible(page_ai_style_preview_data_t* data, bool visible)
+{
+    if (!data || !data->loading_overlay)
+        return;
+
+    if (visible) {
+        lv_label_set_text(data->loading_label, "正在处理中，请稍后。");
+        lv_obj_clear_flag(data->loading_overlay, LV_OBJ_FLAG_HIDDEN);
+    } else {
+        lv_obj_add_flag(data->loading_overlay, LV_OBJ_FLAG_HIDDEN);
+    }
+}
+
+static void stop_process_poll_timer(page_ai_style_preview_data_t* data)
+{
+    if (!data)
+        return;
+
+    if (data->process_poll_timer) {
+        lv_timer_del(data->process_poll_timer);
+        data->process_poll_timer = NULL;
+    }
+}
+
+static void start_style_process(page_ai_style_preview_data_t* data)
+{
+    int ret;
+    int prompt_index;
+
+    if (!data)
+        return;
+
+    if (data->selected_style_index <= 0) {
+        if (data->latest_photo_display_path[0] != '\0') {
+            lv_img_set_src(data->image, data->latest_photo_display_path);
+            lv_obj_center(data->image);
+        }
+        return;
+    }
+
+    if (data->processing) {
+        return;
+    }
+
+    if (data->latest_photo_real_path[0] == '\0') {
+        refresh_latest_photo(data);
+    }
+    if (data->latest_photo_real_path[0] == '\0') {
+        top_notice_show("暂无可处理图片", TOP_NOTICE_TYPE_WARNING);
+        return;
+    }
+
+    prompt_index = data->selected_style_index - 1;
+    if (prompt_index < 0 || prompt_index >= AI_STYLE_PREVIEW_STYLE_COUNT - 1) {
+        return;
+    }
+
+    ret = image_process_manager_start_style(data->latest_photo_real_path, g_style_prompts[prompt_index]);
+    if (ret != 0) {
+        top_notice_show("启动处理失败，请稍后重试", TOP_NOTICE_TYPE_WARNING);
+        return;
+    }
+
+    data->processing = 1;
+    set_loading_visible(data, true);
+
+    stop_process_poll_timer(data);
+    data->process_poll_timer = lv_timer_create(process_poll_timer_cb, STYLE_PROCESS_POLL_MS, data);
+    if (data->process_poll_timer) {
+        lv_timer_ready(data->process_poll_timer);
+    }
+}
+
 // #endregion
 // #############################################################################
 // ! #region 5. 对外接口函数
@@ -279,6 +406,61 @@ static void gesture_event_cb(lv_event_t* e)
         set_style_panel_visible(data, true, LV_ANIM_ON);
         lv_indev_wait_release(indev);
     }
+}
+
+static void process_poll_timer_cb(lv_timer_t* timer)
+{
+    page_ai_style_preview_data_t* data;
+    image_process_state_t state;
+    char result_path[FILE_MANAGER_MAX_PATH_LEN];
+
+    if (!timer)
+        return;
+
+    data = (page_ai_style_preview_data_t*)lv_timer_get_user_data(timer);
+    if (!data || !data->container)
+        return;
+
+    state = image_process_manager_get_state();
+    if (state == IMAGE_PROCESS_STATE_RUNNING) {
+        return;
+    }
+
+    if (state == IMAGE_PROCESS_STATE_SUCCESS) {
+        if (image_process_manager_get_result_path(result_path, sizeof(result_path), 1) == 0) {
+            snprintf(data->processed_photo_display_path, sizeof(data->processed_photo_display_path), "%s", result_path);
+            lv_img_set_src(data->image, data->processed_photo_display_path);
+            lv_obj_center(data->image);
+            MLOG_INFO("Style process success, result: %s", data->processed_photo_display_path);
+        }
+    } else if (state == IMAGE_PROCESS_STATE_FAILED) {
+        int err = image_process_manager_get_error();
+        char notice[64];
+        snprintf(notice, sizeof(notice), "处理失败(%d)，请重试", err);
+        top_notice_show(notice, TOP_NOTICE_TYPE_WARNING);
+        MLOG_ERR("Style process failed: %d", err);
+    }
+
+    data->processing = 0;
+    set_loading_visible(data, false);
+    stop_process_poll_timer(data);
+}
+
+static void ai_key_cb(key_id_t key, key_event_type_t event_type, void* user_data)
+{
+    page_ai_style_preview_data_t* data = (page_ai_style_preview_data_t*)user_data;
+
+    if (key != KEY_ID_AI || event_type != KEY_EVENT_CLICK) {
+        return;
+    }
+    if (!data || !data->container) {
+        return;
+    }
+    if (lv_obj_has_flag(data->container, LV_OBJ_FLAG_HIDDEN)) {
+        return;
+    }
+
+    start_style_process(data);
 }
 
 // #endregion
@@ -402,16 +584,36 @@ void page_ai_style_preview_create(void)
     lv_obj_align(data->style_focus_frame, LV_ALIGN_TOP_MID, 0, STYLE_PANEL_TOP_PAD);
     lv_obj_add_style(data->style_focus_frame, &style_photo_filter_focus_frame, LV_PART_MAIN);
 
+    data->loading_overlay = lv_obj_create(data->container);
+    lv_obj_set_size(data->loading_overlay, LV_PCT(100), LV_PCT(100));
+    lv_obj_add_flag(data->loading_overlay, LV_OBJ_FLAG_FLOATING);
+    lv_obj_add_flag(data->loading_overlay, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_set_style_bg_color(data->loading_overlay, lv_color_black(), LV_PART_MAIN);
+    lv_obj_set_style_bg_opa(data->loading_overlay, LV_OPA_50, LV_PART_MAIN);
+    lv_obj_set_style_border_width(data->loading_overlay, 0, LV_PART_MAIN);
+    lv_obj_clear_flag(data->loading_overlay, LV_OBJ_FLAG_SCROLLABLE);
+
+    data->loading_spinner = lv_spinner_create(data->loading_overlay);
+    lv_spinner_set_anim_params(data->loading_spinner, 1000, 60);
+    lv_obj_set_size(data->loading_spinner, 60, 60);
+    lv_obj_align(data->loading_spinner, LV_ALIGN_CENTER, 0, -20);
+
+    data->loading_label = lv_label_create(data->loading_overlay);
+    lv_label_set_text(data->loading_label, "正在处理中，请稍后。");
+    lv_obj_add_style(data->loading_label, &SMALL_SIZE, LV_PART_MAIN);
+    lv_obj_set_style_text_color(data->loading_label, lv_color_white(), LV_PART_MAIN);
+    lv_obj_align(data->loading_label, LV_ALIGN_CENTER, 0, 40);
+
     data->selected_style_index = 0;
     data->panel_visible = 1;
     update_style_selection(data);
     scroll_to_style(data, data->selected_style_index, LV_ANIM_OFF);
     align_focus_frame(data);
 
+    (void)image_process_manager_init();
+    image_process_manager_reset();
     gesture_back_enable_event_bubble_recursive(data->container);
-
     page_set_private_data(data);
-
 }
 
 void page_ai_style_preview_destroy(void)
@@ -422,11 +624,20 @@ void page_ai_style_preview_destroy(void)
         return;
     }
 
+    if (data->ai_key_registered) {
+        (void)key_manager_unregister_callback(KEY_ID_AI, KEY_EVENT_CLICK, ai_key_cb, data);
+        data->ai_key_registered = 0;
+    }
+
+    stop_process_poll_timer(data);
+    image_process_manager_reset();
+
     if (data->container) {
         lv_obj_del(data->container);
         data->container = NULL;
     }
 
+    image_process_manager_deinit();
     free(data);
 }
 
@@ -441,8 +652,19 @@ void page_ai_style_preview_show(void)
     gesture_back_set_left_edge_swipe_cb(data->container, back_btn_cb);
     refresh_latest_photo(data);
     set_style_panel_visible(data, true, LV_ANIM_OFF);
+    set_loading_visible(data, false);
+    data->processing = 0;
+    image_process_manager_reset();
+    stop_process_poll_timer(data);
 
-    /* 使用全局状态栏 */
+    if (!data->ai_key_registered) {
+        if (key_manager_register_callback(KEY_ID_AI, KEY_EVENT_CLICK, ai_key_cb, data) == 0) {
+            data->ai_key_registered = 1;
+        } else {
+            MLOG_WARN("register ai style preview key callback failed");
+        }
+    }
+
     status_bar_show(true);
     status_bar_set_icons(STATUS_BAR_ICON_SD, STATUS_BAR_ICON_WIFI, STATUS_BAR_ICON_BATTERY);
 
@@ -456,6 +678,15 @@ void page_ai_style_preview_hide(void)
     if (!data || !data->container) {
         return;
     }
+
+    if (data->ai_key_registered) {
+        (void)key_manager_unregister_callback(KEY_ID_AI, KEY_EVENT_CLICK, ai_key_cb, data);
+        data->ai_key_registered = 0;
+    }
+
+    stop_process_poll_timer(data);
+    set_loading_visible(data, false);
+    data->processing = 0;
 
     status_bar_show(false);
     lv_obj_add_flag(data->container, LV_OBJ_FLAG_HIDDEN);
