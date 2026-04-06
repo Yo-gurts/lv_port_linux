@@ -181,7 +181,7 @@ static int handle_take_photo(int32_t args)
 
     (void)args;
 
-    if (!file_manager_is_storage_ready()) {
+    if (param_manager_get(PARAM_ID_SD_READY) != SD_READY_TRUE) {
         top_notice_show_for("SD卡未就绪", TOP_NOTICE_TYPE_WARNING, 2000);
         MLOG_WARN("拍照失败: SD卡未就绪");
         return MEDIA_MANAGER_ESTATE;

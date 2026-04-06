@@ -28,6 +28,7 @@ typedef enum {
     PARAM_ID_WIFI_SIGNAL_DBM, /* WiFi信号强度：dBm，未连接为-1 */
     PARAM_ID_WIFI_ENABLED, /* WiFi开关状态：0关闭，1开启 */
     PARAM_ID_BATTERY_VAL, /* 电池电量：0~100，充电为-1 */
+    PARAM_ID_SD_READY, /* SD卡状态：sd_ready_state_t */
     PARAM_ID_BUTT,
     PARAM_ID_NONE = -1 /* 无效ID，不同步到param_manager */
 } param_id_t;
@@ -110,6 +111,11 @@ typedef enum {
     FOCUS_FRAME_STATE_NORMAL = 1,
     FOCUS_FRAME_STATE_LOCKING = 2,
 } focus_frame_state_t;
+
+typedef enum {
+    SD_READY_FALSE = 0,
+    SD_READY_TRUE = 1,
+} sd_ready_state_t;
 
 /* 参数管理器初始化 */
 int param_manager_init(void);

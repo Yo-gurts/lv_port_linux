@@ -4,7 +4,6 @@
 
 #include "ui/status_bar.h"
 #include "config.h"
-#include "core/file_manager.h"
 #include "core/param_manager.h"
 #include "core/style_manager.h"
 #include "mlog.h"
@@ -91,7 +90,7 @@ static status_bar_icon_type_t normalize_icon_type(status_bar_icon_type_t type)
 static const char* get_icon_path(status_bar_icon_type_t type)
 {
     if (type == STATUS_BAR_ICON_SD) {
-        bool ready = file_manager_is_storage_ready();
+        bool ready = param_manager_get(PARAM_ID_SD_READY) == SD_READY_TRUE;
         return ready ? "A:" RES_ICON_PATH "/sd_online.png" : "A:" RES_ICON_PATH "/sd_offline.png";
     }
 
@@ -148,9 +147,8 @@ static void status_bar_param_cb(param_id_t id, int value, void* user_data)
     LV_UNUSED(value);
     LV_UNUSED(user_data);
 
-    /* SD卡状态变化通过消息机制通知，暂不通过param_manager */
     if (id == PARAM_ID_BATTERY_VAL || id == PARAM_ID_WIFI_ENABLED || id == PARAM_ID_WIFI_CONNECTED
-        || id == PARAM_ID_WIFI_SIGNAL_DBM) {
+        || id == PARAM_ID_WIFI_SIGNAL_DBM || id == PARAM_ID_SD_READY) {
         update_icons();
     }
 }

@@ -4,7 +4,6 @@
 
 #include "pages/page_home.h"
 #include "config.h"
-#include "core/file_manager.h"
 #include "core/font_manager.h"
 #include "core/media_manager.h"
 #include "core/param_manager.h"
@@ -152,7 +151,7 @@ static void album_button_cb(lv_event_t* e)
 {
     LV_UNUSED(e);
     MLOG_INFO("album button clicked");
-    if (!file_manager_is_storage_ready()) {
+    if (param_manager_get(PARAM_ID_SD_READY) != SD_READY_TRUE) {
         top_notice_show("SD卡未插入", TOP_NOTICE_TYPE_WARNING);
         return;
     }

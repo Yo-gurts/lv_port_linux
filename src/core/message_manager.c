@@ -1,6 +1,7 @@
 #define DEBUG
 
 #include "core/message_manager.h"
+#include "core/param_manager.h"
 #include "appcomm.h"
 #include "mlog.h"
 #include "photomng.h"
@@ -49,19 +50,23 @@ static bool handle_sd_card_event_notice(TOPIC_ID topic)
     const char* notice_text = NULL;
     top_notice_type_t notice_type = TOP_NOTICE_TYPE_INFO;
     uint32_t notice_duration_ms = 2000;
+    sd_ready_state_t sd_ready = SD_READY_FALSE;
 
     switch (topic) {
     case EVENT_MODEMNG_CARD_REMOVE:
         notice_text = "SD卡已拔出";
         notice_type = TOP_NOTICE_TYPE_WARNING;
+        sd_ready = SD_READY_FALSE;
         break;
     case EVENT_MODEMNG_CARD_AVAILABLE:
         notice_text = "SD卡已就绪";
         notice_type = TOP_NOTICE_TYPE_SUCCESS;
+        sd_ready = SD_READY_TRUE;
         break;
     case EVENT_MODEMNG_CARD_CHECKING:
         notice_text = "SD卡检测中...";
         notice_duration_ms = 1500;
+        sd_ready = SD_READY_FALSE;
         break;
     case EVENT_MODEMNG_CARD_UNAVAILABLE:
     case EVENT_MODEMNG_CARD_ERROR:
@@ -69,32 +74,39 @@ static bool handle_sd_card_event_notice(TOPIC_ID topic)
     case EVENT_MODEMNG_CARD_MOUNT_FAILED:
         notice_text = "SD卡不可用";
         notice_type = TOP_NOTICE_TYPE_ERROR;
+        sd_ready = SD_READY_FALSE;
         break;
     case EVENT_MODEMNG_CARD_READ_ONLY:
         notice_text = "SD卡为只读模式";
         notice_type = TOP_NOTICE_TYPE_WARNING;
+        sd_ready = SD_READY_TRUE;
         break;
     case EVENT_MODEMNG_CARD_SLOW:
         notice_text = "SD卡速度较慢";
         notice_type = TOP_NOTICE_TYPE_WARNING;
+        sd_ready = SD_READY_TRUE;
         break;
     case EVENT_MODEMNG_CARD_FORMAT:
     case EVENT_MODEMNG_CARD_FORMATING:
         notice_text = "SD卡格式化中...";
         notice_duration_ms = 1500;
+        sd_ready = SD_READY_FALSE;
         break;
     case EVENT_MODEMNG_CARD_FORMAT_SUCCESSED:
         notice_text = "SD卡格式化完成";
         notice_type = TOP_NOTICE_TYPE_SUCCESS;
+        sd_ready = SD_READY_TRUE;
         break;
     case EVENT_MODEMNG_CARD_FORMAT_FAILED:
         notice_text = "SD卡格式化失败";
         notice_type = TOP_NOTICE_TYPE_ERROR;
+        sd_ready = SD_READY_FALSE;
         break;
     default:
         return false;
     }
 
+    (void)param_manager_set(PARAM_ID_SD_READY, sd_ready);
     status_bar_refresh();
     top_notice_show_for(notice_text, notice_type, notice_duration_ms);
     return true;

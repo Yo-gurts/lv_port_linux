@@ -9,6 +9,7 @@
 #include "core/font_manager.h"
 #include "core/key_manager.h"
 #include "core/page_manager.h"
+#include "core/param_manager.h"
 #include "core/style_manager.h"
 #include "mlog.h"
 #include "ui/gesture_back.h"
@@ -1222,7 +1223,7 @@ void page_album_show(void)
         return;
 
     /* 检查存储是否就绪，未插入 SD 卡时提示并返回 */
-    if (!file_manager_is_storage_ready()) {
+    if (param_manager_get(PARAM_ID_SD_READY) != SD_READY_TRUE) {
         top_notice_show("SD卡未插入", TOP_NOTICE_TYPE_WARNING);
         page_manager_back();
         return;

@@ -10,6 +10,7 @@
 #include "core/media_manager.h"
 #include "core/page_manager.h"
 #include "core/player_manager.h"
+#include "core/param_manager.h"
 #include "core/power_manager.h"
 #include "core/style_manager.h"
 #include "mlog.h"
@@ -800,7 +801,7 @@ void page_video_preview_show(void)
     data->switched_to_playback_mode = (g_return_work_mode >= 0 && !media_manager_is_playback_work_mode(g_return_work_mode));
     g_return_work_mode = -1;
 
-    if (!file_manager_is_storage_ready()) {
+    if (param_manager_get(PARAM_ID_SD_READY) != SD_READY_TRUE) {
         MLOG_WARN("video preview show aborted: storage not ready");
         (void)player_manager_stop();
         page_manager_back();
