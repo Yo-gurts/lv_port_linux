@@ -9,6 +9,7 @@
 #include "core/image_process_manager.h"
 #include "core/key_manager.h"
 #include "core/page_manager.h"
+#include "core/param_manager.h"
 #include "core/style_manager.h"
 #include "mlog.h"
 #include "ui/gesture_back.h"
@@ -449,6 +450,8 @@ static void process_poll_timer_cb(lv_timer_t* timer)
 static void ai_key_cb(key_id_t key, key_event_type_t event_type, void* user_data)
 {
     page_ai_style_preview_data_t* data = (page_ai_style_preview_data_t*)user_data;
+    int wifi_enabled;
+    int wifi_connected;
 
     if (key != KEY_ID_AI || event_type != KEY_EVENT_CLICK) {
         return;
@@ -457,6 +460,18 @@ static void ai_key_cb(key_id_t key, key_event_type_t event_type, void* user_data
         return;
     }
     if (lv_obj_has_flag(data->container, LV_OBJ_FLAG_HIDDEN)) {
+        return;
+    }
+
+    wifi_enabled = param_manager_get(PARAM_ID_WIFI_ENABLED);
+    if (wifi_enabled != 1) {
+        top_notice_show("WiFi未使能", TOP_NOTICE_TYPE_WARNING);
+        return;
+    }
+
+    wifi_connected = param_manager_get(PARAM_ID_WIFI_CONNECTED);
+    if (wifi_connected != 1) {
+        top_notice_show("WiFi未连接", TOP_NOTICE_TYPE_WARNING);
         return;
     }
 
