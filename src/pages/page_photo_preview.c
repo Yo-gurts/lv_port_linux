@@ -9,6 +9,7 @@
 #include "core/font_manager.h"
 #include "core/page_manager.h"
 #include "core/style_manager.h"
+#include "ui/gesture_back.h"
 #include "ui/top_notice.h"
 #include "mlog.h"
 #include <stdio.h>
@@ -33,7 +34,6 @@ static int clamp_int(int value, int min_value, int max_value);
 static int get_album_total_count(void);
 static int get_wrapped_index(const page_photo_preview_data_t* data, int index);
 static void set_image_by_index(lv_obj_t* image, int photo_index);
-static void enable_event_bubble_children_recursive(lv_obj_t* parent);
 static void render_current_photo(page_photo_preview_data_t* data);
 static void reset_swipe_state(page_photo_preview_data_t* data);
 static void update_slide_positions(page_photo_preview_data_t* data, int offset_x);
@@ -88,22 +88,6 @@ static void set_image_by_index(lv_obj_t* image, int photo_index)
         lv_img_set_src(image, subpic_path);
     else
         lv_img_set_src(image, NULL);
-}
-
-static void enable_event_bubble_children_recursive(lv_obj_t* parent)
-{
-    uint32_t child_count;
-    uint32_t i;
-
-    if (!parent)
-        return;
-
-    child_count = lv_obj_get_child_count(parent);
-    for (i = 0; i < child_count; i++) {
-        lv_obj_t* child = lv_obj_get_child(parent, i);
-        lv_obj_add_flag(child, LV_OBJ_FLAG_EVENT_BUBBLE);
-        enable_event_bubble_children_recursive(child);
-    }
 }
 
 static void render_current_photo(page_photo_preview_data_t* data)
@@ -270,9 +254,6 @@ static void swipe_event_cb(lv_event_t* e)
     int move_step_x;
     int final_direction;
     int same_direction;
-    int from_left_edge;
-    int from_right_edge;
-    int container_width;
     int current_end_x;
     int target_end_x;
 
@@ -382,28 +363,9 @@ static void swipe_event_cb(lv_event_t* e)
             return;
         }
 
-        /* 边缘起点手势仅用于返回，不显示或提交翻页。 */
+        /* 边缘起点手势仅用于返回，由 gesture_back 统一处理。 */
         if (data->drag_ignore) {
-            container_width = lv_obj_get_width(data->container);
-            from_left_edge = (data->drag_start_x <= SWIPE_BACK_EDGE_THRESHOLD_PX);
-            from_right_edge = (data->drag_start_x >= (container_width - SWIPE_BACK_EDGE_THRESHOLD_PX));
-            if ((from_left_edge && data->drag_direction == PREVIEW_DRAG_DIR_PREV)
-                || (from_right_edge && data->drag_direction == PREVIEW_DRAG_DIR_NEXT)) {
-                back_btn_cb(NULL);
-                return;
-            }
-
             reset_swipe_state(data);
-            return;
-        }
-
-        /* 统一在本页处理边缘滑动返回：左边缘右滑 / 右边缘左滑。 */
-        container_width = lv_obj_get_width(data->container);
-        from_left_edge = (data->drag_start_x <= SWIPE_BACK_EDGE_THRESHOLD_PX);
-        from_right_edge = (data->drag_start_x >= (container_width - SWIPE_BACK_EDGE_THRESHOLD_PX));
-        if ((from_left_edge && data->drag_direction == PREVIEW_DRAG_DIR_PREV)
-            || (from_right_edge && data->drag_direction == PREVIEW_DRAG_DIR_NEXT)) {
-            back_btn_cb(NULL);
             return;
         }
 
@@ -506,8 +468,9 @@ void page_photo_preview_create(void)
     lv_obj_add_event_cb(data->container, swipe_event_cb, LV_EVENT_PRESSING, data);
     lv_obj_add_event_cb(data->container, swipe_event_cb, LV_EVENT_RELEASED, data);
     lv_obj_add_event_cb(data->container, swipe_event_cb, LV_EVENT_PRESS_LOST, data);
-    lv_obj_add_flag(data->image_area, LV_OBJ_FLAG_EVENT_BUBBLE);
-    enable_event_bubble_children_recursive(data->image_area);
+    gesture_back_register_events(data->container);
+    gesture_back_enable_event_bubble_recursive(data->container);
+    gesture_back_set_left_edge_swipe_cb(data->container, back_btn_cb);
 
     reset_swipe_state(data);
     page_set_private_data(data);
@@ -532,6 +495,9 @@ void page_photo_preview_show(void)
     page_photo_preview_data_t* data = (page_photo_preview_data_t*)page_get_private_data();
     if (!data || !data->container)
         return;
+
+    /* gesture_back 为全局单实例，页面显示时重新声明当前活跃容器。 */
+    gesture_back_set_left_edge_swipe_cb(data->container, back_btn_cb);
 
     reset_swipe_state(data);
     data->total_photos = get_album_total_count();
@@ -560,6 +526,9 @@ void page_photo_preview_hide(void)
     page_photo_preview_data_t* data = (page_photo_preview_data_t*)page_get_private_data();
     if (!data || !data->container)
         return;
+
+    /* 页面隐藏时主动解绑，避免隐藏页继续占用 gesture_back 活跃容器。 */
+    gesture_back_clear_active_swipe_cb(data->container);
 
     reset_swipe_state(data);
     top_notice_hide();

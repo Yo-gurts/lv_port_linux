@@ -8,7 +8,7 @@
 - 松手后切换或撤销
 - 左/右边缘滑动返回上一页
 
-避免依赖全局 `gesture_back` 的 `LV_EVENT_GESTURE` 抢占，保证预览页拖拽连续性。
+在保留本页翻页跟手体验的同时，复用全局 `gesture_back` 处理边缘返回提示与触发。
 
 ## 2. 核心方案
 
@@ -25,6 +25,7 @@
 - 只跟踪方向用于返回判定
 - 不加载 `target_image`
 - 不显示目标页预览
+- 返回提示图标与最终返回触发由 `gesture_back` 统一处理
 
 ## 3. 方向判定规则
 
@@ -51,19 +52,18 @@
 
 这可覆盖“先左滑后右滑”场景，满足用户撤销意图。
 
-## 4. 边缘返回规则
+## 4. 边缘返回规则（由 gesture_back 统一）
 
-返回也在本页统一处理，规则与原 `gesture_back` 语义一致：
+返回规则由 `gesture_back` 统一执行：
 
-- 左边缘起滑 + 向右 => 返回
-- 右边缘起滑 + 向左 => 返回
+- 左边缘起滑 + 向右 + 距离达到阈值 + 抬手 => 返回
+- 右边缘起滑 + 向左 + 距离达到阈值 + 抬手 => 返回
 
-边缘阈值沿用 `SWIPE_BACK_EDGE_THRESHOLD_PX`。
+本页仅负责在边缘起点时禁用翻页提交：
 
-边缘起点手势不参与翻页提交：
-
-- 满足边缘返回方向时执行返回
-- 不满足时直接撤销（复位），不显示翻页结果
+- 不加载 `target_image`
+- 不提交翻页动画
+- 直接复位本页翻页状态，避免与 `gesture_back` 竞争
 
 ## 5. 事件模型
 
@@ -74,7 +74,16 @@
 - `LV_EVENT_RELEASED`
 - `LV_EVENT_PRESS_LOST`
 
-同时为 `image_area` 子树开启 `LV_OBJ_FLAG_EVENT_BUBBLE`，确保按在图片上时事件可冒泡到 `container`。
+同时接入 `gesture_back`：
+
+- `gesture_back_register_events(data->container)`
+- `gesture_back_enable_event_bubble_recursive(data->container)`
+- `gesture_back_set_left_edge_swipe_cb(data->container, back_btn_cb)`
+
+生命周期约束：
+
+- `show()` 重新调用 `gesture_back_set_left_edge_swipe_cb`，抢回活跃容器
+- `hide()` 调用 `gesture_back_clear_active_swipe_cb(data->container)` 主动安全解绑
 
 ## 6. 状态字段
 
@@ -88,6 +97,9 @@
 
 ## 7. 与 gesture_back 的关系
 
-本页不再接入 `gesture_back_register_events` / `gesture_back_set_left_edge_swipe_cb`。
+本页已接入并复用 `gesture_back`，职责划分如下：
 
-原因：`gesture_back` 的 `LV_EVENT_GESTURE` 流程会调用 `lv_indev_wait_release`，可能打断本页连续 `PRESSING` 跟手逻辑。
+- `page_photo_preview`：负责翻页跟手、方向一致性判定、翻页动画提交/撤销
+- `gesture_back`：负责边缘返回图标提示、返回阈值判定、抬手触发返回
+
+当前 `gesture_back` 基于 `PRESSED/PRESSING/RELEASED/PRESS_LOST`，不依赖 `LV_EVENT_GESTURE`，不会调用 `lv_indev_wait_release` 打断本页跟手。

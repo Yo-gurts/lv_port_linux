@@ -16,6 +16,9 @@ void gesture_back_register_events(lv_obj_t* container);
 /* 设置当前页面边缘滑动返回回调（左边缘右滑 / 右边缘左滑）。 */
 void gesture_back_set_left_edge_swipe_cb(lv_obj_t* container, lv_event_cb_t action);
 
+/* 如果当前活跃容器与入参一致，则清除边缘滑动返回回调。 */
+void gesture_back_clear_active_swipe_cb(lv_obj_t* container);
+
 #ifdef __cplusplus
 }
 #endif

@@ -10,7 +10,6 @@
 #include "core/param_manager.h"
 #include "core/style_manager.h"
 #include "mlog.h"
-#include "ui/gesture_back.h"
 #include "ui/status_bar.h"
 #include "ui/top_notice.h"
 #include <stdlib.h>
@@ -189,13 +188,6 @@ void page_home_create(void)
     lv_obj_add_style(data->container, &style_home_bg, LV_PART_MAIN);
     lv_obj_refr_size(data->container);
 
-    /* 启用滑动手势检测，不将 GESTURE 事件传递给父控件 */
-    lv_obj_clear_flag(data->container, LV_OBJ_FLAG_GESTURE_BUBBLE);
-
-    /* 添加滑动手势回调：从左往右滑返回上一页 */
-    gesture_back_register_events(data->container);
-    gesture_back_set_left_edge_swipe_cb(data->container, page_manager_back_cb);
-
     /* Time label - center */
     data->lv_label_time = lv_label_create(data->container);
     lv_label_set_text(data->lv_label_time, "0000-00-00 00:00:00");
@@ -238,9 +230,6 @@ void page_home_create(void)
         LV_ALIGN_TOP_LEFT, 0, 0,
         settings_button_cb, NULL);
 
-    /* 启用整页事件冒泡，确保子对象按压事件传递到父容器。 */
-    gesture_back_enable_event_bubble_recursive(data->container);
-
     /* 保存 private_data，供 show/hide/destroy 使用 */
     page_set_private_data(data);
 }
@@ -273,8 +262,6 @@ void page_home_show(void)
     if (!data || !data->container) {
         return;
     }
-
-    gesture_back_set_left_edge_swipe_cb(data->container, page_manager_back_cb);
 
     MLOG_INFO("Home page show");
     /* 显示 UI */
