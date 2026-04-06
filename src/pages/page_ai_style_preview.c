@@ -274,11 +274,11 @@ static void gesture_event_cb(lv_event_t* e)
     dir = lv_indev_get_gesture_dir(indev);
     if (dir == LV_DIR_BOTTOM) {
         set_style_panel_visible(data, false, LV_ANIM_ON);
+        lv_indev_wait_release(indev);
     } else if (dir == LV_DIR_TOP) {
         set_style_panel_visible(data, true, LV_ANIM_ON);
+        lv_indev_wait_release(indev);
     }
-
-    lv_indev_wait_release(indev);
 }
 
 // #endregion
