@@ -140,11 +140,11 @@ static void chat_button_cb(lv_event_t* e)
     page_manager_navigate("chat");
 }
 
-static void translation_button_cb(lv_event_t* e)
+static void test_button_cb(lv_event_t* e)
 {
     LV_UNUSED(e);
-    MLOG_INFO("Translation button clicked");
-    page_manager_navigate("ai_photo");
+    MLOG_INFO("Test page button clicked");
+    page_manager_navigate("test");
 }
 
 static void album_button_cb(lv_event_t* e)
@@ -222,9 +222,9 @@ void page_home_create(void)
     create_icon_button(data->grid_container, LV_SYMBOL_CALL, "AI对话",
         LV_ALIGN_TOP_LEFT, 0, 0,
         chat_button_cb, NULL);
-    create_icon_button(data->grid_container, LV_SYMBOL_EDIT, "拍照翻译",
+    create_icon_button(data->grid_container, LV_SYMBOL_EDIT, "测试页面",
         LV_ALIGN_TOP_LEFT, 0, 0,
-        translation_button_cb, NULL);
+        test_button_cb, NULL);
     create_icon_button(data->grid_container, LV_SYMBOL_SETTINGS, "设置",
         LV_ALIGN_TOP_LEFT, 0, 0,
         settings_button_cb, NULL);

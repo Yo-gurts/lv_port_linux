@@ -24,6 +24,7 @@
 #include "pages/page_photo_preview.h"
 #include "pages/page_photo_settings.h"
 #include "pages/page_system_settings.h"
+#include "pages/page_test.h"
 #include "pages/page_version_info.h"
 #include "pages/page_video.h"
 #include "pages/page_video_album.h"
@@ -244,6 +245,14 @@ static page_interface_t photo_preview_page_interface = {
     .update = page_photo_preview_update,
 };
 
+static page_interface_t test_page_interface = {
+    .create = page_test_create,
+    .destroy = page_test_destroy,
+    .show = page_test_show,
+    .hide = page_test_hide,
+    .update = page_test_update,
+};
+
 int32_t ui_main(void)
 {
     lv_init();
@@ -295,6 +304,7 @@ int32_t ui_main(void)
     page_manager_register("chat", &chat_page_interface, NULL);
     page_manager_register("album", &album_page_interface, NULL);
     page_manager_register("photo_preview", &photo_preview_page_interface, NULL);
+    page_manager_register("test", &test_page_interface, NULL);
 
     /* Navigate to home page */
     page_manager_navigate("home");
