@@ -22,8 +22,12 @@ typedef struct {
     lv_obj_t* read_btn;
     lv_obj_t* read_icon;
     lv_obj_t* read_label;
+    lv_timer_t* recog_poll_timer;
 
     char latest_thumb_path[FILE_MANAGER_MAX_PATH_LEN];
+    char latest_photo_real_path[FILE_MANAGER_MAX_PATH_LEN];
+    uint8_t ai_key_registered;
+    uint8_t recognizing;
 } page_ai_recognition_preview_data_t;
 
 void page_ai_recognition_preview_create(void);

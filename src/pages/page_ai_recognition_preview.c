@@ -6,12 +6,14 @@
 #include "config.h"
 #include "core/file_manager.h"
 #include "core/font_manager.h"
+#include "core/image_recognition_manager.h"
+#include "core/key_manager.h"
 #include "core/page_manager.h"
-#include "core/param_manager.h"
 #include "core/style_manager.h"
 #include "mlog.h"
 #include "ui/gesture_back.h"
 #include "ui/status_bar.h"
+#include "ui/top_notice.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -26,6 +28,10 @@
 #define RECOG_TEXT_BOX_HEIGHT (V_RES - RECOG_TEXT_TOP_Y - RECOG_TEXT_BOX_BOTTOM_MARGIN)
 #define RECOG_READ_BTN_WIDTH 200
 #define RECOG_READ_BTN_HEIGHT 48
+#define RECOG_POLL_MS 100
+
+/* 参考 dc309 AI识万物模式提示词 */
+static const char* g_recognition_prompt = "用50字左右介绍一下这张图，注意抓关键信息";
 
 // #endregion
 // #############################################################################
@@ -37,16 +43,21 @@
 // ! #region 3. 全局变量 & 函数声明
 // #############################################################################
 
-static void refresh_latest_thumbnail(page_ai_recognition_preview_data_t* data);
+static void refresh_latest_photo(page_ai_recognition_preview_data_t* data);
+static void start_recognition(page_ai_recognition_preview_data_t* data);
+static void stop_recog_poll_timer(page_ai_recognition_preview_data_t* data);
+
 static void back_btn_cb(lv_event_t* e);
 static void read_btn_cb(lv_event_t* e);
+static void recog_poll_timer_cb(lv_timer_t* timer);
+static void ai_key_cb(key_id_t key, key_event_type_t event_type, void* user_data);
 
 // #endregion
 // #############################################################################
 // ! #region 4. 内部工具函数
 // #############################################################################
 
-static void refresh_latest_thumbnail(page_ai_recognition_preview_data_t* data)
+static void refresh_latest_photo(page_ai_recognition_preview_data_t* data)
 {
     int total_photos;
 
@@ -61,6 +72,7 @@ static void refresh_latest_thumbnail(page_ai_recognition_preview_data_t* data)
     total_photos = file_manager_get_photo_count();
     if (total_photos <= 0) {
         data->latest_thumb_path[0] = '\0';
+        data->latest_photo_real_path[0] = '\0';
         lv_img_set_src(data->thumb_img, NULL);
         return;
     }
@@ -68,13 +80,60 @@ static void refresh_latest_thumbnail(page_ai_recognition_preview_data_t* data)
     if (file_manager_get_photo_thumbnail_path(0, data->latest_thumb_path, sizeof(data->latest_thumb_path), FILE_PATH_LV) != 0) {
         if (file_manager_get_photo_path(0, data->latest_thumb_path, sizeof(data->latest_thumb_path), FILE_PATH_LV) != 0) {
             data->latest_thumb_path[0] = '\0';
+            data->latest_photo_real_path[0] = '\0';
             lv_img_set_src(data->thumb_img, NULL);
             return;
         }
     }
 
+    if (file_manager_get_photo_path(0, data->latest_photo_real_path, sizeof(data->latest_photo_real_path), FILE_PATH_REAL) != 0) {
+        data->latest_photo_real_path[0] = '\0';
+    }
+
     lv_img_set_src(data->thumb_img, data->latest_thumb_path);
     lv_obj_center(data->thumb_img);
+}
+
+static void stop_recog_poll_timer(page_ai_recognition_preview_data_t* data)
+{
+    if (!data)
+        return;
+
+    if (data->recog_poll_timer) {
+        lv_timer_del(data->recog_poll_timer);
+        data->recog_poll_timer = NULL;
+    }
+}
+
+static void start_recognition(page_ai_recognition_preview_data_t* data)
+{
+    if (!data)
+        return;
+
+    if (data->recognizing)
+        return;
+
+    if (data->latest_photo_real_path[0] == '\0') {
+        refresh_latest_photo(data);
+    }
+    if (data->latest_photo_real_path[0] == '\0') {
+        top_notice_show("暂无可识别图片", TOP_NOTICE_TYPE_WARNING);
+        return;
+    }
+
+    if (image_recognition_manager_start(data->latest_photo_real_path, g_recognition_prompt) != 0) {
+        top_notice_show("启动识别失败，请重试", TOP_NOTICE_TYPE_WARNING);
+        return;
+    }
+
+    data->recognizing = 1;
+    lv_label_set_text(data->text_label, "正在识别，请稍后。");
+
+    stop_recog_poll_timer(data);
+    data->recog_poll_timer = lv_timer_create(recog_poll_timer_cb, RECOG_POLL_MS, data);
+    if (data->recog_poll_timer) {
+        lv_timer_ready(data->recog_poll_timer);
+    }
 }
 
 // #endregion
@@ -102,6 +161,56 @@ static void read_btn_cb(lv_event_t* e)
 {
     LV_UNUSED(e);
     MLOG_INFO("Recognition preview read text clicked");
+}
+
+static void recog_poll_timer_cb(lv_timer_t* timer)
+{
+    page_ai_recognition_preview_data_t* data;
+    image_recognition_state_t state;
+    char result_text[4096];
+
+    if (!timer)
+        return;
+
+    data = (page_ai_recognition_preview_data_t*)lv_timer_get_user_data(timer);
+    if (!data || !data->container)
+        return;
+
+    state = image_recognition_manager_get_state();
+    if (state == IMAGE_RECOGNITION_STATE_RUNNING) {
+        return;
+    }
+
+    if (state == IMAGE_RECOGNITION_STATE_SUCCESS) {
+        if (image_recognition_manager_get_result_text(result_text, sizeof(result_text)) == 0) {
+            lv_label_set_text(data->text_label, result_text);
+            MLOG_INFO("Recognition success");
+        }
+    } else if (state == IMAGE_RECOGNITION_STATE_FAILED) {
+        int err = image_recognition_manager_get_error();
+        char notice[64];
+        snprintf(notice, sizeof(notice), "识别失败(%d)，请重试", err);
+        top_notice_show(notice, TOP_NOTICE_TYPE_WARNING);
+        lv_label_set_text(data->text_label, "识别失败，请按 AI 键重试。");
+        MLOG_ERR("Recognition failed: %d", err);
+    }
+
+    data->recognizing = 0;
+    stop_recog_poll_timer(data);
+}
+
+static void ai_key_cb(key_id_t key, key_event_type_t event_type, void* user_data)
+{
+    page_ai_recognition_preview_data_t* data = (page_ai_recognition_preview_data_t*)user_data;
+
+    if (key != KEY_ID_AI || event_type != KEY_EVENT_CLICK)
+        return;
+    if (!data || !data->container)
+        return;
+    if (lv_obj_has_flag(data->container, LV_OBJ_FLAG_HIDDEN))
+        return;
+
+    start_recognition(data);
 }
 
 // #endregion
@@ -147,14 +256,13 @@ void page_ai_recognition_preview_create(void)
     lv_obj_center(back_icon);
 
     data->title_label = lv_label_create(data->container);
-    lv_label_set_text(data->title_label, "万物识别💥🛫⛔✔🤡");
+    lv_label_set_text(data->title_label, "万物识别");
     lv_obj_add_style(data->title_label, &NORMAL_SIZE, LV_PART_MAIN);
     lv_obj_set_style_text_color(data->title_label, lv_color_white(), LV_PART_MAIN);
     lv_obj_add_flag(data->title_label, LV_OBJ_FLAG_FLOATING);
     lv_obj_add_flag(data->title_label, LV_OBJ_FLAG_IGNORE_LAYOUT);
     lv_obj_align(data->title_label, LV_ALIGN_TOP_MID, 0, 14);
 
-    /* 识别图缩略图：尺寸对齐相册九宫格单元 200x140。 */
     thumb_y = (V_RES - RECOG_THUMB_HEIGHT) / 2;
     data->thumb_wrap = lv_obj_create(data->container);
     lv_obj_set_size(data->thumb_wrap, RECOG_THUMB_WIDTH, RECOG_THUMB_HEIGHT);
@@ -218,14 +326,12 @@ void page_ai_recognition_preview_create(void)
     lv_obj_set_style_text_color(data->text_label, lv_color_white(), LV_PART_MAIN);
     lv_obj_set_style_text_align(data->text_label, LV_TEXT_ALIGN_LEFT, LV_PART_MAIN);
     lv_label_set_long_mode(data->text_label, LV_LABEL_LONG_WRAP);
-    lv_label_set_text(data->text_label,
-        "识别结果：这是一棵树，叶片较密，可能是樟树。\n\n"
-        "特征说明：树冠较圆，叶缘平滑，叶片油亮，主干直立。\n\n"
-        "可在左下方点击“朗读文本”按钮播放当前识别结果。");
+    lv_label_set_text(data->text_label, "按 AI 键开始识别");
     lv_obj_align(data->text_label, LV_ALIGN_TOP_LEFT, 0, 0);
 
+    (void)image_recognition_manager_init();
+    image_recognition_manager_reset();
     gesture_back_enable_event_bubble_recursive(data->container);
-
     page_set_private_data(data);
 }
 
@@ -236,6 +342,14 @@ void page_ai_recognition_preview_destroy(void)
     if (data == NULL) {
         return;
     }
+
+    if (data->ai_key_registered) {
+        (void)key_manager_unregister_callback(KEY_ID_AI, KEY_EVENT_CLICK, ai_key_cb, data);
+        data->ai_key_registered = 0;
+    }
+
+    stop_recog_poll_timer(data);
+    image_recognition_manager_deinit();
 
     if (data->container != NULL) {
         lv_obj_del(data->container);
@@ -254,13 +368,24 @@ void page_ai_recognition_preview_show(void)
     }
 
     gesture_back_set_left_edge_swipe_cb(data->container, back_btn_cb);
-    refresh_latest_thumbnail(data);
+    refresh_latest_photo(data);
+    image_recognition_manager_reset();
+    data->recognizing = 0;
+    stop_recog_poll_timer(data);
 
-    /* 使用全局状态栏 */
+    if (!data->ai_key_registered) {
+        if (key_manager_register_callback(KEY_ID_AI, KEY_EVENT_CLICK, ai_key_cb, data) == 0) {
+            data->ai_key_registered = 1;
+        } else {
+            MLOG_WARN("register ai recognition key callback failed");
+        }
+    }
+
     status_bar_show(true);
     status_bar_set_icons(STATUS_BAR_ICON_SD, STATUS_BAR_ICON_WIFI, STATUS_BAR_ICON_BATTERY);
 
     lv_obj_clear_flag(data->container, LV_OBJ_FLAG_HIDDEN);
+    start_recognition(data);
 }
 
 void page_ai_recognition_preview_hide(void)
@@ -271,6 +396,13 @@ void page_ai_recognition_preview_hide(void)
         return;
     }
 
+    if (data->ai_key_registered) {
+        (void)key_manager_unregister_callback(KEY_ID_AI, KEY_EVENT_CLICK, ai_key_cb, data);
+        data->ai_key_registered = 0;
+    }
+
+    stop_recog_poll_timer(data);
+    data->recognizing = 0;
     status_bar_show(false);
     lv_obj_add_flag(data->container, LV_OBJ_FLAG_HIDDEN);
 }
@@ -283,7 +415,7 @@ void page_ai_recognition_preview_update(void)
         return;
     }
 
-    refresh_latest_thumbnail(data);
+    refresh_latest_photo(data);
 }
 
 // #endregion
