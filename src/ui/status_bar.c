@@ -58,10 +58,15 @@ static const char* get_battery_icon_path(int level)
     }
 }
 
-static const char* wifi_icon_helper_get_path(int connected, int signal_dbm)
+static const char* wifi_icon_helper_get_path(int enabled, int connected, int signal_dbm)
 {
-    if (connected != 1) {
+    if (enabled != 1) {
         return "A:" RES_ICON_PATH "/wifi-off.png";
+    }
+
+    /* WiFi 已开启但未连接：显示最弱信号图标，而不是 off。 */
+    if (connected != 1) {
+        return "A:" RES_ICON_PATH "/wifi-1.png";
     }
 
     if (signal_dbm <= -75) {
@@ -91,9 +96,10 @@ static const char* get_icon_path(status_bar_icon_type_t type)
     }
 
     if (type == STATUS_BAR_ICON_WIFI) {
+        int enabled = param_manager_get(PARAM_ID_WIFI_ENABLED);
         int connected = param_manager_get(PARAM_ID_WIFI_CONNECTED);
         int signal_dbm = param_manager_get(PARAM_ID_WIFI_SIGNAL_DBM);
-        return wifi_icon_helper_get_path(connected, signal_dbm);
+        return wifi_icon_helper_get_path(enabled, connected, signal_dbm);
     }
 
     if (type == STATUS_BAR_ICON_BATTERY) {
@@ -143,7 +149,8 @@ static void status_bar_param_cb(param_id_t id, int value, void* user_data)
     LV_UNUSED(user_data);
 
     /* SD卡状态变化通过消息机制通知，暂不通过param_manager */
-    if (id == PARAM_ID_BATTERY_VAL || id == PARAM_ID_WIFI_CONNECTED || id == PARAM_ID_WIFI_SIGNAL_DBM) {
+    if (id == PARAM_ID_BATTERY_VAL || id == PARAM_ID_WIFI_ENABLED || id == PARAM_ID_WIFI_CONNECTED
+        || id == PARAM_ID_WIFI_SIGNAL_DBM) {
         update_icons();
     }
 }

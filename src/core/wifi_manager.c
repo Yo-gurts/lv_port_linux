@@ -1,5 +1,6 @@
 #include "core/wifi_manager.h"
 #include "core/param_manager.h"
+#include "ui/top_notice.h"
 #include "mlog.h"
 #include <errno.h>
 #include <stdint.h>
@@ -14,7 +15,10 @@
 
 #define WIFI_DAEMON_SOCKET "/tmp/aicam_wifi.sock"
 #define RESP_SIZE 8192
-#define WIFI_STATUS_POLL_INTERVAL_MS 3000
+/* 固定周期轮询 WiFi 连接状态并同步 PARAM_ID_WIFI_CONNECTED。 */
+#define WIFI_STATUS_POLL_INTERVAL_MS 10000
+#define WIFI_AUTO_OFF_NO_CONNECT_MS (5 * 60 * 1000ULL)
+#define WIFI_AUTO_OFF_RETRY_INTERVAL_MS 30000ULL
 
 static uint64_t monotonic_ms(void)
 {
@@ -183,6 +187,8 @@ int wifi_manager_get_status(void)
 void wifi_manager_poll(void)
 {
     static uint64_t last_poll_ms = 0;
+    static uint64_t no_connect_since_ms = 0;
+    static uint64_t next_auto_off_retry_ms = 0;
     uint64_t now_ms = monotonic_ms();
     char resp[128];
     char* saveptr = NULL;
@@ -191,12 +197,18 @@ void wifi_manager_poll(void)
     int connected = 0;
     int signal_dbm = -1;
 
-    if (now_ms - last_poll_ms < WIFI_STATUS_POLL_INTERVAL_MS) {
+    if (last_poll_ms != 0 && now_ms - last_poll_ms < WIFI_STATUS_POLL_INTERVAL_MS) {
         return;
     }
     last_poll_ms = now_ms;
 
     if (send_cmd("GET_STATUS\n", resp, sizeof(resp)) != 0) {
+        /* daemon 不可达时也要周期性刷新连接参数，避免 UI 卡在旧状态。 */
+        no_connect_since_ms = 0;
+        next_auto_off_retry_ms = 0;
+        (void)param_manager_set(PARAM_ID_WIFI_ENABLED, 0);
+        (void)param_manager_set(PARAM_ID_WIFI_CONNECTED, 0);
+        (void)param_manager_set(PARAM_ID_WIFI_SIGNAL_DBM, -1);
         return;
     }
 
@@ -223,10 +235,33 @@ void wifi_manager_poll(void)
     }
 
     if (!enabled) {
+        no_connect_since_ms = 0;
+        next_auto_off_retry_ms = 0;
         connected = 0;
         signal_dbm = -1;
+    } else if (connected) {
+        no_connect_since_ms = 0;
+        next_auto_off_retry_ms = 0;
+    } else {
+        if (no_connect_since_ms == 0) {
+            no_connect_since_ms = now_ms;
+            next_auto_off_retry_ms = now_ms + WIFI_AUTO_OFF_NO_CONNECT_MS;
+        } else if (now_ms >= next_auto_off_retry_ms) {
+            MLOG_WARN("wifi enabled but not connected for 5 minutes, auto disabling wifi");
+            if (wifi_manager_set_enabled(0) == 0) {
+                enabled = 0;
+                connected = 0;
+                signal_dbm = -1;
+                no_connect_since_ms = 0;
+                next_auto_off_retry_ms = 0;
+                top_notice_show_for("WiFi长时间未连接，已自动关闭", TOP_NOTICE_TYPE_WARNING, 3000);
+            } else {
+                next_auto_off_retry_ms = now_ms + WIFI_AUTO_OFF_RETRY_INTERVAL_MS;
+            }
+        }
     }
 
+    (void)param_manager_set(PARAM_ID_WIFI_ENABLED, enabled ? 1 : 0);
     (void)param_manager_set(PARAM_ID_WIFI_CONNECTED, connected ? 1 : 0);
     (void)param_manager_set(PARAM_ID_WIFI_SIGNAL_DBM, signal_dbm);
 }
@@ -242,6 +277,7 @@ int wifi_manager_set_enabled(int enabled)
         return -1;
     }
     if (strncmp(resp, "OK\tSTATE", 8) == 0) {
+        (void)param_manager_set(PARAM_ID_WIFI_ENABLED, enabled ? 1 : 0);
         MLOG_INFO("set wifi enabled success");
         return 0;
     }

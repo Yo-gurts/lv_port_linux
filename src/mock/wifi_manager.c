@@ -101,6 +101,7 @@ void wifi_manager_poll(void)
         signal_dbm = g_mock_ap_table[g_connected_index].signal_level - 100;
     }
 
+    (void)param_manager_set(PARAM_ID_WIFI_ENABLED, g_wifi_enabled ? 1 : 0);
     (void)param_manager_set(PARAM_ID_WIFI_CONNECTED, connected);
     (void)param_manager_set(PARAM_ID_WIFI_SIGNAL_DBM, signal_dbm);
 }
