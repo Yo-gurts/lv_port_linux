@@ -70,6 +70,23 @@ static void take_photo_key_cb(key_id_t key, key_event_type_t event_type, void* u
     }
 }
 
+static void ai_key_cb(key_id_t key, key_event_type_t event_type, void* user_data)
+{
+    page_ai_photo_data_t* data = (page_ai_photo_data_t*)user_data;
+
+    if (key != KEY_ID_AI || event_type != KEY_EVENT_CLICK) {
+        return;
+    }
+    if (!data || !data->container) {
+        return;
+    }
+    if (lv_obj_has_flag(data->container, LV_OBJ_FLAG_HIDDEN)) {
+        return;
+    }
+
+    page_manager_navigate("ai_photo_settings");
+}
+
 // #endregion
 // #############################################################################
 // ! #region 5. 对外接口函数
@@ -210,6 +227,7 @@ void page_ai_photo_destroy(void)
     }
 
     (void)key_manager_unregister_callback(KEY_ID_CAMERA, KEY_EVENT_CLICK, take_photo_key_cb, data);
+    (void)key_manager_unregister_callback(KEY_ID_AI, KEY_EVENT_CLICK, ai_key_cb, data);
     free(data);
 }
 
@@ -234,6 +252,9 @@ void page_ai_photo_show(void)
     if (key_manager_register_callback(KEY_ID_CAMERA, KEY_EVENT_CLICK, take_photo_key_cb, data) != 0) {
         MLOG_WARN("register ai photo key callback failed");
     }
+    if (key_manager_register_callback(KEY_ID_AI, KEY_EVENT_CLICK, ai_key_cb, data) != 0) {
+        MLOG_WARN("register ai key callback failed");
+    }
 }
 
 void page_ai_photo_hide(void)
@@ -248,6 +269,7 @@ void page_ai_photo_hide(void)
     lv_obj_add_flag(data->container, LV_OBJ_FLAG_HIDDEN);
     status_bar_show(false);
     (void)key_manager_unregister_callback(KEY_ID_CAMERA, KEY_EVENT_CLICK, take_photo_key_cb, data);
+    (void)key_manager_unregister_callback(KEY_ID_AI, KEY_EVENT_CLICK, ai_key_cb, data);
 }
 
 void page_ai_photo_update(void)
