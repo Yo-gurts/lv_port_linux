@@ -15,6 +15,7 @@
 #define MEDIA_MANAGER_FORMAT_TIMEOUT_MS 20000U
 
 typedef int (*media_op_handler_t)(int32_t args);
+static int media_manager_set_filter_impl(int ui_index, const char* isp_bin_path);
 
 static int media_manager_clamp_volume(int value)
 {
@@ -557,6 +558,11 @@ static int handle_set_zoom(int32_t args)
     return MEDIA_MANAGER_OK;
 }
 
+static int handle_set_filter(int32_t args)
+{
+    return media_manager_set_filter_impl((int)args, NULL);
+}
+
 static const media_op_handler_t g_media_handlers[MEDIA_OP_BUTT] = {
     [MEDIA_OP_SWITCH_TO_PHOTO_MODE] = handle_switch_to_photo_mode,
     [MEDIA_OP_SWITCH_TO_BOOT_MODE] = handle_switch_to_boot_mode,
@@ -580,6 +586,7 @@ static const media_op_handler_t g_media_handlers[MEDIA_OP_BUTT] = {
     [MEDIA_OP_SET_SMILE_CAPTURE] = handle_set_smile_capture,
     [MEDIA_OP_SET_VIDEO_RESOLUTION] = handle_set_video_resolution,
     [MEDIA_OP_SET_ZOOM] = handle_set_zoom,
+    [MEDIA_OP_SET_FILTER] = handle_set_filter,
 };
 
 int media_manager_execute(media_operation_t op, int32_t args)
@@ -626,4 +633,42 @@ int media_manager_restore_work_mode(int work_mode)
         MLOG_WARN("不支持恢复到该模式: %d", work_mode);
         return MEDIA_MANAGER_EUNSUP;
     }
+}
+
+static int media_manager_set_filter_impl(int ui_index, const char* isp_bin_path)
+{
+    int ret = MEDIA_MANAGER_OK;
+    MESSAGE_S msg = { 0 };
+    uint8_t blocked_prev = 0;
+
+    ret = media_manager_set_param_checked(PARAM_ID_FILTER_INDEX, ui_index, "设置滤镜索引");
+    if (ret != MEDIA_MANAGER_OK) {
+        return ret;
+    }
+
+    msg.topic = EVENT_MODEMNG_SETTING;
+    msg.arg1 = (MODEMNG_GetCurWorkMode() == WORK_MODE_MOVIE) ? PARAM_MENU_VIDEO_EFFECT : PARAM_MENU_PHOTO_EFFECT;
+    msg.arg2 = (uint32_t)ui_index;
+    if (isp_bin_path != NULL) {
+        snprintf((char*)msg.aszPayload, sizeof(msg.aszPayload), "%s", isp_bin_path);
+    }
+
+    blocked_prev = key_manager_get_block_non_power();
+    key_manager_set_block_non_power((uint8_t)(blocked_prev | KEY_INPUT_BLOCK_TP | KEY_INPUT_BLOCK_ADC_KEY2));
+    ret = message_manager_send_sync_timeout(&msg, MEDIA_MANAGER_SETTING_TIMEOUT_MS);
+    key_manager_set_block_non_power(blocked_prev);
+    if (ret != 0) {
+        MLOG_ERR("设置滤镜消息发送失败: index=%d path=%s ret=%d",
+            ui_index, (isp_bin_path == NULL) ? "(null)" : isp_bin_path, ret);
+        return MEDIA_MANAGER_ESTATE;
+    }
+
+    MLOG_INFO("已设置滤镜: index=%d path=%s",
+        ui_index, (isp_bin_path == NULL) ? "(null)" : isp_bin_path);
+    return MEDIA_MANAGER_OK;
+}
+
+int media_manager_set_filter_with_path(int ui_index, const char* isp_bin_path)
+{
+    return media_manager_set_filter_impl(ui_index, isp_bin_path);
 }

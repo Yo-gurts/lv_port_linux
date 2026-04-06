@@ -7,7 +7,7 @@
 extern "C" {
 #endif
 
-#define FILTER_PANEL_MAX_COUNT 12
+#define FILTER_PANEL_MAX_COUNT 32
 
 void filter_panel_init(void);
 void filter_panel_show(void);

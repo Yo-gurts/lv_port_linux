@@ -30,6 +30,7 @@ typedef enum {
     MEDIA_OP_SET_SMILE_CAPTURE, /* 设置笑脸抓拍开关；args: 0/1 */
     MEDIA_OP_SET_VIDEO_RESOLUTION, /* 设置录像分辨率；args: video_resolution_t */
     MEDIA_OP_SET_ZOOM, /* 设置变焦倍率；args: 1/2/3/6 */
+    MEDIA_OP_SET_FILTER, /* 设置滤镜下标（兼容旧接口）；args: ui_index */
     MEDIA_OP_BUTT /* 枚举边界 */
 } media_operation_t;
 
@@ -43,6 +44,8 @@ int media_manager_execute(media_operation_t op, int32_t args);
 int media_manager_get_current_work_mode(void);
 int media_manager_is_playback_work_mode(int work_mode);
 int media_manager_restore_work_mode(int work_mode);
+/* UI侧配置滤镜名称/icon，仅向底层透传 isp bin 路径。 */
+int media_manager_set_filter_with_path(int ui_index, const char* isp_bin_path);
 
 #ifdef __cplusplus
 }

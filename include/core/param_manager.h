@@ -18,7 +18,7 @@ typedef enum {
     PARAM_ID_SMILE_CAPTURE, /* 笑脸抓拍 */
     PARAM_ID_VIDEO_RESOLUTION, /* 视频分辨率 */
     PARAM_ID_AI_MODE, /* AI功能模式：风格变换/AI识万物/拍照翻译 */
-    PARAM_ID_FILTER_INDEX, /* 拍照/录像共享滤镜下标 */
+    PARAM_ID_FILTER_INDEX, /* 拍照/录像共享滤镜下标（由UI定义） */
     PARAM_ID_FILTER_RESET_ON_MODE_SWITCH, /* 模式切换时是否重置滤镜：0不重置，1重置 */
     PARAM_ID_ZOOM, /* 变焦倍率：1/2/3/6 */
     PARAM_ID_VOLUME, /* 音量 (0-100) */

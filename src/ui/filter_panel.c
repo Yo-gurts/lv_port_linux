@@ -5,6 +5,7 @@
 #include "ui/filter_panel.h"
 #include "config.h"
 #include "core/font_manager.h"
+#include "core/media_manager.h"
 #include "core/param_manager.h"
 #include "core/style_manager.h"
 #include "mlog.h"
@@ -29,6 +30,7 @@
 typedef struct {
     const char* name;
     const char* icon_path;
+    const char* isp_bin_path;
 } filter_panel_item_t;
 
 typedef struct {
@@ -39,6 +41,7 @@ typedef struct {
     lv_obj_t* items[FILTER_PANEL_MAX_COUNT];
     lv_obj_t* thumbs[FILTER_PANEL_MAX_COUNT];
     lv_obj_t* labels[FILTER_PANEL_MAX_COUNT];
+    filter_panel_item_t panel_items[FILTER_PANEL_MAX_COUNT];
     int selected_index;
     int item_count;
     uint8_t rebuilding;
@@ -51,16 +54,14 @@ typedef struct {
 // #############################################################################
 
 static filter_panel_ctx_t g_filter_panel;
-static const filter_panel_item_t g_default_filter_items[] = {
-    { "原图", "A:" RES_ICON_PATH "/filter.png" },
-    { "美味", "A:" RES_ICON_PATH "/filter.png" },
-    { "冷调", "A:" RES_ICON_PATH "/filter.png" },
-    { "暖调", "A:" RES_ICON_PATH "/filter.png" },
-    { "浓郁", "A:" RES_ICON_PATH "/filter.png" },
-    { "高级", "A:" RES_ICON_PATH "/filter.png" },
+static const filter_panel_item_t g_ui_filter_items[] = {
+    { "原图", "A:" RES_ICON_PATH "/filter_default.png", RES_ISP_PATH "/cvi_sdr_bin" },
+    { "明亮", "A:" RES_ICON_PATH "/filter.png", RES_ISP_PATH "/cvi_sdr_bin_bright" },
+    { "胶片", "A:" RES_ICON_PATH "/filter.png", RES_ISP_PATH "/cvi_sdr_bin_film" },
+    { "黑白", "A:" RES_ICON_PATH "/filter.png", RES_ISP_PATH "/cvi_sdr_bin_black_white" },
 };
 
-#define DEFAULT_FILTER_COUNT ((int)(sizeof(g_default_filter_items) / sizeof(g_default_filter_items[0])))
+#define UI_FILTER_COUNT ((int)(sizeof(g_ui_filter_items) / sizeof(g_ui_filter_items[0])))
 
 static void set_selected_index(int index, const char* source);
 static void update_selection_style(void);
@@ -73,6 +74,7 @@ static void ensure_created(void);
 static void overlay_click_cb(lv_event_t* e);
 static void list_scroll_end_cb(lv_event_t* e);
 static void item_click_cb(lv_event_t* e);
+static void apply_effect_to_mode(int index);
 
 // #endregion
 // #############################################################################
@@ -137,10 +139,12 @@ static void set_selected_index(int index, const char* source)
 
     g_filter_panel.selected_index = index;
     (void)param_manager_set(PARAM_ID_FILTER_INDEX, index);
-    MLOG_INFO("Filter selected [%s]: index=%d, name=%s",
+    apply_effect_to_mode(index);
+    MLOG_INFO("Filter selected [%s]: index=%d, name=%s, path=%s",
         (source == NULL) ? "unknown" : source,
         index,
-        filter_panel_get_name(index));
+        filter_panel_get_name(index),
+        g_filter_panel.panel_items[index].isp_bin_path);
 }
 
 /* 吸附到最近条目。 */
@@ -212,15 +216,20 @@ static void rebuild_items(void)
     memset(g_filter_panel.labels, 0, sizeof(g_filter_panel.labels));
     lv_obj_clean(g_filter_panel.list);
 
-    g_filter_panel.item_count = DEFAULT_FILTER_COUNT;
+    g_filter_panel.item_count = UI_FILTER_COUNT;
     if (g_filter_panel.item_count > FILTER_PANEL_MAX_COUNT) {
         g_filter_panel.item_count = FILTER_PANEL_MAX_COUNT;
+    }
+
+    for (i = 0; i < g_filter_panel.item_count; i++) {
+        g_filter_panel.panel_items[i] = g_ui_filter_items[i];
     }
 
     g_filter_panel.selected_index = param_manager_get(PARAM_ID_FILTER_INDEX);
     if (g_filter_panel.selected_index < 0 || g_filter_panel.selected_index >= g_filter_panel.item_count) {
         g_filter_panel.selected_index = 0;
     }
+    (void)param_manager_set(PARAM_ID_FILTER_INDEX, g_filter_panel.selected_index);
 
     for (i = 0; i < g_filter_panel.item_count; i++) {
         lv_obj_t* item = lv_obj_create(g_filter_panel.list);
@@ -242,12 +251,12 @@ static void rebuild_items(void)
         lv_obj_add_style(thumb, &style_photo_filter_thumb, LV_PART_MAIN);
 
         lv_obj_t* thumb_img = lv_img_create(thumb);
-        lv_img_set_src(thumb_img, g_default_filter_items[i].icon_path);
+        lv_img_set_src(thumb_img, g_filter_panel.panel_items[i].icon_path);
         lv_obj_add_flag(thumb_img, LV_OBJ_FLAG_EVENT_BUBBLE);
         lv_obj_align(thumb_img, LV_ALIGN_CENTER, 0, 0);
 
         lv_obj_t* label = lv_label_create(item);
-        lv_label_set_text(label, g_default_filter_items[i].name);
+        lv_label_set_text(label, g_filter_panel.panel_items[i].name);
         lv_obj_add_style(label, &SMALL_SIZE, LV_PART_MAIN);
         lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
         lv_obj_add_flag(label, LV_OBJ_FLAG_EVENT_BUBBLE);
@@ -396,10 +405,19 @@ int filter_panel_is_visible(void)
 
 static const char* filter_panel_get_name(int index)
 {
-    if (index < 0 || index >= DEFAULT_FILTER_COUNT) {
+    if (index < 0 || index >= g_filter_panel.item_count) {
         return "unknown";
     }
-    return g_default_filter_items[index].name;
+    return g_filter_panel.panel_items[index].name;
+}
+
+static void apply_effect_to_mode(int index)
+{
+    if (index < 0 || index >= g_filter_panel.item_count) {
+        return;
+    }
+
+    (void)media_manager_set_filter_with_path(index, g_filter_panel.panel_items[index].isp_bin_path);
 }
 
 // #endregion

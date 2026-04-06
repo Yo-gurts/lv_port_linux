@@ -191,6 +191,11 @@ static int handle_set_zoom(int32_t args)
     return MEDIA_MANAGER_OK;
 }
 
+static int handle_set_filter(int32_t args)
+{
+    return media_manager_set_param_checked(PARAM_ID_FILTER_INDEX, (int)args, "设置滤镜下标");
+}
+
 static const media_op_handler_t g_media_handlers[MEDIA_OP_BUTT] = {
     [MEDIA_OP_SWITCH_TO_PHOTO_MODE] = handle_switch_to_photo_mode,
     [MEDIA_OP_SWITCH_TO_BOOT_MODE] = handle_switch_to_boot_mode,
@@ -214,6 +219,7 @@ static const media_op_handler_t g_media_handlers[MEDIA_OP_BUTT] = {
     [MEDIA_OP_SET_SMILE_CAPTURE] = handle_set_smile_capture,
     [MEDIA_OP_SET_VIDEO_RESOLUTION] = handle_set_video_resolution,
     [MEDIA_OP_SET_ZOOM] = handle_set_zoom,
+    [MEDIA_OP_SET_FILTER] = handle_set_filter,
 };
 
 int media_manager_execute(media_operation_t op, int32_t args)
@@ -248,5 +254,17 @@ int media_manager_restore_work_mode(int work_mode)
 {
     g_mock_work_mode = work_mode;
     MLOG_INFO("media_manager 恢复模式(占位实现): mode=%d", work_mode);
+    return MEDIA_MANAGER_OK;
+}
+
+int media_manager_set_filter_with_path(int ui_index, const char* isp_bin_path)
+{
+    int ret = media_manager_set_param_checked(PARAM_ID_FILTER_INDEX, ui_index, "设置滤镜索引");
+    if (ret != MEDIA_MANAGER_OK) {
+        return ret;
+    }
+
+    MLOG_INFO("media_manager 设置滤镜(占位实现): index=%d path=%s",
+        ui_index, (isp_bin_path == NULL) ? "(null)" : isp_bin_path);
     return MEDIA_MANAGER_OK;
 }

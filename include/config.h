@@ -14,6 +14,7 @@ extern "C" {
 
 #define RES_FONT_PATH PROJECT_PATH "/res/fonts"
 #define RES_ICON_PATH PROJECT_PATH "/res/icons"
+#define RES_ISP_PATH PROJECT_PATH "/res/isp"
 
 /* =======================
  * 相册路径配置
