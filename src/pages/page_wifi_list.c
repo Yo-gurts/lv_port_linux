@@ -39,6 +39,7 @@ static void scan_timer_cb(lv_timer_t* timer);
 static void connect_timer_cb(lv_timer_t* timer);
 static void append_wifi_list_item(page_wifi_list_data_t* data, int index);
 static void stop_connect_timer(page_wifi_list_data_t* data);
+static void sync_wifi_enabled_state(page_wifi_list_data_t* data);
 
 #define WIFI_CONNECT_POLL_MS 500
 #define WIFI_CONNECT_MAX_POLLS 40
@@ -141,6 +142,23 @@ static void stop_connect_timer(page_wifi_list_data_t* data)
     }
     data->connect_poll_count = 0;
     data->connecting_ssid[0] = '\0';
+}
+
+static void sync_wifi_enabled_state(page_wifi_list_data_t* data)
+{
+    int enabled_now;
+
+    if (data == NULL || data->wifi_switch == NULL) {
+        return;
+    }
+
+    enabled_now = wifi_manager_get_status() == 1 ? 1 : 0;
+    data->wifi_enabled = (uint8_t)enabled_now;
+    if (enabled_now) {
+        lv_obj_add_state(data->wifi_switch, LV_STATE_CHECKED);
+    } else {
+        lv_obj_remove_state(data->wifi_switch, LV_STATE_CHECKED);
+    }
 }
 
 /* 封装连接流程，统一提示与列表刷新。 */
@@ -713,9 +731,19 @@ void page_wifi_list_show(void)
 
     gesture_back_set_left_edge_swipe_cb(data->container, page_manager_back_cb);
 
+    /* 每次进入页面同步真实 WiFi 开关状态，避免显示陈旧状态。 */
+    sync_wifi_enabled_state(data);
+
     /* WiFi 已启用则开始扫描 */
     if (data->wifi_enabled) {
         start_wifi_scan(data);
+    } else {
+        stop_connect_timer(data);
+        if (data->scan_timer != NULL) {
+            lv_timer_del(data->scan_timer);
+            data->scan_timer = NULL;
+        }
+        lv_obj_clean(data->wifi_list);
     }
 
     lv_obj_clear_flag(data->container, LV_OBJ_FLAG_HIDDEN);
