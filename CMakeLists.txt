@@ -109,13 +109,11 @@ set(SOURCES
 
 # Framebuffer manager (only for FB mode)
 if(CONFIG STREQUAL "FB")
-    list(APPEND SOURCES src/core/param_sync_backend.c)
     list(APPEND SOURCES src/core/image_process_manager.c)
     list(APPEND SOURCES src/core/image_recognition_manager.c)
     list(APPEND SOURCES src/core/framebuffer_manager.c)
     list(APPEND SOURCES src/core/wifi_manager.c)
 else()
-    list(APPEND SOURCES src/mock/param_sync_backend.c)
     list(APPEND SOURCES src/mock/image_process_manager.c)
     list(APPEND SOURCES src/mock/image_recognition_manager.c)
     list(APPEND SOURCES src/mock/wifi_manager.c)

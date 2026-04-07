@@ -12,6 +12,7 @@
 #include "core/param_manager.h"
 #include "core/style_manager.h"
 #include "mlog.h"
+#include "ui/filter_panel.h"
 #include "ui/gesture_back.h"
 #include "ui/status_bar.h"
 #include <stdlib.h>
@@ -222,13 +223,20 @@ static void ai_key_cb(key_id_t key, key_event_type_t event_type, void* user_data
 static void filter_btn_cb(lv_event_t* e)
 {
     LV_UNUSED(e);
-    MLOG_INFO("Filter button clicked");
+
+    if (filter_panel_is_visible()) {
+        filter_panel_hide();
+        return;
+    }
+
+    filter_panel_show();
 }
 
 /* 菜单按钮回调：跳转AI拍照设置页面 */
 static void menu_back_cb(lv_event_t* e)
 {
     LV_UNUSED(e);
+    filter_panel_hide();
     MLOG_INFO("Menu clicked, navigate to ai_photo_settings");
     page_manager_navigate("ai_photo_settings");
 }
@@ -246,6 +254,9 @@ void page_ai_photo_create(void)
     }
 
     memset(data, 0, sizeof(page_ai_photo_data_t));
+
+    /* 初始化全局滤镜面板（单例）。 */
+    filter_panel_init();
 
     /* 创建页面容器 */
     data->container = lv_obj_create(lv_screen_active());
@@ -388,6 +399,7 @@ void page_ai_photo_destroy(void)
     (void)key_manager_unregister_callback(KEY_ID_FOCUS, KEY_EVENT_RELEASE, focus_key_cb, data);
     (void)key_manager_unregister_callback(KEY_ID_FOCUS, KEY_EVENT_LONG_PRESS_3S, focus_key_cb, data);
     (void)key_manager_unregister_callback(KEY_ID_AI, KEY_EVENT_CLICK, ai_key_cb, data);
+    filter_panel_hide();
     param_manager_unregister_callback(ai_photo_param_cb);
     free(data);
 }
@@ -402,6 +414,7 @@ void page_ai_photo_show(void)
     gesture_back_set_left_edge_swipe_cb(data->container, page_manager_back_cb);
 
     MLOG_INFO("AI Photo page show");
+    filter_panel_hide();
     /* 显示 UI */
     lv_obj_clear_flag(data->container, LV_OBJ_FLAG_HIDDEN);
 
@@ -438,6 +451,7 @@ void page_ai_photo_hide(void)
 
     MLOG_INFO("AI Photo page hide");
     /* 隐藏 UI */
+    filter_panel_hide();
     lv_obj_add_flag(data->container, LV_OBJ_FLAG_HIDDEN);
     status_bar_show(false);
     (void)key_manager_unregister_callback(KEY_ID_CAMERA, KEY_EVENT_CLICK, take_photo_key_cb, data);
