@@ -28,6 +28,12 @@ typedef struct {
     pthread_mutex_t msg_mutex;
 } message_context_t;
 
+typedef struct {
+    char text[64];
+    top_notice_type_t type;
+    uint32_t duration_ms;
+} async_top_notice_param_t;
+
 static message_context_t g_msg_ctx = {
     .msg_processed = true,
     .result_cb = NULL,
@@ -44,6 +50,48 @@ static bool g_sync_done = false;
 static EVENTHUB_SUBSCRIBER_S* g_subscriber_desc = NULL;
 static MW_PTR g_subscriber_hdl = NULL;
 static bool g_msgmgr_created = false;
+
+static void message_manager_async_status_bar_refresh_cb(void* user_data)
+{
+    (void)user_data;
+    status_bar_refresh();
+}
+
+static void message_manager_async_top_notice_cb(void* user_data)
+{
+    async_top_notice_param_t* param = (async_top_notice_param_t*)user_data;
+
+    if (param == NULL) {
+        return;
+    }
+
+    top_notice_show_for(param->text, param->type, param->duration_ms);
+    free(param);
+}
+
+static void message_manager_post_top_notice_async(const char* text, top_notice_type_t type, uint32_t duration_ms)
+{
+    async_top_notice_param_t* param;
+
+    if (text == NULL) {
+        return;
+    }
+
+    param = (async_top_notice_param_t*)calloc(1, sizeof(*param));
+    if (param == NULL) {
+        return;
+    }
+
+    if (snprintf(param->text, sizeof(param->text), "%s", text) >= (int)sizeof(param->text)) {
+        param->text[0] = '\0';
+    }
+    param->type = type;
+    param->duration_ms = duration_ms;
+
+    if (lv_async_call(message_manager_async_top_notice_cb, param) != LV_RESULT_OK) {
+        free(param);
+    }
+}
 
 static bool handle_sd_card_event_notice(TOPIC_ID topic)
 {
@@ -107,8 +155,8 @@ static bool handle_sd_card_event_notice(TOPIC_ID topic)
     }
 
     (void)param_manager_set(PARAM_ID_SD_READY, sd_ready);
-    status_bar_refresh();
-    top_notice_show_for(notice_text, notice_type, notice_duration_ms);
+    (void)lv_async_call(message_manager_async_status_bar_refresh_cb, NULL);
+    message_manager_post_top_notice_async(notice_text, notice_type, notice_duration_ms);
     return true;
 }
 
