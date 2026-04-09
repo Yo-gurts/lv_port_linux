@@ -30,6 +30,7 @@
 #define KEY_MANAGER_LONG_PRESS_3S_MS 3000U
 #define KEY_MANAGER_ANY_BUCKET KEY_ID_BUTT
 #define KEY_MANAGER_EVENT_ANY_BUCKET KEY_EVENT_BUTT
+#define KEY_MANAGER_MAX_CALLBACKS_PER_BUCKET 8
 
 typedef struct {
     const char* path;
@@ -47,6 +48,8 @@ typedef struct {
 typedef struct {
     key_event_callback_t callback;
     void* user_data;
+    int priority;
+    uint8_t stop_propagation;
     uint8_t valid;
 } key_callback_entry_t;
 
@@ -59,8 +62,8 @@ static key_state_t g_key_states[KEY_ID_BUTT];
 /* 回调映射表：
  * 第一维: key bucket（0..KEY_ID_BUTT-1 + ANY_BUCKET）
  * 第二维: event bucket（0..KEY_EVENT_BUTT-1 + EVENT_ANY_BUCKET）
- * 每个 bucket 仅保存一个回调入口。 */
-static key_callback_entry_t g_callback_map[KEY_ID_BUTT + 1][KEY_EVENT_BUTT + 1];
+ * 第三维: 同一 bucket 的多订阅回调槽位（按 priority 从高到低遍历）。 */
+static key_callback_entry_t g_callback_map[KEY_ID_BUTT + 1][KEY_EVENT_BUTT + 1][KEY_MANAGER_MAX_CALLBACKS_PER_BUCKET];
 static uint8_t g_inited = 0;
 static uint8_t g_input_block_mask = 0;
 static uint32_t g_long_press_ms = KEY_MANAGER_DEFAULT_LONG_PRESS_MS;
@@ -145,6 +148,46 @@ static int key_manager_event_bucket(key_event_type_t event_type)
 {
     /* KEY_EVENT_ANY 映射到最后一个 bucket。 */
     return (event_type == KEY_EVENT_ANY) ? KEY_MANAGER_EVENT_ANY_BUCKET : (int)event_type;
+}
+
+static void key_manager_sort_bucket_callbacks(key_callback_entry_t bucket[KEY_MANAGER_MAX_CALLBACKS_PER_BUCKET])
+{
+    int i;
+    int j;
+
+    for (i = 0; i < KEY_MANAGER_MAX_CALLBACKS_PER_BUCKET - 1; i++) {
+        for (j = i + 1; j < KEY_MANAGER_MAX_CALLBACKS_PER_BUCKET; j++) {
+            if (!bucket[j].valid) {
+                continue;
+            }
+            if (!bucket[i].valid || bucket[j].priority > bucket[i].priority) {
+                key_callback_entry_t temp = bucket[i];
+                bucket[i] = bucket[j];
+                bucket[j] = temp;
+            }
+        }
+    }
+}
+
+static uint8_t key_manager_dispatch_bucket(
+    key_callback_entry_t bucket[KEY_MANAGER_MAX_CALLBACKS_PER_BUCKET],
+    key_id_t key,
+    key_event_type_t event_type)
+{
+    int i;
+
+    for (i = 0; i < KEY_MANAGER_MAX_CALLBACKS_PER_BUCKET; i++) {
+        if (!bucket[i].valid || bucket[i].callback == NULL) {
+            continue;
+        }
+
+        bucket[i].callback(key, event_type, bucket[i].user_data);
+        if (bucket[i].stop_propagation) {
+            return 1;
+        }
+    }
+
+    return 0;
 }
 
 static uint8_t key_manager_mask_normalize(uint8_t mask)
@@ -244,9 +287,8 @@ static void key_manager_dispatch(key_id_t key, key_event_type_t event_type)
              * 2) key + ANY_EVENT
              * 3) ANY_KEY + event
              * 4) ANY_KEY + ANY_EVENT */
-            key_callback_entry_t* entry = &g_callback_map[key_buckets[kb]][event_buckets[eb]];
-            if (entry->valid && entry->callback != NULL) {
-                entry->callback(key, event_type, entry->user_data);
+            if (key_manager_dispatch_bucket(g_callback_map[key_buckets[kb]][event_buckets[eb]], key, event_type)) {
+                return;
             }
         }
     }
@@ -457,9 +499,21 @@ void key_manager_poll(void)
 /* 按“按键+事件”维度注册回调。 */
 int key_manager_register_callback(key_id_t key, key_event_type_t event_type, key_event_callback_t callback, void* user_data)
 {
+    return key_manager_register_callback_with_priority(key, event_type, callback, user_data, 0, 0);
+}
+
+int key_manager_register_callback_with_priority(
+    key_id_t key,
+    key_event_type_t event_type,
+    key_event_callback_t callback,
+    void* user_data,
+    int priority,
+    uint8_t stop_propagation)
+{
     int key_bucket;
     int event_bucket;
-    key_callback_entry_t* entry;
+    int i;
+    key_callback_entry_t* bucket;
 
     if (callback == NULL) {
         return -1;
@@ -467,18 +521,35 @@ int key_manager_register_callback(key_id_t key, key_event_type_t event_type, key
     if (!key_manager_is_valid_key(key) || !key_manager_is_valid_event(event_type)) {
         return -1;
     }
+
     key_bucket = key_manager_key_bucket(key);
     event_bucket = key_manager_event_bucket(event_type);
-    entry = &g_callback_map[key_bucket][event_bucket];
-    /* 当前策略：同一个 key+event 只允许一个回调，避免分发顺序不确定。 */
-    if (entry->valid) {
-        MLOG_WARN("key_manager register callback failed: key=%d event=%d already has callback", key, event_type);
-        return -1;
+    bucket = g_callback_map[key_bucket][event_bucket];
+
+    for (i = 0; i < KEY_MANAGER_MAX_CALLBACKS_PER_BUCKET; i++) {
+        if (!bucket[i].valid) {
+            continue;
+        }
+        if (bucket[i].callback == callback && bucket[i].user_data == user_data) {
+            MLOG_WARN("key_manager register callback failed: duplicated callback key=%d event=%d", key, event_type);
+            return -1;
+        }
     }
-    entry->callback = callback;
-    entry->user_data = user_data;
-    entry->valid = 1;
-    return 0;
+
+    for (i = 0; i < KEY_MANAGER_MAX_CALLBACKS_PER_BUCKET; i++) {
+        if (!bucket[i].valid) {
+            bucket[i].callback = callback;
+            bucket[i].user_data = user_data;
+            bucket[i].priority = priority;
+            bucket[i].stop_propagation = stop_propagation ? 1U : 0U;
+            bucket[i].valid = 1U;
+            key_manager_sort_bucket_callbacks(bucket);
+            return 0;
+        }
+    }
+
+    MLOG_WARN("key_manager register callback failed: bucket full key=%d event=%d", key, event_type);
+    return -1;
 }
 
 /* 注销一条精确匹配的回调记录。 */
@@ -486,7 +557,8 @@ int key_manager_unregister_callback(key_id_t key, key_event_type_t event_type, k
 {
     int key_bucket;
     int event_bucket;
-    key_callback_entry_t* entry;
+    int i;
+    key_callback_entry_t* bucket;
 
     if (callback == NULL) {
         return -1;
@@ -496,15 +568,20 @@ int key_manager_unregister_callback(key_id_t key, key_event_type_t event_type, k
     }
     key_bucket = key_manager_key_bucket(key);
     event_bucket = key_manager_event_bucket(event_type);
-    entry = &g_callback_map[key_bucket][event_bucket];
-    if (!entry->valid) {
-        return -1;
+    bucket = g_callback_map[key_bucket][event_bucket];
+
+    for (i = 0; i < KEY_MANAGER_MAX_CALLBACKS_PER_BUCKET; i++) {
+        if (!bucket[i].valid) {
+            continue;
+        }
+        if (bucket[i].callback == callback && bucket[i].user_data == user_data) {
+            memset(&bucket[i], 0, sizeof(bucket[i]));
+            key_manager_sort_bucket_callbacks(bucket);
+            return 0;
+        }
     }
-    if (entry->callback != callback || entry->user_data != user_data) {
-        return -1;
-    }
-    memset(entry, 0, sizeof(*entry));
-    return 0;
+
+    return -1;
 }
 
 /* 设置长按阈值，0 表示保持当前值。 */

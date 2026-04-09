@@ -50,8 +50,16 @@ void key_manager_bind_touch_indev(struct _lv_indev_t* indev);
 void key_manager_poll(void);
 
 /* 注册按键事件回调：可按具体 key/event 注册，也可用 ANY 订阅通配事件。 */
-/* 当前实现为每个 key+event 仅允许注册一个回调。 */
+/* 默认优先级=0、不截断传播。 */
 int key_manager_register_callback(key_id_t key, key_event_type_t event_type, key_event_callback_t callback, void* user_data);
+/* 支持多订阅者优先级与传播控制：priority 越大越先执行；stop_propagation=1 时执行后中断后续回调。 */
+int key_manager_register_callback_with_priority(
+    key_id_t key,
+    key_event_type_t event_type,
+    key_event_callback_t callback,
+    void* user_data,
+    int priority,
+    uint8_t stop_propagation);
 /* 注销与注册参数完全匹配的一条回调记录。 */
 int key_manager_unregister_callback(key_id_t key, key_event_type_t event_type, key_event_callback_t callback, void* user_data);
 
