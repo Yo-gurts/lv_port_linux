@@ -84,6 +84,7 @@ set(SOURCES
     src/pages/page_ai_recognition_preview.c
     src/pages/page_ai_photo.c
     src/pages/page_ai_style_preview.c
+    src/pages/media_grid_common.c
     src/pages/page_album.c
     src/pages/page_chat.c
     src/pages/page_home.c

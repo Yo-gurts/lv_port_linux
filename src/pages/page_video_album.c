@@ -4,6 +4,7 @@
 
 #include "pages/page_video_album.h"
 #include "pages/page_video_preview.h"
+#include "pages/media_grid_common.h"
 #include "config.h"
 #include "core/file_manager.h"
 #include "core/font_manager.h"
@@ -90,11 +91,7 @@ static int g_video_album_focus_video_index = -1;
 
 static int clamp_int(int value, int min_value, int max_value)
 {
-    if (value < min_value)
-        return min_value;
-    if (value > max_value)
-        return max_value;
-    return value;
+    return media_grid_clamp_int(value, min_value, max_value);
 }
 
 static int get_album_total_count(void)
@@ -123,30 +120,10 @@ static void format_duration(int duration_sec, char* out_text, size_t out_size)
 
 static bool ensure_selected_buffer(page_video_album_data_t* data, int required_count)
 {
-    bool* new_flags;
-    int new_capacity;
-
     if (!data)
         return false;
 
-    if (required_count <= 0)
-        required_count = 1;
-
-    if (data->selected_capacity >= required_count)
-        return true;
-
-    new_capacity = data->selected_capacity > 0 ? data->selected_capacity : 16;
-    while (new_capacity < required_count)
-        new_capacity *= 2;
-
-    new_flags = (bool*)realloc(data->selected_flags, (size_t)new_capacity * sizeof(bool));
-    if (!new_flags)
-        return false;
-
-    memset(new_flags + data->selected_capacity, 0, (size_t)(new_capacity - data->selected_capacity) * sizeof(bool));
-    data->selected_flags = new_flags;
-    data->selected_capacity = new_capacity;
-    return true;
+    return media_grid_ensure_selected_buffer(&data->selected_flags, &data->selected_capacity, required_count);
 }
 
 static void clear_selection_state(page_video_album_data_t* data)
@@ -154,9 +131,7 @@ static void clear_selection_state(page_video_album_data_t* data)
     if (!data)
         return;
 
-    if (data->selected_flags && data->selected_capacity > 0)
-        memset(data->selected_flags, 0, (size_t)data->selected_capacity * sizeof(bool));
-    data->selected_count = 0;
+    media_grid_clear_selection_state(data->selected_flags, data->selected_capacity, &data->selected_count);
 }
 
 static void set_selection_mode(page_video_album_data_t* data, bool enable)
@@ -392,7 +367,7 @@ static void show_video_preview(page_video_album_data_t* data, int video_index)
 
 static int get_total_rows(const page_video_album_data_t* data)
 {
-    int total_rows = (data->total_videos + data->layout.cols - 1) / data->layout.cols;
+    int total_rows = media_grid_get_total_rows(data->total_videos, data->layout.cols);
     if (total_rows < 1)
         total_rows = 1;
     return total_rows;
@@ -531,9 +506,8 @@ static int get_last_visible_video_index_1based(page_video_album_data_t* data)
         bottom_y = 0;
 
     last_visible_row = bottom_y / data->layout.row_height;
-    last_visible_index_1based = (last_visible_row + 1) * data->layout.cols;
-    if (last_visible_index_1based > data->total_videos)
-        last_visible_index_1based = data->total_videos;
+    last_visible_index_1based = media_grid_get_last_visible_index_1based(
+        last_visible_row, 1, data->total_videos, data->layout.cols);
 
     return last_visible_index_1based;
 }
