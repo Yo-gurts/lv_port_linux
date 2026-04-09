@@ -2,117 +2,99 @@
 
 ## 1. 概述
 
-Key Manager 用于统一管理物理按键输入，提供：
+Key Manager 统一处理物理按键与触摸屏蔽策略，负责：
+- 输入设备轮询（power-key / adc-key2）
+- 按键事件状态机（按下、抬起、短按、长按、连发、3秒长按）
+- 回调注册/注销（支持多订阅者）
+- 输入屏蔽位图管理（TP、Power、ADC、非拍照键）
 
-- 多输入设备采集（`/dev/input/power-key`、`/dev/input/adc-key2`）
-- 按键事件抽象（短按、长按、长按连发）
-- 按键回调注册/注销
-- 输入源按位屏蔽能力（TP / power-key / adc-key2）
+默认内置行为：
+- 音量键在 CLICK / LONG_PRESS / LONG_PRESS_REPEAT 上执行音量增减
 
-`key_manager_init()` 内置注册了音量键默认行为：
+## 2. 按键与事件模型
 
-- `KEY_ID_VOLUME_UP`：每次事件音量 `+10%`
-- `KEY_ID_VOLUME_DOWN`：每次事件音量 `-10%`
-- 生效事件：`KEY_EVENT_CLICK`、`KEY_EVENT_LONG_PRESS`、`KEY_EVENT_LONG_PRESS_REPEAT`
+### 2.1 按键枚举
+- `KEY_ID_POWER`
+- `KEY_ID_AI`
+- `KEY_ID_VOLUME_UP`
+- `KEY_ID_VOLUME_DOWN`
+- `KEY_ID_FOCUS`
+- `KEY_ID_CAMERA`
+- `KEY_ID_ANY`（通配）
 
-当前实现采用**主线程轮询**模型，不额外创建线程，避免 LVGL 线程安全问题。
+### 2.2 事件枚举
+- `KEY_EVENT_CLICK`
+- `KEY_EVENT_PRESS`
+- `KEY_EVENT_RELEASE`
+- `KEY_EVENT_LONG_PRESS`
+- `KEY_EVENT_LONG_PRESS_3S`
+- `KEY_EVENT_LONG_PRESS_3S_RELEASE`
+- `KEY_EVENT_LONG_PRESS_REPEAT`
+- `KEY_EVENT_ANY`（通配）
 
-## 2. 按键来源与映射
+说明：业务文档若只写“5类事件”已过时，当前实现包含 PRESS/RELEASE 与 3S 相关事件。
 
-### 2.1 输入设备
+## 3. 回调分发机制
 
-- `power_key`：`/dev/input/power-key`
-- 其他键：`/dev/input/adc-key2`
+## 3.1 匹配路径
+一次事件按如下顺序匹配：
+1) `key + event`
+2) `key + ANY_EVENT`
+3) `ANY_KEY + event`
+4) `ANY_KEY + ANY_EVENT`
 
-### 2.2 Linux key code 映射
+## 3.2 多订阅者与优先级
+同一个 bucket 支持多个回调：
+- `priority` 越大越先执行
+- `stop_propagation=1` 时执行后中断后续回调
 
-- `KEY_POWER` -> `KEY_ID_POWER`
-- `KEY_PLAY(207)` -> `KEY_ID_AI`
-- `KEY_VOLUMEUP(115)` -> `KEY_ID_VOLUME_UP`
-- `KEY_VOLUMEDOWN(114)` -> `KEY_ID_VOLUME_DOWN`
-- `KEY_CAMERA_FOCUS(528)` -> `KEY_ID_FOCUS`
-- `KEY_CAMERA(212)` -> `KEY_ID_CAMERA`
+接口：
+```c
+int key_manager_register_callback_with_priority(
+    key_id_t key,
+    key_event_type_t event_type,
+    key_event_callback_t callback,
+    void* user_data,
+    int priority,
+    uint8_t stop_propagation);
+```
 
-## 3. 事件模型
+兼容接口：
+```c
+int key_manager_register_callback(key_id_t key, key_event_type_t event_type,
+    key_event_callback_t callback, void* user_data);
+```
+等价于 `priority=0, stop_propagation=0`。
 
-支持五类业务事件：
+## 3.3 注销规则
+`key_manager_unregister_callback(...)` 按 `(key,event,callback,user_data)` 精确匹配注销。
 
-- `KEY_EVENT_CLICK`：短按（按下后在长按阈值前抬起）
-- `KEY_EVENT_LONG_PRESS`：达到长按阈值触发一次，默认700ms
-- `KEY_EVENT_LONG_PRESS_3S`：按下持续达到 3 秒触发一次（支持所有按键）
-- `KEY_EVENT_LONG_PRESS_3S_RELEASE`：触发过 3 秒长按后，抬起时触发一次
-- `KEY_EVENT_LONG_PRESS_REPEAT`：长按后按固定周期持续触发
+## 4. 输入屏蔽策略
 
-默认参数：
+屏蔽位图：
+- `KEY_INPUT_BLOCK_TP`
+- `KEY_INPUT_BLOCK_POWER_KEY`
+- `KEY_INPUT_BLOCK_ADC_KEY2`
+- `KEY_INPUT_BLOCK_NON_CAMERA_KEYS`
 
-- 长按阈值：`700ms`
-- 连发间隔：`200ms`
-- `LONG_PRESS_3S` 阈值：固定 `3000ms`
+调用：
+```c
+void key_manager_set_block_non_power(uint8_t block_mask);
+uint8_t key_manager_get_block_non_power(void);
+```
 
-可通过接口动态调整：
+行为约束：
+- 切到屏蔽态会清空对应按键状态，避免解除后补发旧 click/long 事件
+- TP 屏蔽通过 `lv_indev_enable(indev, false)` 生效
+- SDL 模式下 mouse indev 也绑定到 key_manager，保证仿真与真机一致
 
-- `key_manager_set_long_press_ms()`
-- `key_manager_set_repeat_ms()`
+## 5. 线程与调用时序
 
-## 4. 回调分发设计
+- key_manager 本身不创建 UI 线程外回调线程
+- `key_manager_poll()` 在 GUI 主循环周期调用
+- 回调中如涉及 UI 操作，默认处于 GUI 线程上下文
 
-### 4.1 二维映射表
-
-回调存储使用二维表：
-
-- 第一维：`key bucket`（`KEY_ID_POWER..KEY_ID_CAMERA` + `KEY_ID_ANY`）
-- 第二维：`event bucket`（`CLICK/LONG/REPEAT` + `KEY_EVENT_ANY`）
-
-即：`callback_map[key_bucket][event_bucket]`
-
-说明：
-
-- `KEY_EVENT_BUTT` 是事件枚举的边界值（上界），不是可注册事件。
-- `KEY_EVENT_ANY` 是可注册的通配事件（语义上与 `BUTT` 不同）。
-- 实现中为了使用数组索引，会把 `KEY_EVENT_ANY(-1)` 映射到最后一个槽位（索引 `KEY_EVENT_BUTT`）。
-- 因此“ANY bucket 使用 BUTT 索引”只是内部存储映射，不代表 `ANY == BUTT`。
-
-### 4.2 分发规则
-
-一次按键事件会按 4 条路径分发：
-
-1. `key + event`
-2. `key + ANY_EVENT`
-3. `ANY_KEY + event`
-4. `ANY_KEY + ANY_EVENT`
-
-### 4.3 注册限制
-
-当前每个 `key+event` 仅允许注册一个回调，避免分发顺序不确定。
-
-## 5. 屏蔽策略（位图）
-
-提供 `key_manager_set_block_non_power(uint8_t block_mask)`，参数为位图：
-
-- `KEY_INPUT_BLOCK_TP`：屏蔽 TP 输入（通过 `lv_indev_enable(indev, false)`）
-- `KEY_INPUT_BLOCK_POWER_KEY`：屏蔽 `power-key`（`KEY_ID_POWER`）
-- `KEY_INPUT_BLOCK_ADC_KEY2`：屏蔽 `adc-key2`（AI/音量/对焦/拍照等）
-
-支持按位组合：
-
-- 仅屏蔽 TP：`KEY_INPUT_BLOCK_TP`
-- 仅屏蔽 ADC：`KEY_INPUT_BLOCK_ADC_KEY2`
-- 屏蔽 TP + ADC：`KEY_INPUT_BLOCK_TP | KEY_INPUT_BLOCK_ADC_KEY2`
-
-为避免“补发旧事件”，在屏蔽状态切换到开启时会清空对应按键状态机（按下状态、长按计时、连发计时）。
-
-## 6. 线程与时序
-
-### 6.1 为什么不单独起线程
-
-- 工程约束：尽量避免线程，优先主线程处理 UI 相关输入
-- LVGL 非线程安全，线程化后仍需回主线程操作 UI，复杂度更高
-- 当前实现使用 `poll(..., 0)` + 非阻塞 `read`，不会阻塞 `lv_timer_handler()`
-
-### 6.2 调用位置
-
-在 `ui_main()` 主循环每帧调用：
-
+典型主循环：
 ```c
 while (1) {
     key_manager_poll();
@@ -121,52 +103,19 @@ while (1) {
 }
 ```
 
-## 7. API 参考
+## 6. 常见误区
 
-```c
-int key_manager_init(void);
-void key_manager_deinit(void);
-void key_manager_bind_touch_indev(struct _lv_indev_t* indev);
-void key_manager_poll(void);
+1) 误区：同一个 key+event 只能注册一个回调。  
+   现状：已支持多回调，按优先级执行。  
 
-int key_manager_register_callback(key_id_t key, key_event_type_t event_type,
-    key_event_callback_t callback, void* user_data);
-int key_manager_unregister_callback(key_id_t key, key_event_type_t event_type,
-    key_event_callback_t callback, void* user_data);
+2) 误区：可“直接重新注册覆盖”默认行为。  
+   现状：不会覆盖已有回调；若需替换行为，可先注销旧回调或使用更高优先级并截断传播。  
 
-void key_manager_set_long_press_ms(uint32_t long_press_ms);
-void key_manager_set_repeat_ms(uint32_t repeat_ms);
+3) 误区：仅屏蔽 TP 就能阻断所有输入。  
+   现状：物理按键仍会生效，需结合 ADC/POWER 屏蔽位。
 
-/* KEY_INPUT_BLOCK_TP / KEY_INPUT_BLOCK_POWER_KEY / KEY_INPUT_BLOCK_ADC_KEY2 */
-void key_manager_set_block_non_power(uint8_t block_mask);
-uint8_t key_manager_get_block_non_power(void);
-```
-
-## 8. 使用示例
-
-```c
-static void on_key_event(key_id_t key, key_event_type_t type, void* user_data)
-{
-    LV_UNUSED(user_data);
-    if (key == KEY_ID_VOLUME_UP && type == KEY_EVENT_CLICK) {
-        /* do something */
-    }
-}
-
-void app_key_init(void)
-{
-    key_manager_init();
-    key_manager_register_callback(KEY_ID_ANY, KEY_EVENT_LONG_PRESS, on_key_event, NULL);
-}
-```
-
-说明：
-
-- 音量键（`KEY_ID_VOLUME_UP/DOWN`）默认逻辑已在 `key_manager_init()` 中注册。
-- 若业务要覆盖默认音量行为，可在初始化后对对应 `key+event` 重新注册或先注销再注册。
-
-## 9. 相关文件
+## 7. 相关文件
 
 - `include/core/key_manager.h`
 - `src/core/key_manager.c`
-- `src/ui_main.c`
+- `src/core/ui_common.c`（SDL/FB 输入绑定）
