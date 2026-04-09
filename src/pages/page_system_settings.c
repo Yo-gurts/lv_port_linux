@@ -4,8 +4,8 @@
 
 #include "pages/page_system_settings.h"
 #include "config.h"
-#include "core/file_manager.h"
 #include "core/font_manager.h"
+#include "core/media_manager.h"
 #include "core/page_manager.h"
 #include "core/param_manager.h"
 #include "core/style_manager.h"
@@ -151,22 +151,29 @@ static void hide_confirm_dialog(page_system_settings_data_t* data)
     lv_obj_add_flag(data->confirm_mask, LV_OBJ_FLAG_HIDDEN);
 }
 
+static void system_settings_async_refresh_cb(void* user_data)
+{
+    page_system_settings_data_t* data;
+
+    LV_UNUSED(user_data);
+    data = (page_system_settings_data_t*)page_get_private_data();
+    if (data == NULL || data->container == NULL) {
+        return;
+    }
+
+    update_volume_setting_value(data);
+    update_auto_sleep_setting_value(data);
+    update_wifi_setting_value(data);
+}
+
 /* 参数更新回调：参数变化时同步系统设置页显示。 */
 static void system_settings_param_cb(param_id_t id, int value, void* user_data)
 {
-    page_system_settings_data_t* data = (page_system_settings_data_t*)user_data;
     LV_UNUSED(value);
 
-    if (id == PARAM_ID_VOLUME) {
-        update_volume_setting_value(data);
-        return;
-    }
-    if (id == PARAM_ID_AUTO_SLEEP) {
-        update_auto_sleep_setting_value(data);
-        return;
-    }
-    if (id == PARAM_ID_WIFI_CONNECTED || id == PARAM_ID_WIFI_SIGNAL_DBM) {
-        update_wifi_setting_value(data);
+    LV_UNUSED(user_data);
+    if (id == PARAM_ID_VOLUME || id == PARAM_ID_AUTO_SLEEP || id == PARAM_ID_WIFI_CONNECTED || id == PARAM_ID_WIFI_SIGNAL_DBM) {
+        (void)lv_async_call(system_settings_async_refresh_cb, NULL);
     }
 }
 
@@ -185,43 +192,34 @@ static void system_settings_param_cb(param_id_t id, int value, void* user_data)
 // ! #region 7. 按键、手势、定时器 等事件回调函数
 // #############################################################################
 
-static void system_action_timer_cb(lv_timer_t* timer)
+static void system_action_media_cb(media_operation_t op, int32_t args, int result, void* user_data)
 {
     page_system_settings_data_t* data;
-    int ret = -1;
 
-    if (timer == NULL) {
-        return;
-    }
-
-    data = (page_system_settings_data_t*)lv_timer_get_user_data(timer);
-    if (data == NULL) {
-        lv_timer_del(timer);
-        return;
-    }
-
-    if (data->pending_action == SYSTEM_ACTION_FORMAT_SDCARD) {
-        ret = file_manager_format_sdcard();
-        if (ret == 0) {
+    LV_UNUSED(args);
+    LV_UNUSED(user_data);
+    data = (page_system_settings_data_t*)page_get_private_data();
+    if (op == MEDIA_OP_FORMAT_STORAGE) {
+        if (result == MEDIA_MANAGER_OK) {
             top_notice_show("SD卡格式化完成", TOP_NOTICE_TYPE_SUCCESS);
         } else {
             top_notice_show("SD卡格式化失败", TOP_NOTICE_TYPE_ERROR);
         }
-    } else if (data->pending_action == SYSTEM_ACTION_FACTORY_RESET) {
-        ret = param_manager_factory_reset();
-        if (ret == 0) {
+    } else if (op == MEDIA_OP_FACTORY_RESET) {
+        if (result == MEDIA_MANAGER_OK) {
             top_notice_show("恢复出厂设置完成", TOP_NOTICE_TYPE_SUCCESS);
         } else {
             top_notice_show("恢复出厂设置失败", TOP_NOTICE_TYPE_ERROR);
         }
     }
 
-    update_volume_setting_value(data);
-    update_auto_sleep_setting_value(data);
-    data->pending_action = SYSTEM_ACTION_NONE;
-    data->action_processing = 0;
-    data->action_timer = NULL;
-    lv_timer_del(timer);
+    if (data != NULL) {
+        update_volume_setting_value(data);
+        update_auto_sleep_setting_value(data);
+        update_wifi_setting_value(data);
+        data->pending_action = SYSTEM_ACTION_NONE;
+        data->action_processing = 0;
+    }
 }
 
 static void confirm_cancel_btn_cb(lv_event_t* e)
@@ -260,13 +258,18 @@ static void confirm_ok_btn_cb(lv_event_t* e)
     data->action_processing = 1;
     hide_confirm_dialog(data);
 
-    if (data->action_timer != NULL) {
-        lv_timer_del(data->action_timer);
-        data->action_timer = NULL;
-    }
-    data->action_timer = lv_timer_create(system_action_timer_cb, 10, data);
-    if (data->action_timer != NULL) {
-        lv_timer_set_repeat_count(data->action_timer, 1);
+    if (data->pending_action == SYSTEM_ACTION_FORMAT_SDCARD) {
+        if (media_manager_execute_async(MEDIA_OP_FORMAT_STORAGE, 0, system_action_media_cb, data) != MEDIA_MANAGER_OK) {
+            data->action_processing = 0;
+            data->pending_action = SYSTEM_ACTION_NONE;
+            top_notice_show("格式化请求提交失败", TOP_NOTICE_TYPE_ERROR);
+        }
+    } else if (data->pending_action == SYSTEM_ACTION_FACTORY_RESET) {
+        if (media_manager_execute_async(MEDIA_OP_FACTORY_RESET, 0, system_action_media_cb, data) != MEDIA_MANAGER_OK) {
+            data->action_processing = 0;
+            data->pending_action = SYSTEM_ACTION_NONE;
+            top_notice_show("恢复出厂设置请求提交失败", TOP_NOTICE_TYPE_ERROR);
+        }
     }
 }
 
@@ -489,11 +492,6 @@ void page_system_settings_destroy(void)
     page_system_settings_data_t* data = page_get_private_data();
     if (!data) {
         return;
-    }
-
-    if (data->action_timer != NULL) {
-        lv_timer_del(data->action_timer);
-        data->action_timer = NULL;
     }
 
     if (data->container) {

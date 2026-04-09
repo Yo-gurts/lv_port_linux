@@ -344,6 +344,7 @@ static int32_t message_manager_subscribe(void)
     g_subscriber_desc->new_msg_cb = message_manager_event_cb;
     g_subscriber_desc->sync = false;
 
+    /* subscriber 描述结构体由 message_manager 分配并持有，在 destroy() 显式释放。 */
     ret = EVENTHUB_CreateSubscriber(g_subscriber_desc, &g_subscriber_hdl);
     if (ret != 0) {
         free(g_subscriber_desc);
@@ -397,8 +398,12 @@ void message_manager_destroy(void)
         (void)EVENTHUB_DestroySubscriber(g_subscriber_hdl);
     }
 
+    if (g_subscriber_desc != NULL) {
+        free(g_subscriber_desc);
+        g_subscriber_desc = NULL;
+    }
+
     g_subscriber_hdl = NULL;
-    g_subscriber_desc = NULL;
     g_msgmgr_created = false;
 }
 

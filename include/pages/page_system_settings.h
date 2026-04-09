@@ -26,7 +26,6 @@ typedef struct {
     lv_obj_t* confirm_msg_label; /* 确认文案 */
     lv_obj_t* confirm_cancel_btn; /* 取消按钮 */
     lv_obj_t* confirm_ok_btn; /* 确认按钮 */
-    lv_timer_t* action_timer; /* 延迟触发处理的定时器 */
     int pending_action; /* 待确认操作 */
     int action_processing; /* 是否正在处理 */
     system_setting_item_t settings[8]; /* 8个设置项 */

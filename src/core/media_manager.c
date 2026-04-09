@@ -7,7 +7,10 @@
 #include "mode.h"
 #include "param.h"
 #include "ui/top_notice.h"
+#include "lvgl/lvgl.h"
+#include <pthread.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 #define MEDIA_MANAGER_TAKE_PHOTO_TIMEOUT_MS 5000U
 #define MEDIA_MANAGER_MODE_SWITCH_TIMEOUT_MS 3000U
@@ -16,6 +19,108 @@
 
 typedef int (*media_op_handler_t)(int32_t args);
 static int media_manager_set_filter_impl(int ui_index, const char* isp_bin_path);
+
+typedef struct {
+    media_operation_t op;
+    int32_t args;
+    media_manager_async_cb_t cb;
+    void* user_data;
+} media_async_request_t;
+
+typedef struct {
+    media_operation_t op;
+    int32_t args;
+    int result;
+    media_manager_async_cb_t cb;
+    void* user_data;
+} media_async_callback_param_t;
+
+#define MEDIA_MANAGER_ASYNC_QUEUE_SIZE 16
+
+static pthread_t g_media_async_thread;
+static pthread_mutex_t g_media_async_mutex = PTHREAD_MUTEX_INITIALIZER;
+static pthread_cond_t g_media_async_cond = PTHREAD_COND_INITIALIZER;
+static media_async_request_t g_media_async_queue[MEDIA_MANAGER_ASYNC_QUEUE_SIZE];
+static int g_media_async_head = 0;
+static int g_media_async_tail = 0;
+static int g_media_async_count = 0;
+static int g_media_async_started = 0;
+
+static void media_manager_async_invoke_cb(void* user_data)
+{
+    media_async_callback_param_t* param = (media_async_callback_param_t*)user_data;
+
+    if (param == NULL) {
+        return;
+    }
+
+    if (param->cb != NULL) {
+        param->cb(param->op, param->args, param->result, param->user_data);
+    }
+    free(param);
+}
+
+static void* media_manager_async_worker(void* arg)
+{
+    (void)arg;
+
+    while (1) {
+        media_async_request_t req;
+        media_async_callback_param_t* cb_param;
+
+        pthread_mutex_lock(&g_media_async_mutex);
+        while (g_media_async_count == 0) {
+            pthread_cond_wait(&g_media_async_cond, &g_media_async_mutex);
+        }
+
+        req = g_media_async_queue[g_media_async_head];
+        g_media_async_head = (g_media_async_head + 1) % MEDIA_MANAGER_ASYNC_QUEUE_SIZE;
+        g_media_async_count--;
+        pthread_mutex_unlock(&g_media_async_mutex);
+
+        cb_param = NULL;
+        if (req.cb != NULL) {
+            cb_param = (media_async_callback_param_t*)calloc(1, sizeof(*cb_param));
+        }
+
+        if (cb_param != NULL) {
+            cb_param->op = req.op;
+            cb_param->args = req.args;
+            cb_param->cb = req.cb;
+            cb_param->user_data = req.user_data;
+            cb_param->result = media_manager_execute(req.op, req.args);
+            if (lv_async_call(media_manager_async_invoke_cb, cb_param) != LV_RESULT_OK) {
+                req.cb(req.op, req.args, cb_param->result, req.user_data);
+                free(cb_param);
+            }
+        } else {
+            (void)media_manager_execute(req.op, req.args);
+        }
+    }
+}
+
+static int media_manager_async_ensure_started(void)
+{
+    int ret;
+
+    pthread_mutex_lock(&g_media_async_mutex);
+    if (g_media_async_started) {
+        pthread_mutex_unlock(&g_media_async_mutex);
+        return MEDIA_MANAGER_OK;
+    }
+
+    ret = pthread_create(&g_media_async_thread, NULL, media_manager_async_worker, NULL);
+    if (ret != 0) {
+        pthread_mutex_unlock(&g_media_async_mutex);
+        MLOG_ERR("媒体异步线程创建失败: ret=%d", ret);
+        return MEDIA_MANAGER_ESTATE;
+    }
+
+    (void)pthread_detach(g_media_async_thread);
+    g_media_async_started = 1;
+    pthread_mutex_unlock(&g_media_async_mutex);
+    return MEDIA_MANAGER_OK;
+}
 
 static int media_manager_clamp_volume(int value)
 {
@@ -605,6 +710,40 @@ int media_manager_execute(media_operation_t op, int32_t args)
     }
 
     return handler(args);
+}
+
+int media_manager_execute_async(media_operation_t op, int32_t args, media_manager_async_cb_t cb, void* user_data)
+{
+    media_async_request_t req;
+
+    if (op < 0 || op >= MEDIA_OP_BUTT) {
+        MLOG_WARN("异步操作参数非法: op=%d", op);
+        return MEDIA_MANAGER_EINVAL;
+    }
+
+    if (media_manager_async_ensure_started() != MEDIA_MANAGER_OK) {
+        return MEDIA_MANAGER_ESTATE;
+    }
+
+    req.op = op;
+    req.args = args;
+    req.cb = cb;
+    req.user_data = user_data;
+
+    pthread_mutex_lock(&g_media_async_mutex);
+    if (g_media_async_count >= MEDIA_MANAGER_ASYNC_QUEUE_SIZE) {
+        pthread_mutex_unlock(&g_media_async_mutex);
+        MLOG_WARN("媒体异步队列已满: op=%d", op);
+        return MEDIA_MANAGER_ESTATE;
+    }
+
+    g_media_async_queue[g_media_async_tail] = req;
+    g_media_async_tail = (g_media_async_tail + 1) % MEDIA_MANAGER_ASYNC_QUEUE_SIZE;
+    g_media_async_count++;
+    pthread_cond_signal(&g_media_async_cond);
+    pthread_mutex_unlock(&g_media_async_mutex);
+
+    return MEDIA_MANAGER_OK;
 }
 
 int media_manager_get_current_work_mode(void)

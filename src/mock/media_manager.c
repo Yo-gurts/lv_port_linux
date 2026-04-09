@@ -240,6 +240,15 @@ int media_manager_execute(media_operation_t op, int32_t args)
     return handler(args);
 }
 
+int media_manager_execute_async(media_operation_t op, int32_t args, media_manager_async_cb_t cb, void* user_data)
+{
+    int ret = media_manager_execute(op, args);
+    if (cb != NULL) {
+        cb(op, args, ret, user_data);
+    }
+    return ret;
+}
+
 int media_manager_get_current_work_mode(void)
 {
     return g_mock_work_mode;

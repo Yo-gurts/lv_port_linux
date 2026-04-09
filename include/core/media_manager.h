@@ -40,7 +40,11 @@ typedef enum {
 #define MEDIA_MANAGER_ESTATE (-3)
 #define MEDIA_MANAGER_EUNSUP (-4)
 
+typedef void (*media_manager_async_cb_t)(media_operation_t op, int32_t args, int result, void* user_data);
+
 int media_manager_execute(media_operation_t op, int32_t args);
+/* 异步执行媒体操作：请求进入队列后立即返回，完成后在 GUI 线程回调 cb（若非空）。 */
+int media_manager_execute_async(media_operation_t op, int32_t args, media_manager_async_cb_t cb, void* user_data);
 int media_manager_get_current_work_mode(void);
 int media_manager_is_playback_work_mode(int work_mode);
 int media_manager_restore_work_mode(int work_mode);

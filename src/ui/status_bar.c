@@ -35,6 +35,7 @@ static status_bar_icon_type_t normalize_icon_type(status_bar_icon_type_t type);
 static const char* get_icon_path(status_bar_icon_type_t type);
 static void update_icons(void);
 static void status_bar_param_cb(param_id_t id, int value, void* user_data);
+static void status_bar_async_refresh_cb(void* user_data);
 
 // #endregion
 // #############################################################################
@@ -142,6 +143,12 @@ static void update_icons(void)
     }
 }
 
+static void status_bar_async_refresh_cb(void* user_data)
+{
+    LV_UNUSED(user_data);
+    update_icons();
+}
+
 static void status_bar_param_cb(param_id_t id, int value, void* user_data)
 {
     LV_UNUSED(value);
@@ -149,7 +156,7 @@ static void status_bar_param_cb(param_id_t id, int value, void* user_data)
 
     if (id == PARAM_ID_BATTERY_VAL || id == PARAM_ID_WIFI_ENABLED || id == PARAM_ID_WIFI_CONNECTED
         || id == PARAM_ID_WIFI_SIGNAL_DBM || id == PARAM_ID_SD_READY) {
-        update_icons();
+        (void)lv_async_call(status_bar_async_refresh_cb, NULL);
     }
 }
 
