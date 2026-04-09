@@ -86,6 +86,8 @@ static void lv_linux_disp_init(void)
     lv_indev_set_group(mouse, lv_group_get_default());
     lv_indev_set_display(mouse, disp);
     lv_display_set_default(disp);
+    /* SDL 鼠标也作为触摸输入源接入 key_manager，保证 TP 屏蔽策略与真机一致。 */
+    key_manager_bind_touch_indev(mouse);
     // 使用 ARGB，默认 XRGB 会有页面残留（与LVGL版本相关）
     lv_display_set_color_format(disp, 0x10); // 0x10 ARGB, 0x11 XRGB
 
@@ -253,6 +255,32 @@ static page_interface_t test_page_interface = {
     .update = page_test_update,
 };
 
+typedef struct {
+    const char* name;
+    page_interface_t* interface;
+} page_register_desc_t;
+
+static const page_register_desc_t g_page_register_table[] = {
+    { "home", &home_page_interface },
+    { "photo", &photo_page_interface },
+    { "ai_photo", &ai_photo_page_interface },
+    { "ai_style_preview", &ai_style_preview_page_interface },
+    { "ai_recognition_preview", &ai_recognition_preview_page_interface },
+    { "video", &video_page_interface },
+    { "video_album", &video_album_page_interface },
+    { "video_preview", &video_preview_page_interface },
+    { "photo_settings", &photo_settings_page_interface },
+    { "video_settings", &video_settings_page_interface },
+    { "system_settings", &system_settings_page_interface },
+    { "version_info", &version_info_page_interface },
+    { "wifi_list", &wifi_list_page_interface },
+    { "ai_photo_settings", &ai_photo_settings_page_interface },
+    { "chat", &chat_page_interface },
+    { "album", &album_page_interface },
+    { "photo_preview", &photo_preview_page_interface },
+    { "test", &test_page_interface },
+};
+
 int32_t ui_main(void)
 {
     lv_init();
@@ -286,25 +314,13 @@ int32_t ui_main(void)
         return -1;
     }
 
-    /* Register pages */
-    page_manager_register("home", &home_page_interface, NULL);
-    page_manager_register("photo", &photo_page_interface, NULL);
-    page_manager_register("ai_photo", &ai_photo_page_interface, NULL);
-    page_manager_register("ai_style_preview", &ai_style_preview_page_interface, NULL);
-    page_manager_register("ai_recognition_preview", &ai_recognition_preview_page_interface, NULL);
-    page_manager_register("video", &video_page_interface, NULL);
-    page_manager_register("video_album", &video_album_page_interface, NULL);
-    page_manager_register("video_preview", &video_preview_page_interface, NULL);
-    page_manager_register("photo_settings", &photo_settings_page_interface, NULL);
-    page_manager_register("video_settings", &video_settings_page_interface, NULL);
-    page_manager_register("system_settings", &system_settings_page_interface, NULL);
-    page_manager_register("version_info", &version_info_page_interface, NULL);
-    page_manager_register("wifi_list", &wifi_list_page_interface, NULL);
-    page_manager_register("ai_photo_settings", &ai_photo_settings_page_interface, NULL);
-    page_manager_register("chat", &chat_page_interface, NULL);
-    page_manager_register("album", &album_page_interface, NULL);
-    page_manager_register("photo_preview", &photo_preview_page_interface, NULL);
-    page_manager_register("test", &test_page_interface, NULL);
+    /* Register pages（表驱动，避免注册列表分散膨胀） */
+    for (size_t i = 0; i < sizeof(g_page_register_table) / sizeof(g_page_register_table[0]); i++) {
+        if (page_manager_register(g_page_register_table[i].name, g_page_register_table[i].interface, NULL) != 0) {
+            MLOG_ERR("Register page failed: %s", g_page_register_table[i].name);
+            return -1;
+        }
+    }
 
     /* Navigate to home page */
     page_manager_navigate("home");

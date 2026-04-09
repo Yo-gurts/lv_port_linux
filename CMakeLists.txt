@@ -76,7 +76,6 @@ set(SOURCES
     src/main/simulator/mouse_cursor_icon.c
     src/main/simulator/uiapp_start.c
     src/mock/file_manager.c
-    src/mock/file_manager.c
     src/mock/media_manager.c
     src/mock/message_manager.c
     src/mock/power_manager.c
