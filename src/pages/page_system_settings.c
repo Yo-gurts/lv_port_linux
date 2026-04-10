@@ -153,10 +153,8 @@ static void hide_confirm_dialog(page_system_settings_data_t* data)
 
 static void system_settings_async_refresh_cb(void* user_data)
 {
-    page_system_settings_data_t* data;
+    page_system_settings_data_t* data = (page_system_settings_data_t*)user_data;
 
-    LV_UNUSED(user_data);
-    data = (page_system_settings_data_t*)page_get_private_data();
     if (data == NULL || data->container == NULL) {
         return;
     }
@@ -171,9 +169,8 @@ static void system_settings_param_cb(param_id_t id, int value, void* user_data)
 {
     LV_UNUSED(value);
 
-    LV_UNUSED(user_data);
     if (id == PARAM_ID_VOLUME || id == PARAM_ID_AUTO_SLEEP || id == PARAM_ID_WIFI_CONNECTED || id == PARAM_ID_WIFI_SIGNAL_DBM) {
-        (void)lv_async_call(system_settings_async_refresh_cb, NULL);
+        (void)lv_async_call(system_settings_async_refresh_cb, user_data);
     }
 }
 
@@ -194,11 +191,9 @@ static void system_settings_param_cb(param_id_t id, int value, void* user_data)
 
 static void system_action_media_cb(media_operation_t op, int32_t args, int result, void* user_data)
 {
-    page_system_settings_data_t* data;
+    page_system_settings_data_t* data = (page_system_settings_data_t*)user_data;
 
     LV_UNUSED(args);
-    LV_UNUSED(user_data);
-    data = (page_system_settings_data_t*)page_get_private_data();
     if (op == MEDIA_OP_FORMAT_STORAGE) {
         if (result == MEDIA_MANAGER_OK) {
             top_notice_show("SD卡格式化完成", TOP_NOTICE_TYPE_SUCCESS);
