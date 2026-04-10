@@ -834,7 +834,7 @@ static void video_btn_cb(lv_event_t* e)
         return;
 
     MLOG_INFO("Video button clicked, navigate to video album");
-    page_manager_navigate("video_album");
+    page_manager_navigate_without_history("video_album");
 }
 
 /* 删除按钮回调 */

@@ -148,7 +148,7 @@ int page_manager_register(const char* name, page_interface_t* interface, void* u
     return 0;
 }
 
-int page_manager_navigate(const char* page_name)
+static int page_manager_navigate_internal(const char* page_name, int record_history)
 {
     page_manager_t* pm = page_manager_get_instance();
     if (!pm || !page_name) {
@@ -167,7 +167,17 @@ int page_manager_navigate(const char* page_name)
         return -1;
     }
 
-    return page_manager_switch_to_index(target_index, 1);
+    return page_manager_switch_to_index(target_index, record_history);
+}
+
+int page_manager_navigate(const char* page_name)
+{
+    return page_manager_navigate_internal(page_name, 1);
+}
+
+int page_manager_navigate_without_history(const char* page_name)
+{
+    return page_manager_navigate_internal(page_name, 0);
 }
 
 int page_manager_back(void)
