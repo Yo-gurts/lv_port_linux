@@ -269,6 +269,11 @@ int32_t ui_main(void)
     /* Initialize param manager */
     param_manager_init();
 
+#if !FB_RUN
+    /* SDL/mock 环境默认模拟 SD 卡常驻，避免相册入口因未就绪被直接拦截。 */
+    (void)param_manager_set(PARAM_ID_SD_READY, SD_READY_TRUE);
+#endif
+
     /* Initialize volume bar */
     volume_bar_init();
     top_notice_init();
