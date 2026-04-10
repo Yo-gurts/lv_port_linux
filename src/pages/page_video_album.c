@@ -35,6 +35,7 @@
 #define SELECT_BOX_OFFSET_Y -6
 #define ITEM_CLICK_GUARD_AFTER_SCROLL_MS 180
 #define ITEM_CLICK_CANCEL_SCROLL_DELTA 8
+#define FAST_SCROLLBAR_BACK_GESTURE_TRIGGER_PX 72
 
 // #endregion
 // #############################################################################
@@ -966,12 +967,40 @@ static void fast_scrollbar_event_cb(lv_event_t* e)
 
     code = lv_event_get_code(e);
     if (code == LV_EVENT_PRESSED) {
+        lv_indev_t* indev = lv_indev_get_act();
+        data->fast_scrollbar_pressed = true;
+        if (indev != NULL)
+            lv_indev_get_point(indev, &data->fast_scrollbar_press_point);
         set_fast_scrollbar_visible(data, true);
         show_fast_scrollbar_progress_notice(data, true);
         return;
     }
-    if (code == LV_EVENT_RELEASED || code == LV_EVENT_PRESS_LOST)
+    if (code == LV_EVENT_PRESSING) {
+        lv_indev_t* indev = lv_indev_get_act();
+        lv_point_t cur;
+        int delta_x;
+        int delta_y;
+
+        if (!data->fast_scrollbar_pressed || indev == NULL)
+            return;
+
+        lv_indev_get_point(indev, &cur);
+        delta_x = cur.x - data->fast_scrollbar_press_point.x;
+        delta_y = abs(cur.y - data->fast_scrollbar_press_point.y);
+
+        if (data->fast_scrollbar_press_point.x >= (H_RES - SWIPE_BACK_EDGE_THRESHOLD_PX)
+            && delta_x <= -FAST_SCROLLBAR_BACK_GESTURE_TRIGGER_PX
+            && (-delta_x) > (delta_y + 10)) {
+            data->fast_scrollbar_pressed = false;
+            sync_fast_scrollbar_from_scroll(data);
+            page_manager_back();
+        }
         return;
+    }
+    if (code == LV_EVENT_RELEASED || code == LV_EVENT_PRESS_LOST) {
+        data->fast_scrollbar_pressed = false;
+        return;
+    }
     if (code != LV_EVENT_VALUE_CHANGED)
         return;
 
@@ -1152,6 +1181,7 @@ void page_video_album_create(void)
     lv_obj_set_style_pad_right(data->fast_scrollbar, 0, LV_PART_KNOB);
     lv_obj_add_event_cb(data->fast_scrollbar, fast_scrollbar_event_cb, LV_EVENT_VALUE_CHANGED, data);
     lv_obj_add_event_cb(data->fast_scrollbar, fast_scrollbar_event_cb, LV_EVENT_PRESSED, data);
+    lv_obj_add_event_cb(data->fast_scrollbar, fast_scrollbar_event_cb, LV_EVENT_PRESSING, data);
     lv_obj_add_event_cb(data->fast_scrollbar, fast_scrollbar_event_cb, LV_EVENT_RELEASED, data);
     lv_obj_add_event_cb(data->fast_scrollbar, fast_scrollbar_event_cb, LV_EVENT_PRESS_LOST, data);
 

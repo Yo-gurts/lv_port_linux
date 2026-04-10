@@ -69,6 +69,8 @@ typedef struct {
     int item_press_scroll_y;
     bool item_press_valid;
     uint8_t prev_input_block_mask;
+    bool fast_scrollbar_pressed;
+    lv_point_t fast_scrollbar_press_point;
 } page_video_album_data_t;
 
 void page_video_album_create(void);
