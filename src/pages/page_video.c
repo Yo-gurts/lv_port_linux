@@ -265,7 +265,7 @@ static void mode_switch_cb(lv_event_t* e)
     zoom_bar_hide();
     MLOG_INFO("Back to photo page");
     (void)media_manager_execute(MEDIA_OP_SWITCH_TO_PHOTO_MODE, 0);
-    page_manager_back();
+    page_manager_navigate_without_history("photo");
 }
 
 /* 顶部返回按钮回调：页面专用，避免使用通用 back_cb 丢失 intent */

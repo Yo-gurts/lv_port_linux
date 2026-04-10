@@ -181,7 +181,7 @@ static void mode_switch_cb(lv_event_t* e)
     zoom_bar_hide();
     MLOG_INFO("Switching to video page");
     (void)media_manager_execute(MEDIA_OP_SWITCH_TO_VIDEO_MODE, 0);
-    page_manager_navigate("video");
+    page_manager_navigate_without_history("video");
 }
 
 /* 菜单按钮回调：跳转拍照设置页面 */

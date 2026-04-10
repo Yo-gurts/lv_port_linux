@@ -858,7 +858,7 @@ static void photo_btn_cb(lv_event_t* e)
     if (data && data->deleting_in_progress)
         return;
 
-    page_manager_back();
+    page_manager_navigate_without_history("album");
 }
 
 static void video_btn_cb(lv_event_t* e)

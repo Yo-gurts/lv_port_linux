@@ -30,6 +30,7 @@ int page_manager_create(void);
 void page_manager_destroy(void);
 int page_manager_register(const char* name, page_interface_t* interface, void* user_data);
 int page_manager_navigate(const char* page_name);
+int page_manager_navigate_without_history(const char* page_name);
 int page_manager_back(void);
 const char* page_manager_get_current(void);
 
