@@ -25,7 +25,11 @@ typedef struct {
     lv_obj_t* password_kb;
     lv_timer_t* scan_timer;
     lv_timer_t* connect_timer;
+    lv_timer_t* switch_apply_timer;
     uint8_t wifi_enabled;
+    uint8_t switch_apply_pending;
+    uint8_t switch_target_enabled;
+    uint8_t switch_ignore_event;
     int pending_scan_id;
     int connect_poll_count;
     int scan_count;

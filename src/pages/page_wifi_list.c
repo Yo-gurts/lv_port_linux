@@ -7,6 +7,7 @@
 #include "core/font_manager.h"
 #include "core/page_manager.h"
 #include "core/style_manager.h"
+#include "core/wifi_manager.h"
 #include "mlog.h"
 #include "ui/gesture_back.h"
 #include "ui/top_notice.h"
@@ -35,14 +36,20 @@ static void show_password_modal(page_wifi_list_data_t* data, const char* ssid);
 static void hide_password_modal(page_wifi_list_data_t* data);
 static void connect_wifi_and_refresh(page_wifi_list_data_t* data, const char* ssid, const char* password);
 static void start_wifi_scan(page_wifi_list_data_t* data);
+static void start_wifi_scan_with_notice(page_wifi_list_data_t* data, uint8_t show_notice);
 static void scan_timer_cb(lv_timer_t* timer);
 static void connect_timer_cb(lv_timer_t* timer);
+static void switch_apply_timer_cb(lv_timer_t* timer);
 static void append_wifi_list_item(page_wifi_list_data_t* data, int index);
 static void stop_connect_timer(page_wifi_list_data_t* data);
 static void sync_wifi_enabled_state(page_wifi_list_data_t* data);
+static void set_wifi_switch_checked(page_wifi_list_data_t* data, uint8_t checked);
+static void set_wifi_switch_busy(page_wifi_list_data_t* data, uint8_t busy);
 
 #define WIFI_CONNECT_POLL_MS 500
 #define WIFI_CONNECT_MAX_POLLS 40
+#define WIFI_CONNECT_TIMEOUT_MS (WIFI_CONNECT_POLL_MS * WIFI_CONNECT_MAX_POLLS)
+#define WIFI_SWITCH_APPLY_DELAY_MS 20
 
 // #endregion
 // #############################################################################
@@ -154,10 +161,34 @@ static void sync_wifi_enabled_state(page_wifi_list_data_t* data)
 
     enabled_now = wifi_manager_get_status() == 1 ? 1 : 0;
     data->wifi_enabled = (uint8_t)enabled_now;
-    if (enabled_now) {
+    set_wifi_switch_checked(data, (uint8_t)enabled_now);
+}
+
+static void set_wifi_switch_checked(page_wifi_list_data_t* data, uint8_t checked)
+{
+    if (data == NULL || data->wifi_switch == NULL) {
+        return;
+    }
+
+    data->switch_ignore_event = 1;
+    if (checked) {
         lv_obj_add_state(data->wifi_switch, LV_STATE_CHECKED);
     } else {
         lv_obj_remove_state(data->wifi_switch, LV_STATE_CHECKED);
+    }
+    data->switch_ignore_event = 0;
+}
+
+static void set_wifi_switch_busy(page_wifi_list_data_t* data, uint8_t busy)
+{
+    if (data == NULL || data->wifi_switch == NULL) {
+        return;
+    }
+
+    if (busy) {
+        lv_obj_add_state(data->wifi_switch, LV_STATE_DISABLED);
+    } else {
+        lv_obj_remove_state(data->wifi_switch, LV_STATE_DISABLED);
     }
 }
 
@@ -183,7 +214,7 @@ static void connect_wifi_and_refresh(page_wifi_list_data_t* data, const char* ss
         lv_snprintf(data->connecting_ssid, sizeof(data->connecting_ssid), "%s", ssid);
         data->connect_poll_count = 0;
         data->connect_timer = lv_timer_create(connect_timer_cb, WIFI_CONNECT_POLL_MS, data);
-        top_notice_show_for("正在连接...", TOP_NOTICE_TYPE_WARNING, 1500);
+        top_notice_show_for("正在连接...", TOP_NOTICE_TYPE_WARNING, WIFI_CONNECT_TIMEOUT_MS);
         return;
     }
 
@@ -219,7 +250,7 @@ static void connect_timer_cb(lv_timer_t* timer)
     }
 
     data->connect_poll_count++;
-    if (data->connect_poll_count > WIFI_CONNECT_MAX_POLLS) {
+    if (data->connect_poll_count >= WIFI_CONNECT_MAX_POLLS) {
         stop_connect_timer(data);
         top_notice_show("连接失败：连接结果超时", TOP_NOTICE_TYPE_ERROR);
         return;
@@ -244,6 +275,7 @@ static void connect_timer_cb(lv_timer_t* timer)
         rebuild_wifi_list(data);
         stop_connect_timer(data);
         top_notice_show("连接成功", TOP_NOTICE_TYPE_SUCCESS);
+        start_wifi_scan_with_notice(data, 0);
         return;
     }
 
@@ -296,6 +328,11 @@ static void rebuild_wifi_list(page_wifi_list_data_t* data)
 /* 开始 WiFi 扫描 */
 static void start_wifi_scan(page_wifi_list_data_t* data)
 {
+    start_wifi_scan_with_notice(data, 1);
+}
+
+static void start_wifi_scan_with_notice(page_wifi_list_data_t* data, uint8_t show_notice)
+{
     if (data == NULL) {
         return;
     }
@@ -309,14 +346,62 @@ static void start_wifi_scan(page_wifi_list_data_t* data)
     /* 启动扫描 */
     data->pending_scan_id = wifi_manager_start_scan();
     if (data->pending_scan_id < 0) {
-        top_notice_show_for("扫描启动失败", TOP_NOTICE_TYPE_ERROR, 2000);
+        if (show_notice) {
+            top_notice_show_for("扫描启动失败", TOP_NOTICE_TYPE_ERROR, 2000);
+        }
         return;
     }
 
-    top_notice_show_for("正在扫描 WiFi...", TOP_NOTICE_TYPE_INFO, 5000);
+    if (show_notice) {
+        top_notice_show_for("正在扫描 WiFi...", TOP_NOTICE_TYPE_INFO, 5000);
+    }
 
     /* 创建 1 秒定时器轮询结果 */
     data->scan_timer = lv_timer_create(scan_timer_cb, 1000, data);
+}
+
+static void switch_apply_timer_cb(lv_timer_t* timer)
+{
+    page_wifi_list_data_t* data;
+    int enabled;
+
+    if (timer == NULL) {
+        return;
+    }
+
+    data = (page_wifi_list_data_t*)lv_timer_get_user_data(timer);
+    if (data == NULL || data->container == NULL) {
+        return;
+    }
+
+    data->switch_apply_timer = NULL;
+    enabled = data->switch_target_enabled ? 1 : 0;
+
+    if (wifi_manager_set_enabled(enabled) != 0) {
+        top_notice_show_for(enabled ? "WiFi开启失败" : "WiFi关闭失败", TOP_NOTICE_TYPE_ERROR, 2000);
+        set_wifi_switch_checked(data, data->wifi_enabled);
+        data->switch_apply_pending = 0;
+        set_wifi_switch_busy(data, 0);
+        return;
+    }
+
+    data->wifi_enabled = (uint8_t)enabled;
+    if (enabled) {
+        start_wifi_scan(data);
+        top_notice_show_for("WiFi已开启", TOP_NOTICE_TYPE_SUCCESS, 2000);
+    } else {
+        stop_connect_timer(data);
+        /* 停止扫描定时器 */
+        if (data->scan_timer != NULL) {
+            lv_timer_del(data->scan_timer);
+            data->scan_timer = NULL;
+        }
+        lv_obj_clean(data->wifi_list);
+        top_notice_show_for("WiFi已关闭", TOP_NOTICE_TYPE_ERROR, 2000);
+    }
+
+    data->switch_apply_pending = 0;
+    set_wifi_switch_busy(data, 0);
 }
 
 /* 扫描定时器回调 */
@@ -478,25 +563,29 @@ static void wifi_switch_change_cb(lv_event_t* e)
         return;
     }
 
-    enabled = lv_obj_has_state(data->wifi_switch, LV_STATE_CHECKED) ? 1 : 0;
-    if (wifi_manager_set_enabled(enabled) != 0) {
-        top_notice_show_for(enabled ? "WiFi开启失败" : "WiFi关闭失败", TOP_NOTICE_TYPE_ERROR, 2000);
+    if (data->switch_ignore_event) {
         return;
     }
 
-    data->wifi_enabled = enabled;
-    if (enabled) {
-        start_wifi_scan(data);
-        top_notice_show_for("WiFi已开启", TOP_NOTICE_TYPE_SUCCESS, 2000);
-    } else {
-        stop_connect_timer(data);
-        /* 停止扫描定时器 */
-        if (data->scan_timer != NULL) {
-            lv_timer_del(data->scan_timer);
-            data->scan_timer = NULL;
-        }
-        lv_obj_clean(data->wifi_list);
-        top_notice_show_for("WiFi已关闭", TOP_NOTICE_TYPE_ERROR, 2000);
+    if (data->switch_apply_pending) {
+        set_wifi_switch_checked(data, data->wifi_enabled);
+        top_notice_show_for("WiFi切换进行中", TOP_NOTICE_TYPE_WARNING, 1500);
+        return;
+    }
+
+    enabled = lv_obj_has_state(data->wifi_switch, LV_STATE_CHECKED) ? 1 : 0;
+    data->switch_target_enabled = (uint8_t)enabled;
+    data->switch_apply_pending = 1;
+    set_wifi_switch_busy(data, 1);
+    top_notice_show_for(enabled ? "正在开启WiFi..." : "正在关闭WiFi...", TOP_NOTICE_TYPE_INFO, 1200);
+
+    if (data->switch_apply_timer != NULL) {
+        lv_timer_del(data->switch_apply_timer);
+        data->switch_apply_timer = NULL;
+    }
+    data->switch_apply_timer = lv_timer_create(switch_apply_timer_cb, WIFI_SWITCH_APPLY_DELAY_MS, data);
+    if (data->switch_apply_timer != NULL) {
+        lv_timer_set_repeat_count(data->switch_apply_timer, 1);
     }
 }
 
@@ -562,7 +651,7 @@ void page_wifi_list_create(void)
     data->refresh_btn = lv_btn_create(data->nav_bar);
     lv_obj_set_size(data->refresh_btn, 40, 34);
     lv_obj_add_style(data->refresh_btn, &style_common_btn_back, LV_PART_MAIN);
-    lv_obj_set_style_radius(data->refresh_btn, 8, LV_PART_MAIN);
+    // lv_obj_set_style_radius(data->refresh_btn, 8, LV_PART_MAIN);
     lv_obj_align(data->refresh_btn, LV_ALIGN_RIGHT_MID, -10, 0);
     lv_obj_add_event_cb(data->refresh_btn, refresh_btn_click_cb, LV_EVENT_CLICKED, data);
 
@@ -688,10 +777,14 @@ void page_wifi_list_create(void)
     /* 初始化定时器为 NULL */
     data->scan_timer = NULL;
     data->connect_timer = NULL;
+    data->switch_apply_timer = NULL;
     data->scan_count = 0;
     data->pending_scan_id = -1;
     data->connect_poll_count = 0;
     data->connecting_ssid[0] = '\0';
+    data->switch_apply_pending = 0;
+    data->switch_target_enabled = data->wifi_enabled;
+    data->switch_ignore_event = 0;
 
     /* 启用整页事件冒泡，确保子对象按压事件传递到父容器。 */
     gesture_back_enable_event_bubble_recursive(data->container);
@@ -711,6 +804,10 @@ void page_wifi_list_destroy(void)
     if (data->scan_timer != NULL) {
         lv_timer_del(data->scan_timer);
         data->scan_timer = NULL;
+    }
+    if (data->switch_apply_timer != NULL) {
+        lv_timer_del(data->switch_apply_timer);
+        data->switch_apply_timer = NULL;
     }
     stop_connect_timer(data);
 
@@ -761,6 +858,12 @@ void page_wifi_list_hide(void)
         lv_timer_del(data->scan_timer);
         data->scan_timer = NULL;
     }
+    if (data->switch_apply_timer != NULL) {
+        lv_timer_del(data->switch_apply_timer);
+        data->switch_apply_timer = NULL;
+    }
+    data->switch_apply_pending = 0;
+    set_wifi_switch_busy(data, 0);
     stop_connect_timer(data);
 
     lv_obj_add_flag(data->container, LV_OBJ_FLAG_HIDDEN);
