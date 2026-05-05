@@ -3,7 +3,7 @@
 #include "config.h"
 #include "core/file_manager.h"
 #include "filemng.h"
-#include "img2img.h"
+#include "img2img/img2img.h"
 #include "jpegp.h"
 #include "mlog.h"
 

@@ -1,6 +1,6 @@
 #include "core/image_recognition_manager.h"
 
-#include "image_recognize.h"
+#include "image_recognize/image_recognize.h"
 #include "mlog.h"
 
 #include <pthread.h>
