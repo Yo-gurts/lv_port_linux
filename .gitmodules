@@ -1,5 +1,5 @@
 [submodule "lvgl"]
 	path = lvgl
-	url = https://github.com/littlevgl/lvgl.git
+	url = git@github.com:littlevgl/lvgl.git
 	branch = release/v9.3
 	ignore = untracked
