@@ -56,9 +56,28 @@ typedef struct {
 static filter_panel_ctx_t g_filter_panel;
 static const filter_panel_item_t g_ui_filter_items[] = {
     { "原图", "A:" RES_ICON_PATH "/filter_default.png", RES_ISP_PATH "/cvi_sdr_bin" },
-    { "明亮", "A:" RES_ICON_PATH "/filter.png", RES_ISP_PATH "/cvi_sdr_bin_bright" },
-    { "胶片", "A:" RES_ICON_PATH "/filter.png", RES_ISP_PATH "/cvi_sdr_bin_film" },
-    { "黑白", "A:" RES_ICON_PATH "/filter.png", RES_ISP_PATH "/cvi_sdr_bin_black_white" },
+    { "亮眼", "A:" RES_ICON_PATH "/filter.png", RES_ISP_PATH "/亮眼" },
+    { "做旧", "A:" RES_ICON_PATH "/filter.png", RES_ISP_PATH "/做旧" },
+    { "冷氧", "A:" RES_ICON_PATH "/filter.png", RES_ISP_PATH "/冷氧" },
+    { "初夏", "A:" RES_ICON_PATH "/filter.png", RES_ISP_PATH "/初夏" },
+    { "复古", "A:" RES_ICON_PATH "/filter.png", RES_ISP_PATH "/复古" },
+    { "奶油", "A:" RES_ICON_PATH "/filter.png", RES_ISP_PATH "/奶油" },
+    { "微暖", "A:" RES_ICON_PATH "/filter.png", RES_ISP_PATH "/微暖" },
+    { "晴杏", "A:" RES_ICON_PATH "/filter.png", RES_ISP_PATH "/晴杏" },
+    { "樱浪", "A:" RES_ICON_PATH "/filter.png", RES_ISP_PATH "/樱浪" },
+    { "清晨", "A:" RES_ICON_PATH "/filter.png", RES_ISP_PATH "/清晨" },
+    { "熏紫", "A:" RES_ICON_PATH "/filter.png", RES_ISP_PATH "/熏紫" },
+    { "磨砂", "A:" RES_ICON_PATH "/filter.png", RES_ISP_PATH "/磨砂" },
+    { "红色", "A:" RES_ICON_PATH "/filter.png", RES_ISP_PATH "/红色" },
+    { "绿色", "A:" RES_ICON_PATH "/filter.png", RES_ISP_PATH "/绿色" },
+    { "美梦", "A:" RES_ICON_PATH "/filter.png", RES_ISP_PATH "/美梦" },
+    { "老照片", "A:" RES_ICON_PATH "/filter.png", RES_ISP_PATH "/老照片" },
+    { "胶片", "A:" RES_ICON_PATH "/filter.png", RES_ISP_PATH "/胶片" },
+    { "蓝色", "A:" RES_ICON_PATH "/filter.png", RES_ISP_PATH "/蓝色" },
+    { "蓝鸢", "A:" RES_ICON_PATH "/filter.png", RES_ISP_PATH "/蓝鸢" },
+    { "霭卿", "A:" RES_ICON_PATH "/filter.png", RES_ISP_PATH "/霭卿" },
+    { "鲜艳", "A:" RES_ICON_PATH "/filter.png", RES_ISP_PATH "/鲜艳" },
+    { "黑白", "A:" RES_ICON_PATH "/filter.png", RES_ISP_PATH "/黑白" },
 };
 
 #define UI_FILTER_COUNT ((int)(sizeof(g_ui_filter_items) / sizeof(g_ui_filter_items[0])))
