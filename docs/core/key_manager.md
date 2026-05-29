@@ -27,7 +27,7 @@ Key Manager 用于统一管理物理按键输入，提供：
 ### 2.2 Linux key code 映射
 
 - `KEY_POWER` -> `KEY_ID_POWER`
-- `KEY_PLAY(207)` -> `KEY_ID_AI`
+- `KEY_ASSISTANT(207)` -> `KEY_ID_ASSISTANT`
 - `KEY_VOLUMEUP(115)` -> `KEY_ID_VOLUME_UP`
 - `KEY_VOLUMEDOWN(114)` -> `KEY_ID_VOLUME_DOWN`
 - `KEY_CAMERA_FOCUS(528)` -> `KEY_ID_FOCUS`

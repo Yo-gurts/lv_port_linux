@@ -3,17 +3,18 @@
 // #############################################################################
 
 #include "pages/page_video_preview.h"
-#include "pages/page_video_album.h"
 #include "config.h"
 #include "core/file_manager.h"
 #include "core/font_manager.h"
+#include "core/key_manager.h"
 #include "core/media_manager.h"
 #include "core/page_manager.h"
-#include "core/player_manager.h"
 #include "core/param_manager.h"
+#include "core/player_manager.h"
 #include "core/power_manager.h"
 #include "core/style_manager.h"
 #include "mlog.h"
+#include "pages/page_video_album.h"
 #include "ui/gesture_back.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -50,6 +51,9 @@ static void render_current_video(page_video_preview_data_t* data, bool reset_pro
 static void try_switch_video(page_video_preview_data_t* data, int delta);
 
 static void back_btn_cb(lv_event_t* e);
+static void ok_key_click_cb(key_id_t key, key_event_type_t event_type, void* user_data);
+static void left_key_click_cb(key_id_t key, key_event_type_t event_type, void* user_data);
+static void right_key_click_cb(key_id_t key, key_event_type_t event_type, void* user_data);
 static void center_play_pause_btn_cb(lv_event_t* e);
 static void prev_btn_cb(lv_event_t* e);
 static void next_btn_cb(lv_event_t* e);
@@ -513,6 +517,55 @@ static void back_btn_cb(lv_event_t* e)
     page_manager_back();
 }
 
+static void menu_key_cb(key_id_t key, key_event_type_t event_type, void* user_data)
+{
+    (void)key;
+    (void)event_type;
+    (void)user_data;
+    page_video_preview_data_t* data = (page_video_preview_data_t*)page_get_private_data();
+    int current_video_index = get_current_video_index(data);
+    (void)player_manager_stop();
+    if (current_video_index >= 0)
+        page_video_album_set_focus_video_index(current_video_index);
+    page_manager_back();
+}
+
+static void ok_key_click_cb(key_id_t key, key_event_type_t event_type, void* user_data)
+{
+    page_video_preview_data_t* data = (page_video_preview_data_t*)user_data;
+
+    if (key != KEY_ID_OK || event_type != KEY_EVENT_CLICK)
+        return;
+    if (!data || !data->container || lv_obj_has_flag(data->container, LV_OBJ_FLAG_HIDDEN))
+        return;
+
+    set_paused_state(data, false);
+}
+
+static void left_key_click_cb(key_id_t key, key_event_type_t event_type, void* user_data)
+{
+    page_video_preview_data_t* data = (page_video_preview_data_t*)user_data;
+
+    if (key != KEY_ID_LEFT || event_type != KEY_EVENT_CLICK)
+        return;
+    if (!data || !data->container || lv_obj_has_flag(data->container, LV_OBJ_FLAG_HIDDEN))
+        return;
+
+    try_switch_video(data, -1);
+}
+
+static void right_key_click_cb(key_id_t key, key_event_type_t event_type, void* user_data)
+{
+    page_video_preview_data_t* data = (page_video_preview_data_t*)user_data;
+
+    if (key != KEY_ID_RIGHT || event_type != KEY_EVENT_CLICK)
+        return;
+    if (!data || !data->container || lv_obj_has_flag(data->container, LV_OBJ_FLAG_HIDDEN))
+        return;
+
+    try_switch_video(data, 1);
+}
+
 static void center_play_pause_btn_cb(lv_event_t* e)
 {
     page_video_preview_data_t* data = (page_video_preview_data_t*)lv_event_get_user_data(e);
@@ -784,6 +837,10 @@ void page_video_preview_destroy(void)
         data->container = NULL;
     }
 
+    key_manager_unregister_callback(KEY_ID_MENU, KEY_EVENT_CLICK, menu_key_cb, NULL);
+    key_manager_unregister_callback(KEY_ID_OK, KEY_EVENT_CLICK, ok_key_click_cb, data);
+    key_manager_unregister_callback(KEY_ID_LEFT, KEY_EVENT_CLICK, left_key_click_cb, data);
+    key_manager_unregister_callback(KEY_ID_RIGHT, KEY_EVENT_CLICK, right_key_click_cb, data);
     set_auto_sleep_block(data, false);
     free(data);
     MLOG_INFO("video preview destroy ok");
@@ -797,6 +854,10 @@ void page_video_preview_show(void)
 
     MLOG_INFO("video preview show begin: initial_index=%d", g_initial_video_index);
     gesture_back_set_left_edge_swipe_cb(data->container, back_btn_cb);
+    key_manager_register_callback(KEY_ID_MENU, KEY_EVENT_CLICK, menu_key_cb, NULL);
+    key_manager_register_callback(KEY_ID_OK, KEY_EVENT_CLICK, ok_key_click_cb, data);
+    key_manager_register_callback(KEY_ID_LEFT, KEY_EVENT_CLICK, left_key_click_cb, data);
+    key_manager_register_callback(KEY_ID_RIGHT, KEY_EVENT_CLICK, right_key_click_cb, data);
     data->return_work_mode = g_return_work_mode;
     data->switched_to_playback_mode = (g_return_work_mode >= 0 && !media_manager_is_playback_work_mode(g_return_work_mode));
     g_return_work_mode = -1;
@@ -835,10 +896,15 @@ void page_video_preview_hide(void)
     if (!data || !data->container)
         return;
 
+    key_manager_unregister_callback(KEY_ID_MENU, KEY_EVENT_CLICK, menu_key_cb, NULL);
+    key_manager_unregister_callback(KEY_ID_OK, KEY_EVENT_CLICK, ok_key_click_cb, data);
+    key_manager_unregister_callback(KEY_ID_LEFT, KEY_EVENT_CLICK, left_key_click_cb, data);
+    key_manager_unregister_callback(KEY_ID_RIGHT, KEY_EVENT_CLICK, right_key_click_cb, data);
+
     MLOG_INFO("video preview hide begin: index=%d current=%d paused=%d",
-              data->current_display_index,
-              data->current_sec,
-              data->is_paused ? 1 : 0);
+        data->current_display_index,
+        data->current_sec,
+        data->is_paused ? 1 : 0);
     set_paused_state(data, true);
     (void)player_manager_stop();
     lv_obj_add_flag(data->container, LV_OBJ_FLAG_HIDDEN);

@@ -35,6 +35,7 @@ typedef struct {
     int scan_count;
     char pending_ssid[WIFI_MANAGER_MAX_SSID_LEN];
     char connecting_ssid[WIFI_MANAGER_MAX_SSID_LEN];
+    int selected_ap_index; /* 物理按键当前选中AP索引 */
     wifi_ap_info_t scan_results[WIFI_LIST_MAX_AP_COUNT];
 } page_wifi_list_data_t;
 

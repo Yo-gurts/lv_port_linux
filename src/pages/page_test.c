@@ -316,6 +316,14 @@ static void back_btn_cb(lv_event_t* e)
     page_manager_back();
 }
 
+static void menu_key_cb(key_id_t key, key_event_type_t event_type, void* user_data)
+{
+    (void)key;
+    (void)event_type;
+    (void)user_data;
+    page_manager_back();
+}
+
 static void touch_area_event_cb(lv_event_t* e)
 {
     page_test_data_t* data = (page_test_data_t*)lv_event_get_user_data(e);
@@ -577,6 +585,7 @@ void page_test_show(void)
     }
     reset_test_state(data);
     register_test_key_callbacks(data);
+    key_manager_register_callback(KEY_ID_MENU, KEY_EVENT_CLICK, menu_key_cb, NULL);
     lv_obj_clear_flag(data->container, LV_OBJ_FLAG_HIDDEN);
 }
 
@@ -589,6 +598,7 @@ void page_test_hide(void)
     }
 
     MLOG_INFO("Test page hide");
+    key_manager_unregister_callback(KEY_ID_MENU, KEY_EVENT_CLICK, menu_key_cb, NULL);
     unregister_test_key_callbacks(data);
     if (data->auto_sleep_disabled) {
         power_manager_enable_auto_sleep();

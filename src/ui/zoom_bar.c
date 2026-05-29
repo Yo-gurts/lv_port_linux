@@ -35,10 +35,47 @@ static int zoom_index_from_value(int zoom_value)
     return 0;
 }
 
+static int zoom_next_value(int zoom_value)
+{
+    int index = zoom_index_from_value(zoom_value);
+
+    if (index < ZOOM_BAR_LEVEL_COUNT - 1) {
+        return g_zoom_values[index + 1];
+    }
+    return g_zoom_values[index];
+}
+
+static int zoom_prev_value(int zoom_value)
+{
+    int index = zoom_index_from_value(zoom_value);
+
+    if (index > 0) {
+        return g_zoom_values[index - 1];
+    }
+    return g_zoom_values[index];
+}
+
+static void zoom_bar_apply_value(int zoom_value)
+{
+    int ret;
+
+    ret = param_manager_set(PARAM_ID_ZOOM, zoom_value);
+    if (ret != 0) {
+        MLOG_ERR("Set zoom param failed: zoom=%d ret=%d", zoom_value, ret);
+        return;
+    }
+
+    ret = media_manager_execute(MEDIA_OP_SET_ZOOM, zoom_value);
+    if (ret != 0)
+        MLOG_ERR("Set zoom media op failed: zoom=%d ret=%d", zoom_value, ret);
+
+    zoom_bar_set_value(zoom_value);
+    MLOG_INFO("Zoom selected: x%d", zoom_value);
+}
+
 static void zoom_btn_cb(lv_event_t* e)
 {
     lv_obj_t* btn = lv_event_get_target(e);
-    int ret;
     int i;
 
     if (!btn)
@@ -48,18 +85,7 @@ static void zoom_btn_cb(lv_event_t* e)
         if (g_zoom_bar.btns[i] != btn)
             continue;
 
-        ret = param_manager_set(PARAM_ID_ZOOM, g_zoom_values[i]);
-        if (ret != 0) {
-            MLOG_ERR("Set zoom param failed: zoom=%d ret=%d", g_zoom_values[i], ret);
-            return;
-        }
-
-        ret = media_manager_execute(MEDIA_OP_SET_ZOOM, g_zoom_values[i]);
-        if (ret != 0)
-            MLOG_ERR("Set zoom media op failed: zoom=%d ret=%d", g_zoom_values[i], ret);
-
-        zoom_bar_set_value(g_zoom_values[i]);
-        MLOG_INFO("Zoom selected: x%d", g_zoom_values[i]);
+        zoom_bar_apply_value(g_zoom_values[i]);
         return;
     }
 }
@@ -162,4 +188,28 @@ int zoom_bar_is_visible(void)
         return 0;
 
     return !lv_obj_has_flag(g_zoom_bar.container, LV_OBJ_FLAG_HIDDEN);
+}
+
+void zoom_bar_zoom_in(void)
+{
+    int current_zoom = param_manager_get(PARAM_ID_ZOOM);
+    int next_zoom = zoom_next_value(current_zoom);
+
+    if (next_zoom == current_zoom) {
+        return;
+    }
+
+    zoom_bar_apply_value(next_zoom);
+}
+
+void zoom_bar_zoom_out(void)
+{
+    int current_zoom = param_manager_get(PARAM_ID_ZOOM);
+    int prev_zoom = zoom_prev_value(current_zoom);
+
+    if (prev_zoom == current_zoom) {
+        return;
+    }
+
+    zoom_bar_apply_value(prev_zoom);
 }

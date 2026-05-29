@@ -29,6 +29,7 @@ typedef struct {
     lv_timer_t* action_timer; /* 延迟触发处理的定时器 */
     int pending_action; /* 待确认操作 */
     int action_processing; /* 是否正在处理 */
+    int selected_index; /* 物理按键当前选中项索引 */
     system_setting_item_t settings[8]; /* 8个设置项 */
 } page_system_settings_data_t;
 

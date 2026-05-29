@@ -72,6 +72,8 @@ typedef struct {
     uint8_t prev_input_block_mask; /* 删除前的输入屏蔽状态 */
     bool fast_scrollbar_pressed; /* 快滚条是否处于按下态 */
     lv_point_t fast_scrollbar_press_point; /* 快滚条按下起点，用于识别误触返回手势 */
+    int cursor_row; /* 物理按键当前游标行 */
+    int cursor_col; /* 物理按键当前游标列 */
 } page_album_data_t;
 
 /* 相册页面函数 */

@@ -14,6 +14,8 @@ typedef struct {
     /* Status bar widgets */
     lv_obj_t* lv_label_time; /* 时间标签 */
     lv_timer_t* home_update_timer; /* 时间更新定时器 */
+    lv_obj_t* icon_buttons[6]; /* 6个图标按钮指针 */
+    int selected_index; /* 物理按键当前选中项索引 0-5 */
 } home_page_data_t;
 
 void page_home_create(void);

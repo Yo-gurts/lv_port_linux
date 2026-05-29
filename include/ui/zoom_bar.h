@@ -12,6 +12,8 @@ void zoom_bar_show(void);
 void zoom_bar_hide(void);
 int zoom_bar_is_visible(void);
 void zoom_bar_set_value(int zoom_value);
+void zoom_bar_zoom_in(void);
+void zoom_bar_zoom_out(void);
 
 #ifdef __cplusplus
 }

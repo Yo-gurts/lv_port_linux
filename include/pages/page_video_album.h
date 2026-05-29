@@ -71,6 +71,8 @@ typedef struct {
     uint8_t prev_input_block_mask;
     bool fast_scrollbar_pressed;
     lv_point_t fast_scrollbar_press_point;
+    int cursor_row; /* 物理按键当前游标行 */
+    int cursor_col; /* 物理按键当前游标列 */
 } page_video_album_data_t;
 
 void page_video_album_create(void);

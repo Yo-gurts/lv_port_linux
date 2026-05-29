@@ -6,6 +6,7 @@
 #include "config.h"
 #include "core/file_manager.h"
 #include "core/font_manager.h"
+#include "core/key_manager.h"
 #include "core/page_manager.h"
 #include "core/param_manager.h"
 #include "core/style_manager.h"
@@ -184,6 +185,71 @@ static void system_settings_param_cb(param_id_t id, int value, void* user_data)
 // #############################################################################
 // ! #region 7. 按键、手势、定时器 等事件回调函数
 // #############################################################################
+
+static void menu_key_cb(key_id_t key, key_event_type_t event_type, void* user_data)
+{
+    (void)key;
+    (void)event_type;
+    (void)user_data;
+    page_manager_back();
+}
+
+static void update_selection_highlight(page_system_settings_data_t* data, int old_index, int new_index)
+{
+    if (!data)
+        return;
+
+    if (old_index >= 0 && old_index < SETTINGS_COUNT && data->settings[old_index].container) {
+        lv_obj_remove_style(data->settings[old_index].container, &style_settings_item_selected, LV_PART_MAIN);
+    }
+    if (new_index >= 0 && new_index < SETTINGS_COUNT && data->settings[new_index].container) {
+        lv_obj_add_style(data->settings[new_index].container, &style_settings_item_selected, LV_PART_MAIN);
+        lv_obj_scroll_to_view(data->settings[new_index].container, LV_ANIM_OFF);
+    }
+}
+
+static void up_key_click_cb(key_id_t key, key_event_type_t event_type, void* user_data)
+{
+    page_system_settings_data_t* data = (page_system_settings_data_t*)user_data;
+    if (key != KEY_ID_UP || event_type != KEY_EVENT_CLICK) return;
+    if (!data || !data->container)
+        return;
+
+    int old_index = data->selected_index;
+    if (data->selected_index > 0) {
+        data->selected_index--;
+    } else {
+        data->selected_index = SETTINGS_COUNT - 1;
+    }
+    update_selection_highlight(data, old_index, data->selected_index);
+}
+
+static void down_key_click_cb(key_id_t key, key_event_type_t event_type, void* user_data)
+{
+    page_system_settings_data_t* data = (page_system_settings_data_t*)user_data;
+    if (key != KEY_ID_DOWN || event_type != KEY_EVENT_CLICK) return;
+    if (!data || !data->container)
+        return;
+
+    int old_index = data->selected_index;
+    if (data->selected_index < SETTINGS_COUNT - 1) {
+        data->selected_index++;
+    } else {
+        data->selected_index = 0;
+    }
+    update_selection_highlight(data, old_index, data->selected_index);
+}
+
+static void ok_key_click_cb(key_id_t key, key_event_type_t event_type, void* user_data)
+{
+    page_system_settings_data_t* data = (page_system_settings_data_t*)user_data;
+
+    if (key != KEY_ID_OK || event_type != KEY_EVENT_CLICK) return;
+    if (!data || !data->container) return;
+    if (data->action_processing) return;
+
+    lv_obj_send_event(data->settings[data->selected_index].container, LV_EVENT_CLICKED, data);
+}
 
 static void system_action_timer_cb(lv_timer_t* timer)
 {
@@ -513,11 +579,16 @@ void page_system_settings_show(void)
     }
 
     gesture_back_set_left_edge_swipe_cb(data->container, page_manager_back_cb);
+    key_manager_register_callback(KEY_ID_MENU, KEY_EVENT_CLICK, menu_key_cb, NULL);
+    key_manager_register_callback(KEY_ID_UP, KEY_EVENT_CLICK, up_key_click_cb, data);
+    key_manager_register_callback(KEY_ID_DOWN, KEY_EVENT_CLICK, down_key_click_cb, data);
+    key_manager_register_callback(KEY_ID_OK, KEY_EVENT_CLICK, ok_key_click_cb, data);
 
     MLOG_INFO("System settings page show");
     update_volume_setting_value(data);
     update_auto_sleep_setting_value(data);
     update_wifi_setting_value(data);
+    update_selection_highlight(data, -1, data->selected_index);
     lv_obj_clear_flag(data->container, LV_OBJ_FLAG_HIDDEN);
 }
 
@@ -527,6 +598,11 @@ void page_system_settings_hide(void)
     if (!data || !data->container) {
         return;
     }
+
+    key_manager_unregister_callback(KEY_ID_MENU, KEY_EVENT_CLICK, menu_key_cb, NULL);
+    key_manager_unregister_callback(KEY_ID_UP, KEY_EVENT_CLICK, up_key_click_cb, data);
+    key_manager_unregister_callback(KEY_ID_DOWN, KEY_EVENT_CLICK, down_key_click_cb, data);
+    key_manager_unregister_callback(KEY_ID_OK, KEY_EVENT_CLICK, ok_key_click_cb, data);
 
     MLOG_INFO("System settings page hide");
     lv_obj_add_flag(data->container, LV_OBJ_FLAG_HIDDEN);

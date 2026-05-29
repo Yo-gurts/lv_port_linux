@@ -9,11 +9,18 @@ extern "C" {
 
 typedef enum {
     KEY_ID_POWER = 0,
-    KEY_ID_AI,
+    KEY_ID_ASSISTANT,
     KEY_ID_VOLUME_UP,
     KEY_ID_VOLUME_DOWN,
     KEY_ID_FOCUS,
     KEY_ID_CAMERA,
+    KEY_ID_MODE,
+    KEY_ID_MENU,
+    KEY_ID_UP,
+    KEY_ID_DOWN,
+    KEY_ID_LEFT,
+    KEY_ID_RIGHT,
+    KEY_ID_OK,
     KEY_ID_BUTT,
     KEY_ID_ANY = -1
 } key_id_t;

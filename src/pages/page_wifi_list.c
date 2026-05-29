@@ -5,7 +5,9 @@
 #include "pages/page_wifi_list.h"
 #include "config.h"
 #include "core/font_manager.h"
+#include "core/key_manager.h"
 #include "core/page_manager.h"
+#include "core/param_manager.h"
 #include "core/style_manager.h"
 #include "core/wifi_manager.h"
 #include "mlog.h"
@@ -45,6 +47,8 @@ static void stop_connect_timer(page_wifi_list_data_t* data);
 static void sync_wifi_enabled_state(page_wifi_list_data_t* data);
 static void set_wifi_switch_checked(page_wifi_list_data_t* data, uint8_t checked);
 static void set_wifi_switch_busy(page_wifi_list_data_t* data, uint8_t busy);
+static void update_wifi_selection(page_wifi_list_data_t* data, int old_index, int new_index);
+static void activate_selected_wifi(page_wifi_list_data_t* data);
 
 #define WIFI_CONNECT_POLL_MS 500
 #define WIFI_CONNECT_MAX_POLLS 40
@@ -102,6 +106,49 @@ static void append_wifi_list_item(page_wifi_list_data_t* data, int index)
 
     lv_obj_set_user_data(btn, ap);
     lv_obj_add_event_cb(btn, wifi_item_click_cb, LV_EVENT_CLICKED, data);
+}
+
+static lv_obj_t* get_wifi_item_btn(page_wifi_list_data_t* data, int index)
+{
+    if (data == NULL || data->wifi_list == NULL || index < 0 || index >= data->scan_count) {
+        return NULL;
+    }
+
+    return lv_obj_get_child(data->wifi_list, (uint32_t)index);
+}
+
+static void update_wifi_selection(page_wifi_list_data_t* data, int old_index, int new_index)
+{
+    lv_obj_t* old_btn;
+    lv_obj_t* new_btn;
+
+    if (data == NULL || data->wifi_list == NULL) {
+        return;
+    }
+
+    if (data->scan_count <= 0) {
+        data->selected_ap_index = 0;
+        return;
+    }
+
+    if (new_index < 0) {
+        new_index = 0;
+    }
+    if (new_index >= data->scan_count) {
+        new_index = data->scan_count - 1;
+    }
+    data->selected_ap_index = new_index;
+
+    old_btn = get_wifi_item_btn(data, old_index);
+    if (old_btn != NULL) {
+        lv_obj_remove_style(old_btn, &style_settings_item_selected, LV_PART_MAIN);
+    }
+
+    new_btn = get_wifi_item_btn(data, new_index);
+    if (new_btn != NULL) {
+        lv_obj_add_style(new_btn, &style_settings_item_selected, LV_PART_MAIN);
+        lv_obj_scroll_to_view(new_btn, LV_ANIM_OFF);
+    }
 }
 
 /* 显示密码输入弹层并绑定目标 SSID。 */
@@ -314,6 +361,7 @@ static void rebuild_wifi_list(page_wifi_list_data_t* data)
     }
 
     if (data->wifi_enabled == 0) {
+        data->scan_count = 0;
         lv_obj_clean(data->wifi_list);
         return;
     }
@@ -323,6 +371,7 @@ static void rebuild_wifi_list(page_wifi_list_data_t* data)
     for (i = 0; i < data->scan_count; i++) {
         append_wifi_list_item(data, i);
     }
+    update_wifi_selection(data, -1, data->selected_ap_index);
 }
 
 /* 开始 WiFi 扫描 */
@@ -396,6 +445,7 @@ static void switch_apply_timer_cb(lv_timer_t* timer)
             lv_timer_del(data->scan_timer);
             data->scan_timer = NULL;
         }
+        data->scan_count = 0;
         lv_obj_clean(data->wifi_list);
         top_notice_show_for("WiFi已关闭", TOP_NOTICE_TYPE_ERROR, 2000);
     }
@@ -447,6 +497,7 @@ static void scan_timer_cb(lv_timer_t* timer)
     for (i = 0; i < count; i++) {
         append_wifi_list_item(data, i);
     }
+    update_wifi_selection(data, -1, data->selected_ap_index);
 
     char notice_text[64];
     snprintf(notice_text, sizeof(notice_text), "扫描到 %d 个 WiFi", count);
@@ -467,6 +518,97 @@ static void scan_timer_cb(lv_timer_t* timer)
 // #############################################################################
 // ! #region 7. 按键、手势、定时器 等事件回调函数
 // #############################################################################
+
+static void menu_key_cb(key_id_t key, key_event_type_t event_type, void* user_data)
+{
+    (void)key;
+    (void)event_type;
+    (void)user_data;
+    page_manager_back();
+}
+
+static void menu_key_long_press_cb(key_id_t key, key_event_type_t event_type, void* user_data)
+{
+    (void)key;
+    (void)event_type;
+    (void)user_data;
+    page_manager_back();
+}
+
+static void up_key_click_cb(key_id_t key, key_event_type_t event_type, void* user_data)
+{
+    page_wifi_list_data_t* data = (page_wifi_list_data_t*)user_data;
+    int old_index;
+
+    if (key != KEY_ID_UP || event_type != KEY_EVENT_CLICK)
+        return;
+    if (data == NULL || data->scan_count <= 0)
+        return;
+
+    old_index = data->selected_ap_index;
+    if (old_index > 0) {
+        update_wifi_selection(data, old_index, old_index - 1);
+    } else {
+        update_wifi_selection(data, old_index, data->scan_count - 1);
+    }
+}
+
+static void down_key_click_cb(key_id_t key, key_event_type_t event_type, void* user_data)
+{
+    page_wifi_list_data_t* data = (page_wifi_list_data_t*)user_data;
+    int old_index;
+
+    if (key != KEY_ID_DOWN || event_type != KEY_EVENT_CLICK)
+        return;
+    if (data == NULL || data->scan_count <= 0)
+        return;
+
+    old_index = data->selected_ap_index;
+    if (old_index < data->scan_count - 1) {
+        update_wifi_selection(data, old_index, old_index + 1);
+    } else {
+        update_wifi_selection(data, old_index, 0);
+    }
+}
+
+static void ok_key_click_cb(key_id_t key, key_event_type_t event_type, void* user_data)
+{
+    page_wifi_list_data_t* data = (page_wifi_list_data_t*)user_data;
+
+    if (key != KEY_ID_OK || event_type != KEY_EVENT_CLICK)
+        return;
+
+    activate_selected_wifi(data);
+}
+
+static void activate_selected_wifi(page_wifi_list_data_t* data)
+{
+    wifi_ap_info_t* ap;
+
+    if (data == NULL || data->scan_count <= 0)
+        return;
+    if (data->selected_ap_index < 0 || data->selected_ap_index >= data->scan_count)
+        return;
+
+    ap = &data->scan_results[data->selected_ap_index];
+    if (ap->is_connected) {
+        if (wifi_manager_disconnect() == 0) {
+            ap->is_connected = 0;
+            (void)param_manager_set(PARAM_ID_WIFI_CONNECTED, 0);
+            rebuild_wifi_list(data);
+            top_notice_show("已断开WiFi", TOP_NOTICE_TYPE_SUCCESS);
+        } else {
+            top_notice_show("断开失败", TOP_NOTICE_TYPE_ERROR);
+        }
+        return;
+    }
+
+    if (ap->is_secured && !ap->is_saved) {
+        show_password_modal(data, ap->ssid);
+        return;
+    }
+    connect_wifi_and_refresh(data, ap->ssid, "");
+}
 
 static void wifi_item_click_cb(lv_event_t* e)
 {
@@ -785,6 +927,7 @@ void page_wifi_list_create(void)
     data->switch_apply_pending = 0;
     data->switch_target_enabled = data->wifi_enabled;
     data->switch_ignore_event = 0;
+    data->selected_ap_index = 0;
 
     /* 启用整页事件冒泡，确保子对象按压事件传递到父容器。 */
     gesture_back_enable_event_bubble_recursive(data->container);
@@ -827,6 +970,11 @@ void page_wifi_list_show(void)
     }
 
     gesture_back_set_left_edge_swipe_cb(data->container, page_manager_back_cb);
+    key_manager_register_callback(KEY_ID_MENU, KEY_EVENT_CLICK, menu_key_cb, NULL);
+    key_manager_register_callback(KEY_ID_MENU, KEY_EVENT_LONG_PRESS, menu_key_long_press_cb, NULL);
+    key_manager_register_callback(KEY_ID_UP, KEY_EVENT_CLICK, up_key_click_cb, data);
+    key_manager_register_callback(KEY_ID_DOWN, KEY_EVENT_CLICK, down_key_click_cb, data);
+    key_manager_register_callback(KEY_ID_OK, KEY_EVENT_CLICK, ok_key_click_cb, data);
 
     /* 每次进入页面同步真实 WiFi 开关状态，避免显示陈旧状态。 */
     sync_wifi_enabled_state(data);
@@ -852,6 +1000,12 @@ void page_wifi_list_hide(void)
     if (data == NULL || data->container == NULL) {
         return;
     }
+
+    key_manager_unregister_callback(KEY_ID_MENU, KEY_EVENT_CLICK, menu_key_cb, NULL);
+    key_manager_unregister_callback(KEY_ID_MENU, KEY_EVENT_LONG_PRESS, menu_key_long_press_cb, NULL);
+    key_manager_unregister_callback(KEY_ID_UP, KEY_EVENT_CLICK, up_key_click_cb, data);
+    key_manager_unregister_callback(KEY_ID_DOWN, KEY_EVENT_CLICK, down_key_click_cb, data);
+    key_manager_unregister_callback(KEY_ID_OK, KEY_EVENT_CLICK, ok_key_click_cb, data);
 
     /* 停止扫描定时器 */
     if (data->scan_timer != NULL) {

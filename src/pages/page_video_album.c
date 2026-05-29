@@ -33,6 +33,7 @@
 #define SELECT_BOX_SIZE 22
 #define SELECT_BOX_OFFSET_X -6
 #define SELECT_BOX_OFFSET_Y -6
+#define CURSOR_BORDER_WIDTH 2
 #define ITEM_CLICK_GUARD_AFTER_SCROLL_MS 180
 #define ITEM_CLICK_CANCEL_SCROLL_DELTA 8
 #define FAST_SCROLLBAR_BACK_GESTURE_TRIGGER_PX 72
@@ -64,6 +65,8 @@ static void sync_fast_scrollbar_deferred_cb(void* user_data);
 static void show_video_preview(page_video_album_data_t* data, int video_index);
 static int get_scroll_y_for_video_index(page_video_album_data_t* data, int video_index);
 static void update_media_tab_icon_opa(page_video_album_data_t* data, bool video_active);
+static void update_cursor_visuals(page_video_album_data_t* data);
+static void move_cursor_to_index(page_video_album_data_t* data, int video_index);
 
 static void calculate_layout(page_video_album_data_t* data);
 static int create_item_pool(page_video_album_data_t* data);
@@ -614,6 +617,69 @@ static void update_item_content(page_video_album_data_t* data, video_album_item_
     update_item_selection_visual(data, item);
 }
 
+static int get_cursor_video_index(page_video_album_data_t* data)
+{
+    if (!data || data->layout.cols <= 0 || data->total_videos <= 0)
+        return -1;
+
+    return clamp_int(data->cursor_row * data->layout.cols + data->cursor_col, 0, data->total_videos - 1);
+}
+
+static void update_item_cursor_visual(page_video_album_data_t* data, video_album_item_t* item)
+{
+    bool focused;
+
+    if (!data || !item || !item->container)
+        return;
+
+    focused = item->is_visible && item->video_index == get_cursor_video_index(data);
+    lv_obj_set_style_border_width(item->container, focused ? CURSOR_BORDER_WIDTH : 0, LV_PART_MAIN);
+    lv_obj_set_style_border_color(item->container, lv_color_hex(0xFF2D2D), LV_PART_MAIN);
+    lv_obj_set_style_border_opa(item->container, focused ? LV_OPA_COVER : LV_OPA_TRANSP, LV_PART_MAIN);
+}
+
+static void update_cursor_visuals(page_video_album_data_t* data)
+{
+    int i;
+
+    if (!data || !data->item_pool)
+        return;
+
+    for (i = 0; i < data->pool_size; i++)
+        update_item_cursor_visual(data, &data->item_pool[i]);
+}
+
+static void ensure_cursor_visible(page_video_album_data_t* data)
+{
+    int video_index;
+    int target_scroll_y;
+
+    if (!data || data->total_videos <= 0)
+        return;
+
+    video_index = get_cursor_video_index(data);
+    if (video_index < 0)
+        return;
+
+    target_scroll_y = get_scroll_y_for_video_index(data, video_index);
+    data->first_visible_row = -1;
+    lv_obj_scroll_to_y(data->grid_container, target_scroll_y, LV_ANIM_OFF);
+    refresh_visible_items(data, true);
+    sync_fast_scrollbar_from_scroll(data);
+}
+
+static void move_cursor_to_index(page_video_album_data_t* data, int video_index)
+{
+    if (!data || data->layout.cols <= 0 || data->total_videos <= 0)
+        return;
+
+    video_index = clamp_int(video_index, 0, data->total_videos - 1);
+    data->cursor_row = video_index / data->layout.cols;
+    data->cursor_col = video_index % data->layout.cols;
+    ensure_cursor_visible(data);
+    update_cursor_visuals(data);
+}
+
 static void sync_fast_scrollbar_deferred_cb(void* user_data)
 {
     page_video_album_data_t* data = (page_video_album_data_t*)user_data;
@@ -658,6 +724,7 @@ static int create_item_pool(page_video_album_data_t* data)
         lv_obj_set_size(item->container, data->layout.item_width, data->layout.item_height);
         lv_obj_add_style(item->container, &style_settings_item, LV_PART_MAIN);
         lv_obj_set_style_pad_all(item->container, 0, LV_PART_MAIN);
+        lv_obj_set_style_border_side(item->container, LV_BORDER_SIDE_FULL, LV_PART_MAIN);
         lv_obj_clear_flag(item->container, LV_OBJ_FLAG_SCROLLABLE);
         lv_obj_set_scrollbar_mode(item->container, LV_SCROLLBAR_MODE_OFF);
         lv_obj_add_flag(item->container, LV_OBJ_FLAG_HIDDEN);
@@ -759,10 +826,12 @@ static void refresh_visible_items(page_video_album_data_t* data, bool force_refr
                 lv_obj_clear_flag(item->container, LV_OBJ_FLAG_HIDDEN);
                 item->is_visible = true;
             }
+            update_item_cursor_visual(data, item);
         } else {
             item->index = -1;
             item->video_index = -1;
             update_item_selection_visual(data, item);
+            update_item_cursor_visual(data, item);
             if (item->is_visible) {
                 lv_obj_add_flag(item->container, LV_OBJ_FLAG_HIDDEN);
                 item->is_visible = false;
@@ -849,6 +918,104 @@ static void back_btn_cb(lv_event_t* e)
         return;
 
     page_manager_back();
+}
+
+static void menu_key_cb(key_id_t key, key_event_type_t event_type, void* user_data)
+{
+    (void)key;
+    (void)event_type;
+    (void)user_data;
+    page_video_album_data_t* data = page_get_private_data();
+    if (data && data->deleting_in_progress)
+        return;
+    page_manager_back();
+}
+
+static void mode_key_click_cb(key_id_t key, key_event_type_t event_type, void* user_data)
+{
+    (void)user_data;
+    if (key != KEY_ID_MODE || event_type != KEY_EVENT_CLICK)
+        return;
+    page_manager_navigate_without_history("album");
+}
+
+static void va_ok_key_click_cb(key_id_t key, key_event_type_t event_type, void* user_data)
+{
+    page_video_album_data_t* data = (page_video_album_data_t*)user_data;
+    int cols;
+    int video_index;
+
+    if (key != KEY_ID_OK || event_type != KEY_EVENT_CLICK)
+        return;
+    if (!data || !data->container)
+        return;
+    if (data->deleting_in_progress)
+        return;
+
+    cols = data->layout.cols;
+    if (cols <= 0)
+        return;
+
+    video_index = data->cursor_row * cols + data->cursor_col;
+    if (video_index >= 0 && video_index < data->total_videos) {
+        show_video_preview(data, video_index);
+    }
+}
+
+static void va_up_key_click_cb(key_id_t key, key_event_type_t event_type, void* user_data)
+{
+    page_video_album_data_t* data = (page_video_album_data_t*)user_data;
+    if (key != KEY_ID_UP || event_type != KEY_EVENT_CLICK)
+        return;
+    if (!data || !data->container)
+        return;
+    if (data->cursor_row > 0)
+        move_cursor_to_index(data, get_cursor_video_index(data) - data->layout.cols);
+}
+
+static void va_down_key_click_cb(key_id_t key, key_event_type_t event_type, void* user_data)
+{
+    page_video_album_data_t* data = (page_video_album_data_t*)user_data;
+    int cols;
+    int total_rows;
+    if (key != KEY_ID_DOWN || event_type != KEY_EVENT_CLICK)
+        return;
+    if (!data || !data->container)
+        return;
+
+    cols = data->layout.cols;
+    if (cols <= 0)
+        return;
+    total_rows = (data->total_videos + cols - 1) / cols;
+    if (data->cursor_row < total_rows - 1)
+        move_cursor_to_index(data, get_cursor_video_index(data) + cols);
+}
+
+static void va_left_key_click_cb(key_id_t key, key_event_type_t event_type, void* user_data)
+{
+    page_video_album_data_t* data = (page_video_album_data_t*)user_data;
+    if (key != KEY_ID_LEFT || event_type != KEY_EVENT_CLICK)
+        return;
+    if (!data || !data->container)
+        return;
+    if (get_cursor_video_index(data) > 0)
+        move_cursor_to_index(data, get_cursor_video_index(data) - 1);
+}
+
+static void va_right_key_click_cb(key_id_t key, key_event_type_t event_type, void* user_data)
+{
+    page_video_album_data_t* data = (page_video_album_data_t*)user_data;
+    int cols;
+    if (key != KEY_ID_RIGHT || event_type != KEY_EVENT_CLICK)
+        return;
+    if (!data || !data->container)
+        return;
+
+    cols = data->layout.cols;
+    if (cols <= 0)
+        return;
+    if (get_cursor_video_index(data) < data->total_videos - 1)
+        move_cursor_to_index(data, get_cursor_video_index(data) + 1);
 }
 
 static void photo_btn_cb(lv_event_t* e)
@@ -1250,6 +1417,7 @@ void page_video_album_show(void)
     page_video_album_data_t* data = page_get_private_data();
     int new_total_videos;
     bool has_focus_target = false;
+    int focus_video_index = -1;
     int target_scroll_y = 0;
     if (!data || !data->container) {
         MLOG_ERR("Video album show failed: data or container is null");
@@ -1264,6 +1432,13 @@ void page_video_album_show(void)
     }
 
     gesture_back_set_left_edge_swipe_cb(data->container, page_manager_back_cb);
+    key_manager_register_callback(KEY_ID_MENU, KEY_EVENT_CLICK, menu_key_cb, NULL);
+    key_manager_register_callback(KEY_ID_MODE, KEY_EVENT_CLICK, mode_key_click_cb, NULL);
+    key_manager_register_callback(KEY_ID_OK, KEY_EVENT_CLICK, va_ok_key_click_cb, data);
+    key_manager_register_callback(KEY_ID_UP, KEY_EVENT_CLICK, va_up_key_click_cb, data);
+    key_manager_register_callback(KEY_ID_DOWN, KEY_EVENT_CLICK, va_down_key_click_cb, data);
+    key_manager_register_callback(KEY_ID_LEFT, KEY_EVENT_CLICK, va_left_key_click_cb, data);
+    key_manager_register_callback(KEY_ID_RIGHT, KEY_EVENT_CLICK, va_right_key_click_cb, data);
 
     new_total_videos = get_album_total_count();
     MLOG_INFO("Video album show: new_total_videos=%d old_total_videos=%d", new_total_videos, data->total_videos);
@@ -1278,6 +1453,7 @@ void page_video_album_show(void)
     if (g_video_album_focus_video_index >= 0) {
         if (g_video_album_focus_video_index < data->total_videos) {
             has_focus_target = true;
+            focus_video_index = g_video_album_focus_video_index;
             target_scroll_y = get_scroll_y_for_video_index(data, g_video_album_focus_video_index);
         }
         g_video_album_focus_video_index = -1;
@@ -1293,11 +1469,14 @@ void page_video_album_show(void)
     if (has_focus_target) {
         data->first_visible_row = -1;
         lv_obj_scroll_to_y(data->grid_container, target_scroll_y, LV_ANIM_OFF);
+        move_cursor_to_index(data, focus_video_index);
     } else {
         data->first_visible_row = -1;
         lv_obj_scroll_to_y(data->grid_container, 0, LV_ANIM_OFF);
+        move_cursor_to_index(data, 0);
     }
     refresh_visible_items(data, true);
+    update_cursor_visuals(data);
     sync_fast_scrollbar_from_scroll(data);
     set_fast_scrollbar_visible(data, true);
     lv_async_call(sync_fast_scrollbar_deferred_cb, data);
@@ -1310,6 +1489,14 @@ void page_video_album_hide(void)
         return;
     if (data->deleting_in_progress)
         return;
+
+    key_manager_unregister_callback(KEY_ID_MENU, KEY_EVENT_CLICK, menu_key_cb, NULL);
+    key_manager_unregister_callback(KEY_ID_MODE, KEY_EVENT_CLICK, mode_key_click_cb, NULL);
+    key_manager_unregister_callback(KEY_ID_OK, KEY_EVENT_CLICK, va_ok_key_click_cb, data);
+    key_manager_unregister_callback(KEY_ID_UP, KEY_EVENT_CLICK, va_up_key_click_cb, data);
+    key_manager_unregister_callback(KEY_ID_DOWN, KEY_EVENT_CLICK, va_down_key_click_cb, data);
+    key_manager_unregister_callback(KEY_ID_LEFT, KEY_EVENT_CLICK, va_left_key_click_cb, data);
+    key_manager_unregister_callback(KEY_ID_RIGHT, KEY_EVENT_CLICK, va_right_key_click_cb, data);
 
     exit_selection_mode(data);
     data->last_notice_index = -1;

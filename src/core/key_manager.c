@@ -1,5 +1,4 @@
 #include "core/key_manager.h"
-#include "core/media_manager.h"
 #include "lvgl/lvgl.h"
 #include "mlog.h"
 #include "ui/volume_bar.h"
@@ -12,18 +11,6 @@
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
-
-#ifndef KEY_PLAY
-#define KEY_PLAY 207
-#endif
-
-#ifndef KEY_CAMERA
-#define KEY_CAMERA 212
-#endif
-
-#ifndef KEY_CAMERA_FOCUS
-#define KEY_CAMERA_FOCUS 528
-#endif
 
 #define KEY_MANAGER_DEFAULT_LONG_PRESS_MS 700U
 #define KEY_MANAGER_DEFAULT_REPEAT_MS 200U
@@ -52,6 +39,7 @@ typedef struct {
 
 static key_input_device_t g_devices[] = {
     { "/dev/input/power-key", -1 },
+    { "/dev/input/adc-key1", -1 },
     { "/dev/input/adc-key2", -1 },
 };
 
@@ -75,11 +63,18 @@ static const char* key_manager_key_to_string(key_id_t key)
 {
     switch (key) {
         ENUM_CASE(KEY_ID_POWER);
-        ENUM_CASE(KEY_ID_AI);
+        ENUM_CASE(KEY_ID_ASSISTANT);
         ENUM_CASE(KEY_ID_VOLUME_UP);
         ENUM_CASE(KEY_ID_VOLUME_DOWN);
         ENUM_CASE(KEY_ID_FOCUS);
         ENUM_CASE(KEY_ID_CAMERA);
+        ENUM_CASE(KEY_ID_MODE);
+        ENUM_CASE(KEY_ID_MENU);
+        ENUM_CASE(KEY_ID_UP);
+        ENUM_CASE(KEY_ID_DOWN);
+        ENUM_CASE(KEY_ID_LEFT);
+        ENUM_CASE(KEY_ID_RIGHT);
+        ENUM_CASE(KEY_ID_OK);
         ENUM_CASE(KEY_ID_ANY);
     default:
         return "UNKNOWN";
@@ -103,27 +98,6 @@ static const char* key_manager_event_to_string(key_event_type_t event_type)
 }
 
 #undef ENUM_CASE
-
-static void key_manager_on_volume_key_event(key_id_t key, key_event_type_t event_type, void* user_data)
-{
-    int delta = 0;
-
-    (void)user_data;
-    if (event_type != KEY_EVENT_CLICK && event_type != KEY_EVENT_LONG_PRESS &&
-        event_type != KEY_EVENT_LONG_PRESS_REPEAT) {
-        return;
-    }
-
-    if (key == KEY_ID_VOLUME_UP) {
-        delta = 10;
-    } else if (key == KEY_ID_VOLUME_DOWN) {
-        delta = -10;
-    } else {
-        return;
-    }
-
-    media_manager_execute(MEDIA_OP_ADJUST_SYSTEM_VOLUME, delta);
-}
 
 static int key_manager_is_valid_key(key_id_t key)
 {
@@ -205,8 +179,22 @@ static key_id_t key_manager_map_code_to_key(int code)
     switch (code) {
     case KEY_POWER:
         return KEY_ID_POWER;
-    case KEY_PLAY:
-        return KEY_ID_AI;
+    case KEY_MODE:
+        return KEY_ID_MODE;
+    case KEY_MENU:
+        return KEY_ID_MENU;
+    case KEY_UP:
+        return KEY_ID_UP;
+    case KEY_DOWN:
+        return KEY_ID_DOWN;
+    case KEY_LEFT:
+        return KEY_ID_LEFT;
+    case KEY_RIGHT:
+        return KEY_ID_RIGHT;
+    case KEY_OK:
+        return KEY_ID_OK;
+    case KEY_ASSISTANT:
+        return KEY_ID_ASSISTANT;
     case KEY_VOLUMEUP:
         return KEY_ID_VOLUME_UP;
     case KEY_VOLUMEDOWN:
@@ -356,13 +344,6 @@ int key_manager_init(void)
     }
 
     g_inited = 1;
-    key_manager_register_callback(KEY_ID_VOLUME_UP, KEY_EVENT_CLICK, key_manager_on_volume_key_event, NULL);
-    key_manager_register_callback(KEY_ID_VOLUME_UP, KEY_EVENT_LONG_PRESS, key_manager_on_volume_key_event, NULL);
-    key_manager_register_callback(KEY_ID_VOLUME_UP, KEY_EVENT_LONG_PRESS_REPEAT, key_manager_on_volume_key_event, NULL);
-    key_manager_register_callback(KEY_ID_VOLUME_DOWN, KEY_EVENT_CLICK, key_manager_on_volume_key_event, NULL);
-    key_manager_register_callback(KEY_ID_VOLUME_DOWN, KEY_EVENT_LONG_PRESS, key_manager_on_volume_key_event, NULL);
-    key_manager_register_callback(KEY_ID_VOLUME_DOWN, KEY_EVENT_LONG_PRESS_REPEAT, key_manager_on_volume_key_event, NULL);
-
     if (opened == 0) {
         MLOG_WARN("key_manager initialized but no input device is available");
     }
@@ -551,7 +532,7 @@ void key_manager_set_block_non_power(uint8_t block_mask)
         key_manager_clear_key_states(0, 1);
     }
     if (!block_non_camera_old && block_non_camera_new) {
-        memset(&g_key_states[KEY_ID_AI], 0, sizeof(g_key_states[KEY_ID_AI]));
+        memset(&g_key_states[KEY_ID_ASSISTANT], 0, sizeof(g_key_states[KEY_ID_ASSISTANT]));
         memset(&g_key_states[KEY_ID_VOLUME_UP], 0, sizeof(g_key_states[KEY_ID_VOLUME_UP]));
         memset(&g_key_states[KEY_ID_VOLUME_DOWN], 0, sizeof(g_key_states[KEY_ID_VOLUME_DOWN]));
         memset(&g_key_states[KEY_ID_FOCUS], 0, sizeof(g_key_states[KEY_ID_FOCUS]));

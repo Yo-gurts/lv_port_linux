@@ -13,6 +13,8 @@ void filter_panel_init(void);
 void filter_panel_show(void);
 void filter_panel_hide(void);
 int filter_panel_is_visible(void);
+void filter_panel_select_prev(void);
+void filter_panel_select_next(void);
 
 #ifdef __cplusplus
 }

@@ -5,6 +5,7 @@
 #include "pages/page_photo_settings.h"
 #include "config.h"
 #include "core/font_manager.h"
+#include "core/key_manager.h"
 #include "core/media_manager.h"
 #include "core/page_manager.h"
 #include "core/param_manager.h"
@@ -101,6 +102,7 @@ static const setting_config_t configs[] = {
 };
 
 #define SETTINGS_COUNT (int)(sizeof(configs) / sizeof(configs[0]))
+#define ROLLER_OPTIONS_BUF_SIZE 256
 
 // #endregion
 // #############################################################################
@@ -198,56 +200,46 @@ static void apply_roller_selection(page_photo_settings_data_t* data)
     MLOG_INFO("Setting '%s' selected: %s", config->title, config->roller_options[selected]);
 }
 
-// #endregion
-// #############################################################################
-// ! #region 5. 对外接口函数
-// #############################################################################
-
-// #endregion
-// #############################################################################
-// ! #region 6. 线程处理函数
-// #############################################################################
-
-// #endregion
-// #############################################################################
-// ! #region 7. 按键、手势、定时器 等事件回调函数
-// #############################################################################
-
-/* 滚轮选中回调 */
-static void roller_select_cb(lv_event_t* e)
+static int is_roller_popup_visible(page_photo_settings_data_t* data)
 {
-    lv_event_code_t code = lv_event_get_code(e);
-    page_photo_settings_data_t* data = (page_photo_settings_data_t*)lv_event_get_user_data(e);
+    return data != NULL && data->roller_popup != NULL && !lv_obj_has_flag(data->roller_popup, LV_OBJ_FLAG_HIDDEN);
+}
 
-    if (code == LV_EVENT_VALUE_CHANGED || code == LV_EVENT_CLICKED) {
-        apply_roller_selection(data);
+static void close_roller_popup(page_photo_settings_data_t* data)
+{
+    if (data == NULL || data->roller_popup == NULL) {
+        return;
     }
+    lv_obj_add_flag(data->roller_popup, LV_OBJ_FLAG_HIDDEN);
 }
 
-/* 点击遮罩关闭弹窗回调 */
-static void modal_click_cb(lv_event_t* e)
+static void ensure_setting_visible(page_photo_settings_data_t* data, int index)
 {
-    page_photo_settings_data_t* data = (page_photo_settings_data_t*)lv_event_get_user_data(e);
-    apply_roller_selection(data);
-}
-
-/* 设置项点击回调 */
-static void setting_item_cb(lv_event_t* e)
-{
-    lv_obj_t* obj = lv_event_get_current_target(e);
-    page_photo_settings_data_t* data = (page_photo_settings_data_t*)lv_event_get_user_data(e);
-    uintptr_t user_data = (uintptr_t)lv_obj_get_user_data(obj);
-    int index = (int)user_data;
-
-    if (index < 0 || index >= SETTINGS_COUNT) {
+    if (data == NULL || data->items == NULL || index < 0 || index >= SETTINGS_COUNT) {
+        return;
+    }
+    if (data->items[index].container == NULL) {
         return;
     }
 
-    const setting_config_t* config = &data->configs[index];
-    setting_item_t* item = &data->items[index];
+    lv_obj_scroll_to_view(data->items[index].container, LV_ANIM_ON);
+}
+
+static void open_setting_editor(page_photo_settings_data_t* data, int index)
+{
+    const setting_config_t* config;
+    setting_item_t* item;
+
+    if (data == NULL || data->items == NULL || data->roller == NULL || index < 0 || index >= SETTINGS_COUNT) {
+        return;
+    }
+
+    data->current_setting_index = index;
+    ensure_setting_visible(data, index);
+    config = &data->configs[index];
+    item = &data->items[index];
 
     if (config->type == SETTING_TYPE_TOGGLE) {
-        /* 切换开关状态 */
         item->current_index = !item->current_index;
         const char* new_value = item->current_index ? "已开启" : "已关闭";
         int ret = 0;
@@ -267,23 +259,208 @@ static void setting_item_cb(lv_event_t* e)
 
         lv_label_set_text(item->value_label, new_value);
         MLOG_INFO("Setting '%s' toggled to: %s", config->title, new_value);
-    } else {
-        /* 普通设置，弹出滚轮 */
-        data->current_setting_index = index;
-
-        /* 构建滚轮选项字符串 */
-        char options_buf[256];
-        build_roller_options(config->roller_options, config->roller_count, options_buf, sizeof(options_buf));
-        lv_roller_set_options(data->roller, options_buf, LV_ROLLER_MODE_NORMAL);
-
-        /* 设置当前选中项 */
-        lv_roller_set_selected(data->roller, item->current_index, LV_ANIM_OFF);
-
-        /* 显示弹窗 */
-        lv_obj_clear_flag(data->roller_popup, LV_OBJ_FLAG_HIDDEN);
-
-        MLOG_INFO("Setting '%s' clicked, value: %s", config->title, config->roller_options[item->current_index]);
+        return;
     }
+
+    char options_buf[ROLLER_OPTIONS_BUF_SIZE];
+    build_roller_options(config->roller_options, config->roller_count, options_buf, sizeof(options_buf));
+    lv_roller_set_options(data->roller, options_buf, LV_ROLLER_MODE_NORMAL);
+    lv_roller_set_selected(data->roller, item->current_index, LV_ANIM_OFF);
+    lv_obj_clear_flag(data->roller_popup, LV_OBJ_FLAG_HIDDEN);
+
+    MLOG_INFO("Setting '%s' opened, value: %s", config->title, config->roller_options[item->current_index]);
+}
+
+// #endregion
+// #############################################################################
+// ! #region 5. 对外接口函数
+// #############################################################################
+
+// #endregion
+// #############################################################################
+// ! #region 6. 线程处理函数
+// #############################################################################
+
+// #endregion
+// #############################################################################
+// ! #region 7. 按键、手势、定时器 等事件回调函数
+// #############################################################################
+
+static void setting_item_cb(lv_event_t* e);
+
+static void menu_key_cb(key_id_t key, key_event_type_t event_type, void* user_data)
+{
+    (void)key;
+    (void)event_type;
+    page_photo_settings_data_t* data = (page_photo_settings_data_t*)user_data;
+
+    if (is_roller_popup_visible(data)) {
+        close_roller_popup(data);
+        return;
+    }
+
+    page_manager_back();
+}
+
+static void update_selection_highlight(page_photo_settings_data_t* data, int old_index, int new_index)
+{
+    if (!data) return;
+    if (old_index >= 0 && old_index < SETTINGS_COUNT && data->items[old_index].container) {
+        lv_obj_remove_style(data->items[old_index].container, &style_settings_item_selected, LV_PART_MAIN);
+    }
+    if (new_index >= 0 && new_index < SETTINGS_COUNT && data->items[new_index].container) {
+        lv_obj_add_style(data->items[new_index].container, &style_settings_item_selected, LV_PART_MAIN);
+        ensure_setting_visible(data, new_index);
+    }
+}
+
+static void up_key_click_cb(key_id_t key, key_event_type_t event_type, void* user_data)
+{
+    page_photo_settings_data_t* data = (page_photo_settings_data_t*)user_data;
+    if (key != KEY_ID_UP || event_type != KEY_EVENT_CLICK)
+        return;
+    if (!data || !data->container)
+        return;
+
+    if (is_roller_popup_visible(data)) {
+        const setting_config_t* config = &data->configs[data->current_setting_index];
+        int roller_count = config->roller_count;
+        int selected = lv_roller_get_selected(data->roller);
+        if (selected > 0) {
+            lv_roller_set_selected(data->roller, selected - 1, LV_ANIM_ON);
+        } else {
+            lv_roller_set_selected(data->roller, roller_count - 1, LV_ANIM_ON);
+        }
+        return;
+    }
+
+    int old_index = data->current_setting_index;
+    if (data->current_setting_index > 0) {
+        data->current_setting_index--;
+    } else {
+        data->current_setting_index = SETTINGS_COUNT - 1;
+    }
+    update_selection_highlight(data, old_index, data->current_setting_index);
+}
+
+static void down_key_click_cb(key_id_t key, key_event_type_t event_type, void* user_data)
+{
+    page_photo_settings_data_t* data = (page_photo_settings_data_t*)user_data;
+    if (key != KEY_ID_DOWN || event_type != KEY_EVENT_CLICK)
+        return;
+    if (!data || !data->container)
+        return;
+
+    if (is_roller_popup_visible(data)) {
+        const setting_config_t* config = &data->configs[data->current_setting_index];
+        int roller_count = config->roller_count;
+        int selected = lv_roller_get_selected(data->roller);
+        if (selected < roller_count - 1) {
+            lv_roller_set_selected(data->roller, selected + 1, LV_ANIM_ON);
+        } else {
+            lv_roller_set_selected(data->roller, 0, LV_ANIM_ON);
+        }
+        return;
+    }
+
+    int old_index = data->current_setting_index;
+    if (data->current_setting_index < SETTINGS_COUNT - 1) {
+        data->current_setting_index++;
+    } else {
+        data->current_setting_index = 0;
+    }
+    update_selection_highlight(data, old_index, data->current_setting_index);
+}
+
+static void ok_key_click_cb(key_id_t key, key_event_type_t event_type, void* user_data)
+{
+    page_photo_settings_data_t* data = (page_photo_settings_data_t*)user_data;
+
+    if (key != KEY_ID_OK || event_type != KEY_EVENT_CLICK)
+        return;
+    if (!data || !data->container)
+        return;
+
+    if (is_roller_popup_visible(data)) {
+        apply_roller_selection(data);
+        return;
+    }
+
+    open_setting_editor(data, data->current_setting_index);
+}
+
+static void left_key_click_cb(key_id_t key, key_event_type_t event_type, void* user_data)
+{
+    page_photo_settings_data_t* data = (page_photo_settings_data_t*)user_data;
+    uint16_t selected;
+
+    if (key != KEY_ID_LEFT || event_type != KEY_EVENT_CLICK)
+        return;
+    if (!data || !data->container)
+        return;
+    if (!data->roller_popup || lv_obj_has_flag(data->roller_popup, LV_OBJ_FLAG_HIDDEN))
+        return;
+
+    selected = lv_roller_get_selected(data->roller);
+    if (selected > 0) {
+        lv_roller_set_selected(data->roller, selected - 1, LV_ANIM_ON);
+    }
+}
+
+static void right_key_click_cb(key_id_t key, key_event_type_t event_type, void* user_data)
+{
+    page_photo_settings_data_t* data = (page_photo_settings_data_t*)user_data;
+    const setting_config_t* config;
+    int roller_count;
+    if (key != KEY_ID_RIGHT || event_type != KEY_EVENT_CLICK) return;
+    if (!data || !data->container) return;
+    if (!data->roller_popup || lv_obj_has_flag(data->roller_popup, LV_OBJ_FLAG_HIDDEN)) return;
+
+    config = &data->configs[data->current_setting_index];
+    roller_count = config->roller_count;
+    int selected = lv_roller_get_selected(data->roller);
+    if (selected < roller_count - 1) {
+        lv_roller_set_selected(data->roller, selected + 1, LV_ANIM_ON);
+    }
+}
+
+/* 滚轮选中回调 */
+static void roller_select_cb(lv_event_t* e)
+{
+    lv_event_code_t code = lv_event_get_code(e);
+    page_photo_settings_data_t* data = (page_photo_settings_data_t*)lv_event_get_user_data(e);
+
+    if (code == LV_EVENT_CLICKED) {
+        apply_roller_selection(data);
+    }
+}
+
+/* 点击遮罩关闭弹窗回调 */
+static void modal_click_cb(lv_event_t* e)
+{
+    page_photo_settings_data_t* data = (page_photo_settings_data_t*)lv_event_get_user_data(e);
+
+    if (lv_event_get_target(e) == data->roller_popup) {
+        close_roller_popup(data);
+    }
+}
+
+/* 设置项点击回调 */
+static void setting_item_cb(lv_event_t* e)
+{
+    lv_obj_t* obj = lv_event_get_current_target(e);
+    page_photo_settings_data_t* data = (page_photo_settings_data_t*)lv_event_get_user_data(e);
+    uintptr_t user_data = (uintptr_t)lv_obj_get_user_data(obj);
+    int index = (int)user_data;
+
+    if (index < 0 || index >= SETTINGS_COUNT) {
+        return;
+    }
+
+    int old_index = data->current_setting_index;
+
+    update_selection_highlight(data, old_index, index);
+    open_setting_editor(data, index);
 }
 
 // #endregion
@@ -414,10 +591,8 @@ void page_photo_settings_create(void)
             lv_obj_add_event_cb(item->container, setting_item_cb, LV_EVENT_CLICKED, data);
             lv_obj_set_user_data(item->container, (void*)(intptr_t)i);
         } else {
-            lv_obj_add_flag(item->value_label, LV_OBJ_FLAG_CLICKABLE);
-            lv_obj_set_ext_click_area(item->value_label, 12);
-            lv_obj_add_event_cb(item->value_label, setting_item_cb, LV_EVENT_CLICKED, data);
-            lv_obj_set_user_data(item->value_label, (void*)(intptr_t)i);
+            lv_obj_add_event_cb(item->container, setting_item_cb, LV_EVENT_CLICKED, data);
+            lv_obj_set_user_data(item->container, (void*)(intptr_t)i);
         }
     }
 
@@ -439,7 +614,7 @@ void page_photo_settings_create(void)
     lv_roller_set_visible_row_count(data->roller, 5);
     lv_obj_add_style(data->roller, &NORMAL_SIZE, LV_PART_MAIN);
     lv_obj_add_style(data->roller, &style_roller, LV_PART_MAIN);
-    lv_obj_add_event_cb(data->roller, roller_select_cb, LV_EVENT_VALUE_CHANGED | LV_EVENT_CLICKED, data);
+    lv_obj_add_event_cb(data->roller, roller_select_cb, LV_EVENT_CLICKED, data);
 
     /* 启用整页事件冒泡，确保子对象按压事件传递到父容器。 */
     gesture_back_enable_event_bubble_recursive(data->container);
@@ -472,6 +647,10 @@ void page_photo_settings_show(void)
     }
 
     gesture_back_set_left_edge_swipe_cb(data->container, page_manager_back_cb);
+    key_manager_register_callback(KEY_ID_MENU, KEY_EVENT_CLICK, menu_key_cb, data);
+    key_manager_register_callback(KEY_ID_UP, KEY_EVENT_CLICK, up_key_click_cb, data);
+    key_manager_register_callback(KEY_ID_DOWN, KEY_EVENT_CLICK, down_key_click_cb, data);
+    key_manager_register_callback(KEY_ID_OK, KEY_EVENT_CLICK, ok_key_click_cb, data);
 
     MLOG_INFO("Photo settings page show");
     lv_obj_clear_flag(data->container, LV_OBJ_FLAG_HIDDEN);
@@ -479,6 +658,7 @@ void page_photo_settings_show(void)
     if (data->roller_popup) {
         lv_obj_add_flag(data->roller_popup, LV_OBJ_FLAG_HIDDEN);
     }
+    update_selection_highlight(data, -1, data->current_setting_index);
 }
 
 void page_photo_settings_hide(void)
@@ -487,6 +667,11 @@ void page_photo_settings_hide(void)
     if (!data || !data->container) {
         return;
     }
+
+    key_manager_unregister_callback(KEY_ID_MENU, KEY_EVENT_CLICK, menu_key_cb, data);
+    key_manager_unregister_callback(KEY_ID_UP, KEY_EVENT_CLICK, up_key_click_cb, data);
+    key_manager_unregister_callback(KEY_ID_DOWN, KEY_EVENT_CLICK, down_key_click_cb, data);
+    key_manager_unregister_callback(KEY_ID_OK, KEY_EVENT_CLICK, ok_key_click_cb, data);
 
     MLOG_INFO("Photo settings page hide");
     lv_obj_add_flag(data->container, LV_OBJ_FLAG_HIDDEN);

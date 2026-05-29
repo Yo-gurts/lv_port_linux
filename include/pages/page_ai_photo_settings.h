@@ -37,6 +37,7 @@ typedef struct {
     const ai_setting_config_t* configs; /* 配置数组 */
     ai_setting_item_t* items; /* 控件数组 */
     int settings_count; /* 设置项数量 */
+    int selected_index; /* 物理按键当前选中项索引 */
 } page_ai_photo_settings_data_t;
 
 void page_ai_photo_settings_create(void);

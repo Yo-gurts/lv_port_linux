@@ -157,6 +157,22 @@ static void back_btn_cb(lv_event_t* e)
     page_manager_back();
 }
 
+static void menu_key_cb(key_id_t key, key_event_type_t event_type, void* user_data)
+{
+    (void)key;
+    (void)event_type;
+    (void)user_data;
+    page_manager_back();
+}
+
+static void menu_key_long_press_cb(key_id_t key, key_event_type_t event_type, void* user_data)
+{
+    (void)key;
+    (void)event_type;
+    (void)user_data;
+    page_manager_back();
+}
+
 static void read_btn_cb(lv_event_t* e)
 {
     LV_UNUSED(e);
@@ -203,7 +219,7 @@ static void ai_key_cb(key_id_t key, key_event_type_t event_type, void* user_data
 {
     page_ai_recognition_preview_data_t* data = (page_ai_recognition_preview_data_t*)user_data;
 
-    if (key != KEY_ID_AI || event_type != KEY_EVENT_CLICK)
+    if (key != KEY_ID_ASSISTANT || event_type != KEY_EVENT_CLICK)
         return;
     if (!data || !data->container)
         return;
@@ -344,7 +360,7 @@ void page_ai_recognition_preview_destroy(void)
     }
 
     if (data->ai_key_registered) {
-        (void)key_manager_unregister_callback(KEY_ID_AI, KEY_EVENT_CLICK, ai_key_cb, data);
+        (void)key_manager_unregister_callback(KEY_ID_ASSISTANT, KEY_EVENT_CLICK, ai_key_cb, data);
         data->ai_key_registered = 0;
     }
 
@@ -368,13 +384,15 @@ void page_ai_recognition_preview_show(void)
     }
 
     gesture_back_set_left_edge_swipe_cb(data->container, back_btn_cb);
+    key_manager_register_callback(KEY_ID_MENU, KEY_EVENT_CLICK, menu_key_cb, NULL);
+    key_manager_register_callback(KEY_ID_MENU, KEY_EVENT_LONG_PRESS, menu_key_long_press_cb, NULL);
     refresh_latest_photo(data);
     image_recognition_manager_reset();
     data->recognizing = 0;
     stop_recog_poll_timer(data);
 
     if (!data->ai_key_registered) {
-        if (key_manager_register_callback(KEY_ID_AI, KEY_EVENT_CLICK, ai_key_cb, data) == 0) {
+        if (key_manager_register_callback(KEY_ID_ASSISTANT, KEY_EVENT_CLICK, ai_key_cb, data) == 0) {
             data->ai_key_registered = 1;
         } else {
             MLOG_WARN("register ai recognition key callback failed");
@@ -396,8 +414,11 @@ void page_ai_recognition_preview_hide(void)
         return;
     }
 
+    key_manager_unregister_callback(KEY_ID_MENU, KEY_EVENT_CLICK, menu_key_cb, NULL);
+    key_manager_unregister_callback(KEY_ID_MENU, KEY_EVENT_LONG_PRESS, menu_key_long_press_cb, NULL);
+
     if (data->ai_key_registered) {
-        (void)key_manager_unregister_callback(KEY_ID_AI, KEY_EVENT_CLICK, ai_key_cb, data);
+        (void)key_manager_unregister_callback(KEY_ID_ASSISTANT, KEY_EVENT_CLICK, ai_key_cb, data);
         data->ai_key_registered = 0;
     }
 

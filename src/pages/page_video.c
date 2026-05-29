@@ -4,8 +4,8 @@
 
 #include "pages/page_video.h"
 #include "config.h"
-#include "core/font_manager.h"
 #include "core/file_manager.h"
+#include "core/font_manager.h"
 #include "core/key_manager.h"
 #include "core/media_manager.h"
 #include "core/page_manager.h"
@@ -16,6 +16,7 @@
 #include "ui/filter_panel.h"
 #include "ui/gesture_back.h"
 #include "ui/status_bar.h"
+#include "ui/top_notice.h"
 #include "ui/zoom_bar.h"
 #include <stdlib.h>
 #include <string.h>
@@ -249,6 +250,38 @@ static int page_video_stop_recording_if_needed(void* user_data)
 // ! #region 7. 按键、手势、定时器 等事件回调函数
 // #############################################################################
 
+static int filter_panel_consume_non_lr_key(key_id_t key)
+{
+    if (!filter_panel_is_visible()) {
+        return 0;
+    }
+    if (key == KEY_ID_LEFT || key == KEY_ID_RIGHT) {
+        return 0;
+    }
+
+    filter_panel_hide();
+    return 1;
+}
+
+static void assistant_key_click_cb(key_id_t key, key_event_type_t event_type, void* user_data)
+{
+    page_video_data_t* data = (page_video_data_t*)user_data;
+
+    if (key != KEY_ID_ASSISTANT || event_type != KEY_EVENT_CLICK) {
+        return;
+    }
+    if (!data || !data->container || lv_obj_has_flag(data->container, LV_OBJ_FLAG_HIDDEN)) {
+        return;
+    }
+
+    if (filter_panel_is_visible()) {
+        filter_panel_hide();
+        return;
+    }
+
+    filter_panel_show();
+}
+
 /* 录像/拍照切换回调。 */
 static void mode_switch_cb(lv_event_t* e)
 {
@@ -301,6 +334,115 @@ static void filter_btn_cb(lv_event_t* e)
     filter_panel_show();
 }
 
+/* 物理 MENU 按键 click：打开录像设置页面 */
+static void menu_key_click_cb(key_id_t key, key_event_type_t event_type, void* user_data)
+{
+    page_video_data_t* data = (page_video_data_t*)user_data;
+
+    if (key != KEY_ID_MENU || event_type != KEY_EVENT_CLICK) {
+        return;
+    }
+    if (!data || !data->container || lv_obj_has_flag(data->container, LV_OBJ_FLAG_HIDDEN)) {
+        return;
+    }
+    if (filter_panel_consume_non_lr_key(key)) {
+        return;
+    }
+
+    page_manager_navigate("video_settings");
+}
+
+/* 物理 MENU 按键 long press：返回上一页 */
+static void menu_key_long_press_cb(key_id_t key, key_event_type_t event_type, void* user_data)
+{
+    page_video_data_t* data = (page_video_data_t*)user_data;
+
+    if (key != KEY_ID_MENU || event_type != KEY_EVENT_LONG_PRESS) {
+        return;
+    }
+    if (!data || !data->container || lv_obj_has_flag(data->container, LV_OBJ_FLAG_HIDDEN)) {
+        return;
+    }
+    if (filter_panel_consume_non_lr_key(key)) {
+        return;
+    }
+
+    back_btn_cb(NULL);
+}
+
+/* 物理 MODE 按键 click：切换到拍照模式 */
+static void mode_key_click_cb(key_id_t key, key_event_type_t event_type, void* user_data)
+{
+    page_video_data_t* data = (page_video_data_t*)user_data;
+    int reset_filter;
+
+    if (key != KEY_ID_MODE || event_type != KEY_EVENT_CLICK) {
+        return;
+    }
+    if (!data || !data->container || lv_obj_has_flag(data->container, LV_OBJ_FLAG_HIDDEN)) {
+        return;
+    }
+    if (filter_panel_consume_non_lr_key(key)) {
+        return;
+    }
+
+    reset_filter = param_manager_get(PARAM_ID_FILTER_RESET_ON_MODE_SWITCH);
+    if (reset_filter == 1) {
+        (void)param_manager_set(PARAM_ID_FILTER_INDEX, 0);
+    }
+    (void)param_manager_set(PARAM_ID_ZOOM, param_manager_get_default(PARAM_ID_ZOOM));
+
+    zoom_bar_hide();
+    (void)media_manager_execute(MEDIA_OP_SWITCH_TO_PHOTO_MODE, 0);
+    page_manager_navigate_without_history("photo");
+}
+
+/* VOLUME_UP Click：放大变焦 */
+static void zoom_in_key_cb(key_id_t key, key_event_type_t event_type, void* user_data)
+{
+    page_video_data_t* data = (page_video_data_t*)user_data;
+    int current_zoom;
+
+    if (key != KEY_ID_VOLUME_UP || event_type != KEY_EVENT_CLICK) {
+        return;
+    }
+    if (!data || !data->container || lv_obj_has_flag(data->container, LV_OBJ_FLAG_HIDDEN)) {
+        return;
+    }
+    if (filter_panel_consume_non_lr_key(key)) {
+        return;
+    }
+
+    current_zoom = param_manager_get(PARAM_ID_ZOOM);
+    if (current_zoom < 6) {
+        if (current_zoom < 1)
+            current_zoom = 1;
+        param_manager_set(PARAM_ID_ZOOM, current_zoom * 2);
+    }
+}
+
+/* VOLUME_DOWN Click：缩小变焦 */
+static void zoom_out_key_cb(key_id_t key, key_event_type_t event_type, void* user_data)
+{
+    page_video_data_t* data = (page_video_data_t*)user_data;
+    int current_zoom;
+
+    if (key != KEY_ID_VOLUME_DOWN || event_type != KEY_EVENT_CLICK) {
+        return;
+    }
+    if (!data || !data->container || lv_obj_has_flag(data->container, LV_OBJ_FLAG_HIDDEN)) {
+        return;
+    }
+    if (filter_panel_consume_non_lr_key(key)) {
+        return;
+    }
+
+    current_zoom = param_manager_get(PARAM_ID_ZOOM);
+    if (current_zoom > 1) {
+        param_manager_set(PARAM_ID_ZOOM, current_zoom / 2);
+    }
+}
+
 static void record_key_cb(key_id_t key, key_event_type_t event_type, void* user_data)
 {
     page_video_data_t* data = (page_video_data_t*)user_data;
@@ -313,6 +455,9 @@ static void record_key_cb(key_id_t key, key_event_type_t event_type, void* user_
         return;
     }
     if (lv_obj_has_flag(data->container, LV_OBJ_FLAG_HIDDEN)) {
+        return;
+    }
+    if (filter_panel_consume_non_lr_key(key)) {
         return;
     }
 
@@ -341,6 +486,34 @@ static void record_key_cb(key_id_t key, key_event_type_t event_type, void* user_
     update_recording_input_lock(data);
     update_recording_indicator(data);
     update_remaining_record_time(data);
+}
+
+static void left_key_click_cb(key_id_t key, key_event_type_t event_type, void* user_data)
+{
+    (void)user_data;
+
+    if (key != KEY_ID_LEFT || event_type != KEY_EVENT_CLICK) {
+        return;
+    }
+    if (!filter_panel_is_visible()) {
+        return;
+    }
+
+    filter_panel_select_prev();
+}
+
+static void right_key_click_cb(key_id_t key, key_event_type_t event_type, void* user_data)
+{
+    (void)user_data;
+
+    if (key != KEY_ID_RIGHT || event_type != KEY_EVENT_CLICK) {
+        return;
+    }
+    if (!filter_panel_is_visible()) {
+        return;
+    }
+
+    filter_panel_select_next();
 }
 
 // #endregion
@@ -482,6 +655,14 @@ void page_video_destroy(void)
     }
 
     (void)key_manager_unregister_callback(KEY_ID_CAMERA, KEY_EVENT_CLICK, record_key_cb, data);
+    (void)key_manager_unregister_callback(KEY_ID_MENU, KEY_EVENT_CLICK, menu_key_click_cb, data);
+    (void)key_manager_unregister_callback(KEY_ID_MENU, KEY_EVENT_LONG_PRESS, menu_key_long_press_cb, data);
+    (void)key_manager_unregister_callback(KEY_ID_MODE, KEY_EVENT_CLICK, mode_key_click_cb, data);
+    (void)key_manager_unregister_callback(KEY_ID_VOLUME_UP, KEY_EVENT_CLICK, zoom_in_key_cb, data);
+    (void)key_manager_unregister_callback(KEY_ID_VOLUME_DOWN, KEY_EVENT_CLICK, zoom_out_key_cb, data);
+    (void)key_manager_unregister_callback(KEY_ID_ASSISTANT, KEY_EVENT_CLICK, assistant_key_click_cb, data);
+    (void)key_manager_unregister_callback(KEY_ID_LEFT, KEY_EVENT_CLICK, left_key_click_cb, data);
+    (void)key_manager_unregister_callback(KEY_ID_RIGHT, KEY_EVENT_CLICK, right_key_click_cb, data);
     power_manager_unregister_shutdown_prepare_cb(page_video_stop_recording_if_needed, data);
     if (data->record_ui_timer != NULL) {
         lv_timer_del(data->record_ui_timer);
@@ -543,6 +724,30 @@ void page_video_show(void)
     if (key_manager_register_callback(KEY_ID_CAMERA, KEY_EVENT_CLICK, record_key_cb, data) != 0) {
         MLOG_WARN("register video record key callback failed");
     }
+    if (key_manager_register_callback(KEY_ID_MENU, KEY_EVENT_CLICK, menu_key_click_cb, data) != 0) {
+        MLOG_WARN("register menu key click callback failed");
+    }
+    if (key_manager_register_callback(KEY_ID_MENU, KEY_EVENT_LONG_PRESS, menu_key_long_press_cb, data) != 0) {
+        MLOG_WARN("register menu key long press callback failed");
+    }
+    if (key_manager_register_callback(KEY_ID_MODE, KEY_EVENT_CLICK, mode_key_click_cb, data) != 0) {
+        MLOG_WARN("register mode key click callback failed");
+    }
+    if (key_manager_register_callback(KEY_ID_VOLUME_UP, KEY_EVENT_CLICK, zoom_in_key_cb, data) != 0) {
+        MLOG_WARN("register zoom in key callback failed");
+    }
+    if (key_manager_register_callback(KEY_ID_VOLUME_DOWN, KEY_EVENT_CLICK, zoom_out_key_cb, data) != 0) {
+        MLOG_WARN("register zoom out key callback failed");
+    }
+    if (key_manager_register_callback(KEY_ID_ASSISTANT, KEY_EVENT_CLICK, assistant_key_click_cb, data) != 0) {
+        MLOG_WARN("register assistant key callback failed");
+    }
+    if (key_manager_register_callback(KEY_ID_LEFT, KEY_EVENT_CLICK, left_key_click_cb, data) != 0) {
+        MLOG_WARN("register left key callback failed");
+    }
+    if (key_manager_register_callback(KEY_ID_RIGHT, KEY_EVENT_CLICK, right_key_click_cb, data) != 0) {
+        MLOG_WARN("register right key callback failed");
+    }
 }
 
 void page_video_hide(void)
@@ -556,6 +761,14 @@ void page_video_hide(void)
     power_manager_enable_auto_sleep();
     power_manager_unregister_shutdown_prepare_cb(page_video_stop_recording_if_needed, data);
     (void)key_manager_unregister_callback(KEY_ID_CAMERA, KEY_EVENT_CLICK, record_key_cb, data);
+    (void)key_manager_unregister_callback(KEY_ID_MENU, KEY_EVENT_CLICK, menu_key_click_cb, data);
+    (void)key_manager_unregister_callback(KEY_ID_MENU, KEY_EVENT_LONG_PRESS, menu_key_long_press_cb, data);
+    (void)key_manager_unregister_callback(KEY_ID_MODE, KEY_EVENT_CLICK, mode_key_click_cb, data);
+    (void)key_manager_unregister_callback(KEY_ID_VOLUME_UP, KEY_EVENT_CLICK, zoom_in_key_cb, data);
+    (void)key_manager_unregister_callback(KEY_ID_VOLUME_DOWN, KEY_EVENT_CLICK, zoom_out_key_cb, data);
+    (void)key_manager_unregister_callback(KEY_ID_ASSISTANT, KEY_EVENT_CLICK, assistant_key_click_cb, data);
+    (void)key_manager_unregister_callback(KEY_ID_LEFT, KEY_EVENT_CLICK, left_key_click_cb, data);
+    (void)key_manager_unregister_callback(KEY_ID_RIGHT, KEY_EVENT_CLICK, right_key_click_cb, data);
     if (data->record_ui_timer != NULL) {
         lv_timer_del(data->record_ui_timer);
         data->record_ui_timer = NULL;

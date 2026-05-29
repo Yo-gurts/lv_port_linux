@@ -5,6 +5,7 @@
 #include "pages/page_chat.h"
 #include "config.h"
 #include "core/font_manager.h"
+#include "core/key_manager.h"
 #include "core/page_manager.h"
 #include "core/style_manager.h"
 #include "mlog.h"
@@ -45,6 +46,22 @@
 // #############################################################################
 // ! #region 7. 按键、手势、定时器 等事件回调函数
 // #############################################################################
+
+static void menu_key_cb(key_id_t key, key_event_type_t event_type, void* user_data)
+{
+    (void)key;
+    (void)event_type;
+    (void)user_data;
+    page_manager_back();
+}
+
+static void menu_key_long_press_cb(key_id_t key, key_event_type_t event_type, void* user_data)
+{
+    (void)key;
+    (void)event_type;
+    (void)user_data;
+    page_manager_back();
+}
 
 /* 按住说话按钮回调 */
 static void voice_btn_cb(lv_event_t* e)
@@ -194,6 +211,8 @@ void page_chat_show(void)
     }
 
     gesture_back_set_left_edge_swipe_cb(data->container, page_manager_back_cb);
+    key_manager_register_callback(KEY_ID_MENU, KEY_EVENT_CLICK, menu_key_cb, NULL);
+    key_manager_register_callback(KEY_ID_MENU, KEY_EVENT_LONG_PRESS, menu_key_long_press_cb, NULL);
 
     MLOG_INFO("Chat page show");
     lv_obj_clear_flag(data->container, LV_OBJ_FLAG_HIDDEN);
@@ -205,6 +224,9 @@ void page_chat_hide(void)
     if (!data || !data->container) {
         return;
     }
+
+    key_manager_unregister_callback(KEY_ID_MENU, KEY_EVENT_CLICK, menu_key_cb, NULL);
+    key_manager_unregister_callback(KEY_ID_MENU, KEY_EVENT_LONG_PRESS, menu_key_long_press_cb, NULL);
 
     MLOG_INFO("Chat page hide");
     lv_obj_add_flag(data->container, LV_OBJ_FLAG_HIDDEN);

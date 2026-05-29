@@ -383,6 +383,87 @@ static void back_btn_cb(lv_event_t* e)
     page_manager_back();
 }
 
+static void menu_key_cb(key_id_t key, key_event_type_t event_type, void* user_data)
+{
+    (void)key;
+    (void)event_type;
+    (void)user_data;
+    page_manager_back();
+}
+
+static void menu_key_long_press_cb(key_id_t key, key_event_type_t event_type, void* user_data)
+{
+    (void)key;
+    (void)event_type;
+    (void)user_data;
+    page_manager_back();
+}
+
+static void ok_key_click_cb(key_id_t key, key_event_type_t event_type, void* user_data)
+{
+    page_ai_style_preview_data_t* data = (page_ai_style_preview_data_t*)user_data;
+
+    if (key != KEY_ID_OK || event_type != KEY_EVENT_CLICK) {
+        return;
+    }
+    if (!data || data->processing) {
+        return;
+    }
+
+    {
+        int wifi_enabled = param_manager_get(PARAM_ID_WIFI_ENABLED);
+        if (wifi_enabled != 1) {
+            top_notice_show("WiFi未使能", TOP_NOTICE_TYPE_WARNING);
+            return;
+        }
+        int wifi_connected = param_manager_get(PARAM_ID_WIFI_CONNECTED);
+        if (wifi_connected != 1) {
+            top_notice_show("WiFi未连接", TOP_NOTICE_TYPE_WARNING);
+            return;
+        }
+    }
+
+    start_style_process(data);
+}
+
+static void left_key_click_cb(key_id_t key, key_event_type_t event_type, void* user_data)
+{
+    page_ai_style_preview_data_t* data = (page_ai_style_preview_data_t*)user_data;
+
+    if (key != KEY_ID_LEFT || event_type != KEY_EVENT_CLICK) {
+        return;
+    }
+    if (!data || !data->panel_visible) {
+        return;
+    }
+
+    if (data->selected_style_index > 0) {
+        data->selected_style_index--;
+        update_style_selection(data);
+        scroll_to_style(data, data->selected_style_index, LV_ANIM_ON);
+        align_focus_frame(data);
+    }
+}
+
+static void right_key_click_cb(key_id_t key, key_event_type_t event_type, void* user_data)
+{
+    page_ai_style_preview_data_t* data = (page_ai_style_preview_data_t*)user_data;
+
+    if (key != KEY_ID_RIGHT || event_type != KEY_EVENT_CLICK) {
+        return;
+    }
+    if (!data || !data->panel_visible) {
+        return;
+    }
+
+    if (data->selected_style_index < AI_STYLE_PREVIEW_STYLE_COUNT - 1) {
+        data->selected_style_index++;
+        update_style_selection(data);
+        scroll_to_style(data, data->selected_style_index, LV_ANIM_ON);
+        align_focus_frame(data);
+    }
+}
+
 static void gesture_event_cb(lv_event_t* e)
 {
     page_ai_style_preview_data_t* data = (page_ai_style_preview_data_t*)lv_event_get_user_data(e);
@@ -453,7 +534,7 @@ static void ai_key_cb(key_id_t key, key_event_type_t event_type, void* user_data
     int wifi_enabled;
     int wifi_connected;
 
-    if (key != KEY_ID_AI || event_type != KEY_EVENT_CLICK) {
+    if (key != KEY_ID_ASSISTANT || event_type != KEY_EVENT_CLICK) {
         return;
     }
     if (!data || !data->container) {
@@ -640,7 +721,7 @@ void page_ai_style_preview_destroy(void)
     }
 
     if (data->ai_key_registered) {
-        (void)key_manager_unregister_callback(KEY_ID_AI, KEY_EVENT_CLICK, ai_key_cb, data);
+        (void)key_manager_unregister_callback(KEY_ID_ASSISTANT, KEY_EVENT_CLICK, ai_key_cb, data);
         data->ai_key_registered = 0;
     }
 
@@ -665,6 +746,11 @@ void page_ai_style_preview_show(void)
     }
 
     gesture_back_set_left_edge_swipe_cb(data->container, back_btn_cb);
+    key_manager_register_callback(KEY_ID_MENU, KEY_EVENT_CLICK, menu_key_cb, NULL);
+    key_manager_register_callback(KEY_ID_MENU, KEY_EVENT_LONG_PRESS, menu_key_long_press_cb, NULL);
+    key_manager_register_callback(KEY_ID_OK, KEY_EVENT_CLICK, ok_key_click_cb, data);
+    key_manager_register_callback(KEY_ID_LEFT, KEY_EVENT_CLICK, left_key_click_cb, data);
+    key_manager_register_callback(KEY_ID_RIGHT, KEY_EVENT_CLICK, right_key_click_cb, data);
     refresh_latest_photo(data);
     set_style_panel_visible(data, true, LV_ANIM_OFF);
     set_loading_visible(data, false);
@@ -673,7 +759,7 @@ void page_ai_style_preview_show(void)
     stop_process_poll_timer(data);
 
     if (!data->ai_key_registered) {
-        if (key_manager_register_callback(KEY_ID_AI, KEY_EVENT_CLICK, ai_key_cb, data) == 0) {
+        if (key_manager_register_callback(KEY_ID_ASSISTANT, KEY_EVENT_CLICK, ai_key_cb, data) == 0) {
             data->ai_key_registered = 1;
         } else {
             MLOG_WARN("register ai style preview key callback failed");
@@ -694,8 +780,14 @@ void page_ai_style_preview_hide(void)
         return;
     }
 
+    key_manager_unregister_callback(KEY_ID_MENU, KEY_EVENT_CLICK, menu_key_cb, NULL);
+    key_manager_unregister_callback(KEY_ID_MENU, KEY_EVENT_LONG_PRESS, menu_key_long_press_cb, NULL);
+    key_manager_unregister_callback(KEY_ID_OK, KEY_EVENT_CLICK, ok_key_click_cb, data);
+    key_manager_unregister_callback(KEY_ID_LEFT, KEY_EVENT_CLICK, left_key_click_cb, data);
+    key_manager_unregister_callback(KEY_ID_RIGHT, KEY_EVENT_CLICK, right_key_click_cb, data);
+
     if (data->ai_key_registered) {
-        (void)key_manager_unregister_callback(KEY_ID_AI, KEY_EVENT_CLICK, ai_key_cb, data);
+        (void)key_manager_unregister_callback(KEY_ID_ASSISTANT, KEY_EVENT_CLICK, ai_key_cb, data);
         data->ai_key_registered = 0;
     }
 

@@ -5,6 +5,7 @@
 #include "pages/page_video_settings.h"
 #include "config.h"
 #include "core/font_manager.h"
+#include "core/key_manager.h"
 #include "core/media_manager.h"
 #include "core/page_manager.h"
 #include "core/param_manager.h"
@@ -151,6 +152,114 @@ static void apply_roller_selection(page_video_settings_data_t* data)
 // #############################################################################
 // ! #region 7. 按键、手势、定时器 等事件回调函数
 // #############################################################################
+
+static void setting_item_cb(lv_event_t* e);
+
+static int is_roller_popup_visible(page_video_settings_data_t* data)
+{
+    return data && data->roller_popup && !lv_obj_has_flag(data->roller_popup, LV_OBJ_FLAG_HIDDEN);
+}
+
+static void close_roller_popup(page_video_settings_data_t* data)
+{
+    if (!data || !data->roller_popup)
+        return;
+    lv_obj_add_flag(data->roller_popup, LV_OBJ_FLAG_HIDDEN);
+}
+
+static void menu_key_cb(key_id_t key, key_event_type_t event_type, void* user_data)
+{
+    (void)key;
+    (void)event_type;
+    page_video_settings_data_t* data = (page_video_settings_data_t*)user_data;
+
+    if (is_roller_popup_visible(data)) {
+        close_roller_popup(data);
+        return;
+    }
+
+    page_manager_back();
+}
+
+static void update_selection_highlight(page_video_settings_data_t* data, int old_index, int new_index)
+{
+    if (!data) return;
+    if (old_index >= 0 && old_index < SETTINGS_COUNT && data->items[old_index].container) {
+        lv_obj_remove_style(data->items[old_index].container, &style_settings_item_selected, LV_PART_MAIN);
+    }
+    if (new_index >= 0 && new_index < SETTINGS_COUNT && data->items[new_index].container) {
+        lv_obj_add_style(data->items[new_index].container, &style_settings_item_selected, LV_PART_MAIN);
+        lv_obj_scroll_to_view(data->items[new_index].container, LV_ANIM_ON);
+    }
+}
+
+static void up_key_click_cb(key_id_t key, key_event_type_t event_type, void* user_data)
+{
+    page_video_settings_data_t* data = (page_video_settings_data_t*)user_data;
+    if (key != KEY_ID_UP || event_type != KEY_EVENT_CLICK)
+        return;
+    if (!data || !data->container)
+        return;
+
+    if (is_roller_popup_visible(data)) {
+        const setting_config_t* config = &data->configs[data->current_setting_index];
+        int roller_count = config->roller_count;
+        if (data->items[data->current_setting_index].current_index > 0) {
+            data->items[data->current_setting_index].current_index--;
+        } else {
+            data->items[data->current_setting_index].current_index = roller_count - 1;
+        }
+        lv_roller_set_selected(data->roller, data->items[data->current_setting_index].current_index, LV_ANIM_ON);
+        return;
+    }
+
+    int old_index = data->current_setting_index;
+    if (data->current_setting_index > 0) {
+        data->current_setting_index--;
+    } else {
+        data->current_setting_index = SETTINGS_COUNT - 1;
+    }
+    update_selection_highlight(data, old_index, data->current_setting_index);
+}
+
+static void down_key_click_cb(key_id_t key, key_event_type_t event_type, void* user_data)
+{
+    page_video_settings_data_t* data = (page_video_settings_data_t*)user_data;
+    if (key != KEY_ID_DOWN || event_type != KEY_EVENT_CLICK)
+        return;
+    if (!data || !data->container)
+        return;
+
+    if (is_roller_popup_visible(data)) {
+        const setting_config_t* config = &data->configs[data->current_setting_index];
+        int roller_count = config->roller_count;
+        if (data->items[data->current_setting_index].current_index < roller_count - 1) {
+            data->items[data->current_setting_index].current_index++;
+        } else {
+            data->items[data->current_setting_index].current_index = 0;
+        }
+        lv_roller_set_selected(data->roller, data->items[data->current_setting_index].current_index, LV_ANIM_ON);
+        return;
+    }
+
+    int old_index = data->current_setting_index;
+    if (data->current_setting_index < SETTINGS_COUNT - 1) {
+        data->current_setting_index++;
+    } else {
+        data->current_setting_index = 0;
+    }
+    update_selection_highlight(data, old_index, data->current_setting_index);
+}
+
+static void ok_key_click_cb(key_id_t key, key_event_type_t event_type, void* user_data)
+{
+    page_video_settings_data_t* data = (page_video_settings_data_t*)user_data;
+
+    if (key != KEY_ID_OK || event_type != KEY_EVENT_CLICK) return;
+    if (!data || !data->container) return;
+
+    lv_obj_send_event(data->items[data->current_setting_index].container, LV_EVENT_CLICKED, data);
+}
 
 /* 滚轮选中回调 */
 static void roller_select_cb(lv_event_t* e)
@@ -402,6 +511,10 @@ void page_video_settings_show(void)
     }
 
     gesture_back_set_left_edge_swipe_cb(data->container, page_manager_back_cb);
+    key_manager_register_callback(KEY_ID_MENU, KEY_EVENT_CLICK, menu_key_cb, data);
+    key_manager_register_callback(KEY_ID_UP, KEY_EVENT_CLICK, up_key_click_cb, data);
+    key_manager_register_callback(KEY_ID_DOWN, KEY_EVENT_CLICK, down_key_click_cb, data);
+    key_manager_register_callback(KEY_ID_OK, KEY_EVENT_CLICK, ok_key_click_cb, data);
 
     MLOG_INFO("Video settings page show");
     lv_obj_clear_flag(data->container, LV_OBJ_FLAG_HIDDEN);
@@ -409,6 +522,7 @@ void page_video_settings_show(void)
     if (data->roller_popup) {
         lv_obj_add_flag(data->roller_popup, LV_OBJ_FLAG_HIDDEN);
     }
+    update_selection_highlight(data, -1, data->current_setting_index);
 }
 
 void page_video_settings_hide(void)
@@ -417,6 +531,11 @@ void page_video_settings_hide(void)
     if (!data || !data->container) {
         return;
     }
+
+    key_manager_unregister_callback(KEY_ID_MENU, KEY_EVENT_CLICK, menu_key_cb, data);
+    key_manager_unregister_callback(KEY_ID_UP, KEY_EVENT_CLICK, up_key_click_cb, data);
+    key_manager_unregister_callback(KEY_ID_DOWN, KEY_EVENT_CLICK, down_key_click_cb, data);
+    key_manager_unregister_callback(KEY_ID_OK, KEY_EVENT_CLICK, ok_key_click_cb, data);
 
     MLOG_INFO("Video settings page hide");
     lv_obj_add_flag(data->container, LV_OBJ_FLAG_HIDDEN);

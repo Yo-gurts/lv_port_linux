@@ -5,7 +5,9 @@
 #include "pages/page_home.h"
 #include "config.h"
 #include "core/font_manager.h"
+#include "core/key_manager.h"
 #include "core/media_manager.h"
+#include "core/page_manager.h"
 #include "core/param_manager.h"
 #include "core/style_manager.h"
 #include "mlog.h"
@@ -165,6 +167,88 @@ static void settings_button_cb(lv_event_t* e)
     page_manager_navigate("system_settings");
 }
 
+static void update_selection_highlight(home_page_data_t* data, int old_index, int new_index)
+{
+    if (!data)
+        return;
+    if (old_index >= 0 && old_index < 6 && data->icon_buttons[old_index]) {
+        lv_obj_remove_style(data->icon_buttons[old_index], &style_settings_item_selected, LV_PART_MAIN);
+    }
+    if (new_index >= 0 && new_index < 6 && data->icon_buttons[new_index]) {
+        lv_obj_add_style(data->icon_buttons[new_index], &style_settings_item_selected, LV_PART_MAIN);
+    }
+}
+
+static void up_key_click_cb(key_id_t key, key_event_type_t event_type, void* user_data)
+{
+    home_page_data_t* data = (home_page_data_t*)user_data;
+    if (key != KEY_ID_UP || event_type != KEY_EVENT_CLICK)
+        return;
+    if (!data || !data->container)
+        return;
+
+    int old_index = data->selected_index;
+    if (data->selected_index >= 3)
+        data->selected_index -= 3;
+    update_selection_highlight(data, old_index, data->selected_index);
+}
+
+static void down_key_click_cb(key_id_t key, key_event_type_t event_type, void* user_data)
+{
+    home_page_data_t* data = (home_page_data_t*)user_data;
+    if (key != KEY_ID_DOWN || event_type != KEY_EVENT_CLICK)
+        return;
+    if (!data || !data->container)
+        return;
+
+    int old_index = data->selected_index;
+    if (data->selected_index < 3)
+        data->selected_index += 3;
+    update_selection_highlight(data, old_index, data->selected_index);
+}
+
+static void left_key_click_cb(key_id_t key, key_event_type_t event_type, void* user_data)
+{
+    home_page_data_t* data = (home_page_data_t*)user_data;
+    if (key != KEY_ID_LEFT || event_type != KEY_EVENT_CLICK)
+        return;
+    if (!data || !data->container)
+        return;
+
+    int old_index = data->selected_index;
+    if (data->selected_index % 3 > 0)
+        data->selected_index--;
+    update_selection_highlight(data, old_index, data->selected_index);
+}
+
+static void right_key_click_cb(key_id_t key, key_event_type_t event_type, void* user_data)
+{
+    home_page_data_t* data = (home_page_data_t*)user_data;
+    if (key != KEY_ID_RIGHT || event_type != KEY_EVENT_CLICK)
+        return;
+    if (!data || !data->container)
+        return;
+
+    int old_index = data->selected_index;
+    if (data->selected_index % 3 < 2)
+        data->selected_index++;
+    update_selection_highlight(data, old_index, data->selected_index);
+}
+
+static void ok_key_click_cb(key_id_t key, key_event_type_t event_type, void* user_data)
+{
+    home_page_data_t* data = (home_page_data_t*)user_data;
+
+    if (key != KEY_ID_OK || event_type != KEY_EVENT_CLICK)
+        return;
+    if (!data || !data->container)
+        return;
+    if (!data->icon_buttons[data->selected_index])
+        return;
+
+    lv_obj_send_event(data->icon_buttons[data->selected_index], LV_EVENT_CLICKED, NULL);
+}
+
 // #endregion
 // #############################################################################
 // ! #region 8. 初始化、去初始化、资源管理
@@ -210,24 +294,24 @@ void page_home_create(void)
     /* 第1行 */
     create_icon_button(data->grid_container, LV_SYMBOL_IMAGE, "拍照",
         LV_ALIGN_TOP_LEFT, 0, 0,
-        photo_button_cb, NULL);
+        photo_button_cb, &data->icon_buttons[0]);
     create_icon_button(data->grid_container, LV_SYMBOL_FILE, "AI拍照",
         LV_ALIGN_TOP_LEFT, 0, 0,
-        recognition_button_cb, NULL);
+        recognition_button_cb, &data->icon_buttons[1]);
     create_icon_button(data->grid_container, LV_SYMBOL_DIRECTORY, "相册",
         LV_ALIGN_TOP_LEFT, 0, 0,
-        album_button_cb, NULL);
+        album_button_cb, &data->icon_buttons[2]);
 
     /* 第2行 */
     create_icon_button(data->grid_container, LV_SYMBOL_CALL, "AI对话",
         LV_ALIGN_TOP_LEFT, 0, 0,
-        chat_button_cb, NULL);
+        chat_button_cb, &data->icon_buttons[3]);
     create_icon_button(data->grid_container, LV_SYMBOL_EDIT, "测试页面",
         LV_ALIGN_TOP_LEFT, 0, 0,
-        test_button_cb, NULL);
+        test_button_cb, &data->icon_buttons[4]);
     create_icon_button(data->grid_container, LV_SYMBOL_SETTINGS, "设置",
         LV_ALIGN_TOP_LEFT, 0, 0,
-        settings_button_cb, NULL);
+        settings_button_cb, &data->icon_buttons[5]);
 
     /* 保存 private_data，供 show/hide/destroy 使用 */
     page_set_private_data(data);
@@ -266,6 +350,14 @@ void page_home_show(void)
     /* 显示 UI */
     lv_obj_clear_flag(data->container, LV_OBJ_FLAG_HIDDEN);
 
+    /* 注册按键导航 */
+    key_manager_register_callback(KEY_ID_UP, KEY_EVENT_CLICK, up_key_click_cb, data);
+    key_manager_register_callback(KEY_ID_DOWN, KEY_EVENT_CLICK, down_key_click_cb, data);
+    key_manager_register_callback(KEY_ID_LEFT, KEY_EVENT_CLICK, left_key_click_cb, data);
+    key_manager_register_callback(KEY_ID_RIGHT, KEY_EVENT_CLICK, right_key_click_cb, data);
+    key_manager_register_callback(KEY_ID_OK, KEY_EVENT_CLICK, ok_key_click_cb, data);
+    update_selection_highlight(data, -1, data->selected_index);
+
     /* 恢复定时器 */
     if (data->home_update_timer) {
         lv_timer_resume(data->home_update_timer);
@@ -290,6 +382,12 @@ void page_home_hide(void)
     }
 
     MLOG_INFO("Home page hide");
+    /* 注销按键导航 */
+    key_manager_unregister_callback(KEY_ID_UP, KEY_EVENT_CLICK, up_key_click_cb, data);
+    key_manager_unregister_callback(KEY_ID_DOWN, KEY_EVENT_CLICK, down_key_click_cb, data);
+    key_manager_unregister_callback(KEY_ID_LEFT, KEY_EVENT_CLICK, left_key_click_cb, data);
+    key_manager_unregister_callback(KEY_ID_RIGHT, KEY_EVENT_CLICK, right_key_click_cb, data);
+    key_manager_unregister_callback(KEY_ID_OK, KEY_EVENT_CLICK, ok_key_click_cb, data);
     /* 隐藏 UI */
     lv_obj_add_flag(data->container, LV_OBJ_FLAG_HIDDEN);
     status_bar_show(false);

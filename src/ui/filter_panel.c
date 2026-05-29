@@ -422,6 +422,37 @@ int filter_panel_is_visible(void)
     return lv_obj_has_flag(g_filter_panel.overlay, LV_OBJ_FLAG_HIDDEN) ? 0 : 1;
 }
 
+static void filter_panel_select_relative(int delta)
+{
+    int next_index;
+
+    if (!filter_panel_is_visible() || g_filter_panel.item_count <= 0) {
+        return;
+    }
+
+    next_index = g_filter_panel.selected_index + delta;
+    if (next_index < 0) {
+        next_index = 0;
+    }
+    if (next_index >= g_filter_panel.item_count) {
+        next_index = g_filter_panel.item_count - 1;
+    }
+
+    set_selected_index(next_index, delta < 0 ? "key_left" : "key_right");
+    update_selection_style();
+    scroll_to_index(next_index, LV_ANIM_ON);
+}
+
+void filter_panel_select_prev(void)
+{
+    filter_panel_select_relative(-1);
+}
+
+void filter_panel_select_next(void)
+{
+    filter_panel_select_relative(1);
+}
+
 static const char* filter_panel_get_name(int index)
 {
     if (index < 0 || index >= g_filter_panel.item_count) {

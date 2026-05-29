@@ -3,15 +3,16 @@
 // #############################################################################
 
 #include "pages/page_photo_preview.h"
-#include "pages/page_album.h"
 #include "config.h"
 #include "core/file_manager.h"
 #include "core/font_manager.h"
+#include "core/key_manager.h"
 #include "core/page_manager.h"
 #include "core/style_manager.h"
+#include "mlog.h"
+#include "pages/page_album.h"
 #include "ui/gesture_back.h"
 #include "ui/top_notice.h"
-#include "mlog.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -40,6 +41,8 @@ static void update_slide_positions(page_photo_preview_data_t* data, int offset_x
 static void start_swipe_anim(page_photo_preview_data_t* data, int current_end_x, int target_end_x, int commit_switch);
 static int get_current_photo_index(const page_photo_preview_data_t* data);
 static void back_btn_cb(lv_event_t* e);
+static void left_key_click_cb(key_id_t key, key_event_type_t event_type, void* user_data);
+static void right_key_click_cb(key_id_t key, key_event_type_t event_type, void* user_data);
 static void swipe_anim_ready_cb(lv_anim_t* a);
 static void swipe_event_cb(lv_event_t* e);
 
@@ -241,6 +244,55 @@ static void back_btn_cb(lv_event_t* e)
         page_album_set_focus_photo_index(current_photo_index);
     page_manager_back();
     reset_swipe_state(data);
+}
+
+static void menu_key_cb(key_id_t key, key_event_type_t event_type, void* user_data)
+{
+    (void)key;
+    (void)event_type;
+    (void)user_data;
+    page_photo_preview_data_t* data = (page_photo_preview_data_t*)page_get_private_data();
+    int current_photo_index = get_current_photo_index(data);
+    if (current_photo_index >= 0)
+        page_album_set_focus_photo_index(current_photo_index);
+    page_manager_back();
+    reset_swipe_state(data);
+}
+
+static void switch_photo_by_key(page_photo_preview_data_t* data, int delta)
+{
+    int target_index;
+
+    if (!data || !data->container || data->total_photos <= 1 || data->swipe_anim_running)
+        return;
+
+    target_index = get_wrapped_index(data, data->current_display_index + delta);
+    if (target_index < 0)
+        return;
+
+    reset_swipe_state(data);
+    data->current_display_index = target_index;
+    render_current_photo(data);
+}
+
+static void left_key_click_cb(key_id_t key, key_event_type_t event_type, void* user_data)
+{
+    page_photo_preview_data_t* data = (page_photo_preview_data_t*)user_data;
+
+    if (key != KEY_ID_LEFT || event_type != KEY_EVENT_CLICK)
+        return;
+
+    switch_photo_by_key(data, -1);
+}
+
+static void right_key_click_cb(key_id_t key, key_event_type_t event_type, void* user_data)
+{
+    page_photo_preview_data_t* data = (page_photo_preview_data_t*)user_data;
+
+    if (key != KEY_ID_RIGHT || event_type != KEY_EVENT_CLICK)
+        return;
+
+    switch_photo_by_key(data, 1);
 }
 
 static void swipe_event_cb(lv_event_t* e)
@@ -487,6 +539,9 @@ void page_photo_preview_destroy(void)
         data->container = NULL;
     }
 
+    key_manager_unregister_callback(KEY_ID_MENU, KEY_EVENT_CLICK, menu_key_cb, NULL);
+    key_manager_unregister_callback(KEY_ID_LEFT, KEY_EVENT_CLICK, left_key_click_cb, data);
+    key_manager_unregister_callback(KEY_ID_RIGHT, KEY_EVENT_CLICK, right_key_click_cb, data);
     free(data);
 }
 
@@ -498,6 +553,9 @@ void page_photo_preview_show(void)
 
     /* gesture_back 为全局单实例，页面显示时重新声明当前活跃容器。 */
     gesture_back_set_left_edge_swipe_cb(data->container, back_btn_cb);
+    key_manager_register_callback(KEY_ID_MENU, KEY_EVENT_CLICK, menu_key_cb, NULL);
+    key_manager_register_callback(KEY_ID_LEFT, KEY_EVENT_CLICK, left_key_click_cb, data);
+    key_manager_register_callback(KEY_ID_RIGHT, KEY_EVENT_CLICK, right_key_click_cb, data);
 
     reset_swipe_state(data);
     data->total_photos = get_album_total_count();
@@ -526,6 +584,10 @@ void page_photo_preview_hide(void)
     page_photo_preview_data_t* data = (page_photo_preview_data_t*)page_get_private_data();
     if (!data || !data->container)
         return;
+
+    key_manager_unregister_callback(KEY_ID_MENU, KEY_EVENT_CLICK, menu_key_cb, NULL);
+    key_manager_unregister_callback(KEY_ID_LEFT, KEY_EVENT_CLICK, left_key_click_cb, data);
+    key_manager_unregister_callback(KEY_ID_RIGHT, KEY_EVENT_CLICK, right_key_click_cb, data);
 
     /* 页面隐藏时主动解绑，避免隐藏页继续占用 gesture_back 活跃容器。 */
     gesture_back_clear_active_swipe_cb(data->container);
