@@ -138,6 +138,60 @@ static void apply_roller_selection(page_video_settings_data_t* data)
     MLOG_INFO("Setting '%s' selected: %s", config->title, config->roller_options[selected]);
 }
 
+static void ensure_setting_visible(page_video_settings_data_t* data, int index)
+{
+    if (data == NULL || data->items == NULL || index < 0 || index >= SETTINGS_COUNT) {
+        return;
+    }
+    if (data->items[index].container == NULL) {
+        return;
+    }
+
+    lv_obj_scroll_to_view(data->items[index].container, LV_ANIM_ON);
+}
+
+static void open_setting_editor(page_video_settings_data_t* data, int index)
+{
+    const setting_config_t* config;
+    setting_item_t* item;
+
+    if (data == NULL || data->items == NULL || data->roller == NULL || index < 0 || index >= SETTINGS_COUNT) {
+        return;
+    }
+
+    data->current_setting_index = index;
+    ensure_setting_visible(data, index);
+    config = &data->configs[index];
+    item = &data->items[index];
+
+    if (config->type == SETTING_TYPE_TOGGLE) {
+        item->current_index = !item->current_index;
+        const char* new_value = item->current_index ? "已开启" : "已关闭";
+        int ret = 0;
+
+        if (config->param_id != PARAM_ID_NONE) {
+            ret = param_manager_set((param_id_t)config->param_id, item->current_index);
+        }
+        if (ret != 0) {
+            item->current_index = !item->current_index;
+            MLOG_ERR("设置'%s'失败: selected=%d ret=%d", config->title, item->current_index, ret);
+            return;
+        }
+
+        lv_label_set_text(item->value_label, new_value);
+        MLOG_INFO("Setting '%s' toggled to: %s", config->title, new_value);
+        return;
+    }
+
+    char options_buf[256];
+    build_roller_options(config->roller_options, config->roller_count, options_buf, sizeof(options_buf));
+    lv_roller_set_options(data->roller, options_buf, LV_ROLLER_MODE_NORMAL);
+    lv_roller_set_selected(data->roller, item->current_index, LV_ANIM_OFF);
+    lv_obj_clear_flag(data->roller_popup, LV_OBJ_FLAG_HIDDEN);
+
+    MLOG_INFO("Setting '%s' opened, value: %s", config->title, config->roller_options[item->current_index]);
+}
+
 // #endregion
 // #############################################################################
 // ! #region 5. 对外接口函数
@@ -204,12 +258,12 @@ static void up_key_click_cb(key_id_t key, key_event_type_t event_type, void* use
     if (is_roller_popup_visible(data)) {
         const setting_config_t* config = &data->configs[data->current_setting_index];
         int roller_count = config->roller_count;
-        if (data->items[data->current_setting_index].current_index > 0) {
-            data->items[data->current_setting_index].current_index--;
+        int selected = lv_roller_get_selected(data->roller);
+        if (selected > 0) {
+            lv_roller_set_selected(data->roller, selected - 1, LV_ANIM_ON);
         } else {
-            data->items[data->current_setting_index].current_index = roller_count - 1;
+            lv_roller_set_selected(data->roller, roller_count - 1, LV_ANIM_ON);
         }
-        lv_roller_set_selected(data->roller, data->items[data->current_setting_index].current_index, LV_ANIM_ON);
         return;
     }
 
@@ -233,12 +287,12 @@ static void down_key_click_cb(key_id_t key, key_event_type_t event_type, void* u
     if (is_roller_popup_visible(data)) {
         const setting_config_t* config = &data->configs[data->current_setting_index];
         int roller_count = config->roller_count;
-        if (data->items[data->current_setting_index].current_index < roller_count - 1) {
-            data->items[data->current_setting_index].current_index++;
+        int selected = lv_roller_get_selected(data->roller);
+        if (selected < roller_count - 1) {
+            lv_roller_set_selected(data->roller, selected + 1, LV_ANIM_ON);
         } else {
-            data->items[data->current_setting_index].current_index = 0;
+            lv_roller_set_selected(data->roller, 0, LV_ANIM_ON);
         }
-        lv_roller_set_selected(data->roller, data->items[data->current_setting_index].current_index, LV_ANIM_ON);
         return;
     }
 
@@ -258,8 +312,15 @@ static void ok_key_click_cb(key_id_t key, key_event_type_t event_type, void* use
     if (key != KEY_ID_OK || event_type != KEY_EVENT_CLICK) return;
     if (!data || !data->container) return;
 
-    lv_obj_send_event(data->items[data->current_setting_index].container, LV_EVENT_CLICKED, data);
+    if (is_roller_popup_visible(data)) {
+        apply_roller_selection(data);
+        return;
+    }
+
+    open_setting_editor(data, data->current_setting_index);
 }
+
+
 
 /* 滚轮选中回调 */
 static void roller_select_cb(lv_event_t* e)
@@ -267,7 +328,7 @@ static void roller_select_cb(lv_event_t* e)
     lv_event_code_t code = lv_event_get_code(e);
     page_video_settings_data_t* data = (page_video_settings_data_t*)lv_event_get_user_data(e);
 
-    if (code == LV_EVENT_VALUE_CHANGED || code == LV_EVENT_CLICKED) {
+    if (code == LV_EVENT_CLICKED) {
         apply_roller_selection(data);
     }
 }
@@ -276,7 +337,10 @@ static void roller_select_cb(lv_event_t* e)
 static void modal_click_cb(lv_event_t* e)
 {
     page_video_settings_data_t* data = (page_video_settings_data_t*)lv_event_get_user_data(e);
-    apply_roller_selection(data);
+
+    if (lv_event_get_target(e) == data->roller_popup) {
+        close_roller_popup(data);
+    }
 }
 
 /* 设置项点击回调 */
@@ -291,38 +355,10 @@ static void setting_item_cb(lv_event_t* e)
         return;
     }
 
-    const setting_config_t* config = &data->configs[index];
-    setting_item_t* item = &data->items[index];
+    int old_index = data->current_setting_index;
 
-    if (config->type == SETTING_TYPE_TOGGLE) {
-        /* 切换开关状态 */
-        item->current_index = !item->current_index;
-        const char* new_value = item->current_index ? "已开启" : "已关闭";
-        lv_label_set_text(item->value_label, new_value);
-
-        /* 同步更新param_manager */
-        if (config->param_id != PARAM_ID_NONE) {
-            param_manager_set((param_id_t)config->param_id, item->current_index);
-        }
-
-        MLOG_INFO("Setting '%s' toggled to: %s", config->title, new_value);
-    } else {
-        /* 普通设置，弹出滚轮 */
-        data->current_setting_index = index;
-
-        /* 构建滚轮选项字符串 */
-        char options_buf[256];
-        build_roller_options(config->roller_options, config->roller_count, options_buf, sizeof(options_buf));
-        lv_roller_set_options(data->roller, options_buf, LV_ROLLER_MODE_NORMAL);
-
-        /* 设置当前选中项 */
-        lv_roller_set_selected(data->roller, item->current_index, LV_ANIM_OFF);
-
-        /* 显示弹窗 */
-        lv_obj_clear_flag(data->roller_popup, LV_OBJ_FLAG_HIDDEN);
-
-        MLOG_INFO("Setting '%s' clicked, value: %s", config->title, config->roller_options[item->current_index]);
-    }
+    update_selection_highlight(data, old_index, index);
+    open_setting_editor(data, index);
 }
 
 // #endregion
@@ -446,18 +482,9 @@ void page_video_settings_create(void)
             lv_label_set_text(item->value_label, config->roller_options[item->current_index]);
         }
 
-        /* 点击事件：
-         * - 普通项：仅允许点击右侧参数值弹出 roller
-         * - 开关项：保持整行可点击切换 */
-        if (config->type == SETTING_TYPE_TOGGLE) {
-            lv_obj_add_event_cb(item->container, setting_item_cb, LV_EVENT_CLICKED, data);
-            lv_obj_set_user_data(item->container, (void*)(intptr_t)i);
-        } else {
-            lv_obj_add_flag(item->value_label, LV_OBJ_FLAG_CLICKABLE);
-            lv_obj_set_ext_click_area(item->value_label, 12);
-            lv_obj_add_event_cb(item->value_label, setting_item_cb, LV_EVENT_CLICKED, data);
-            lv_obj_set_user_data(item->value_label, (void*)(intptr_t)i);
-        }
+        /* 点击事件：整行可点击 */
+        lv_obj_add_event_cb(item->container, setting_item_cb, LV_EVENT_CLICKED, data);
+        lv_obj_set_user_data(item->container, (void*)(intptr_t)i);
     }
 
     /* =======================
@@ -478,7 +505,7 @@ void page_video_settings_create(void)
     lv_roller_set_visible_row_count(data->roller, 5);
     lv_obj_add_style(data->roller, &NORMAL_SIZE, LV_PART_MAIN);
     lv_obj_add_style(data->roller, &style_roller, LV_PART_MAIN);
-    lv_obj_add_event_cb(data->roller, roller_select_cb, LV_EVENT_VALUE_CHANGED | LV_EVENT_CLICKED, data);
+    lv_obj_add_event_cb(data->roller, roller_select_cb, LV_EVENT_CLICKED, data);
 
     /* 启用整页事件冒泡，确保子对象按压事件传递到父容器。 */
     gesture_back_enable_event_bubble_recursive(data->container);

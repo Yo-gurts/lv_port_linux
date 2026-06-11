@@ -401,7 +401,6 @@ static void mode_key_click_cb(key_id_t key, key_event_type_t event_type, void* u
 static void zoom_in_key_cb(key_id_t key, key_event_type_t event_type, void* user_data)
 {
     page_video_data_t* data = (page_video_data_t*)user_data;
-    int current_zoom;
 
     if (key != KEY_ID_VOLUME_UP || event_type != KEY_EVENT_CLICK) {
         return;
@@ -413,19 +412,13 @@ static void zoom_in_key_cb(key_id_t key, key_event_type_t event_type, void* user
         return;
     }
 
-    current_zoom = param_manager_get(PARAM_ID_ZOOM);
-    if (current_zoom < 6) {
-        if (current_zoom < 1)
-            current_zoom = 1;
-        param_manager_set(PARAM_ID_ZOOM, current_zoom * 2);
-    }
+    zoom_bar_zoom_in();
 }
 
 /* VOLUME_DOWN Click：缩小变焦 */
 static void zoom_out_key_cb(key_id_t key, key_event_type_t event_type, void* user_data)
 {
     page_video_data_t* data = (page_video_data_t*)user_data;
-    int current_zoom;
 
     if (key != KEY_ID_VOLUME_DOWN || event_type != KEY_EVENT_CLICK) {
         return;
@@ -437,10 +430,7 @@ static void zoom_out_key_cb(key_id_t key, key_event_type_t event_type, void* use
         return;
     }
 
-    current_zoom = param_manager_get(PARAM_ID_ZOOM);
-    if (current_zoom > 1) {
-        param_manager_set(PARAM_ID_ZOOM, current_zoom / 2);
-    }
+    zoom_bar_zoom_out();
 }
 
 static void record_key_cb(key_id_t key, key_event_type_t event_type, void* user_data)
