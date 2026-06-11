@@ -15,6 +15,7 @@
 #include "ui/filter_panel.h"
 #include "ui/gesture_back.h"
 #include "ui/status_bar.h"
+#include "ui/zoom_bar.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -196,7 +197,7 @@ static void focus_key_cb(key_id_t key, key_event_type_t event_type, void* user_d
         if (ret != 0) {
             MLOG_ERR("AI disable AF by key long-press failed: ret=%d", ret);
         }
-        (void)param_manager_set(PARAM_ID_FOCUS_FRAME_STATE, FOCUS_FRAME_STATE_HIDDEN);
+        (void)param_manager_set(PARAM_ID_FOCUS_FRAME_STATE, FOCUS_FRAME_STATE_LOCKING);
     } else if (event_type == KEY_EVENT_RELEASE) {
         ret = media_manager_execute(MEDIA_OP_SET_FOCUS_ENABLE, 1);
         if (ret != 0) {
@@ -269,40 +270,37 @@ static void menu_key_long_press_cb(key_id_t key, key_event_type_t event_type, vo
 /* VOLUME_UP Click：放大变焦 */
 static void zoom_in_key_cb(key_id_t key, key_event_type_t event_type, void* user_data)
 {
-    int current_zoom;
+    page_ai_photo_data_t* data = (page_ai_photo_data_t*)user_data;
 
     if (key != KEY_ID_VOLUME_UP || event_type != KEY_EVENT_CLICK) {
         return;
     }
-    (void)user_data;
+    if (!data || !data->container || lv_obj_has_flag(data->container, LV_OBJ_FLAG_HIDDEN)) {
+        return;
+    }
     if (filter_panel_consume_non_lr_key(key)) {
         return;
     }
 
-    current_zoom = param_manager_get(PARAM_ID_ZOOM);
-    if (current_zoom < 6) {
-        if (current_zoom < 1) current_zoom = 1;
-        param_manager_set(PARAM_ID_ZOOM, current_zoom * 2);
-    }
+    zoom_bar_zoom_in();
 }
 
 /* VOLUME_DOWN Click：缩小变焦 */
 static void zoom_out_key_cb(key_id_t key, key_event_type_t event_type, void* user_data)
 {
-    int current_zoom;
+    page_ai_photo_data_t* data = (page_ai_photo_data_t*)user_data;
 
     if (key != KEY_ID_VOLUME_DOWN || event_type != KEY_EVENT_CLICK) {
         return;
     }
-    (void)user_data;
+    if (!data || !data->container || lv_obj_has_flag(data->container, LV_OBJ_FLAG_HIDDEN)) {
+        return;
+    }
     if (filter_panel_consume_non_lr_key(key)) {
         return;
     }
 
-    current_zoom = param_manager_get(PARAM_ID_ZOOM);
-    if (current_zoom > 1) {
-        param_manager_set(PARAM_ID_ZOOM, current_zoom / 2);
-    }
+    zoom_bar_zoom_out();
 }
 
 static void left_key_click_cb(key_id_t key, key_event_type_t event_type, void* user_data)
@@ -371,6 +369,7 @@ void page_ai_photo_create(void)
 
     /* 初始化全局滤镜面板（单例）。 */
     filter_panel_init();
+    zoom_bar_init();
 
     /* 创建页面容器 */
     data->container = lv_obj_create(lv_screen_active());
@@ -515,8 +514,8 @@ void page_ai_photo_destroy(void)
     (void)key_manager_unregister_callback(KEY_ID_ASSISTANT, KEY_EVENT_CLICK, ai_key_cb, data);
     (void)key_manager_unregister_callback(KEY_ID_MENU, KEY_EVENT_CLICK, menu_key_cb, NULL);
     (void)key_manager_unregister_callback(KEY_ID_MENU, KEY_EVENT_LONG_PRESS, menu_key_long_press_cb, NULL);
-    (void)key_manager_unregister_callback(KEY_ID_VOLUME_UP, KEY_EVENT_CLICK, zoom_in_key_cb, NULL);
-    (void)key_manager_unregister_callback(KEY_ID_VOLUME_DOWN, KEY_EVENT_CLICK, zoom_out_key_cb, NULL);
+    (void)key_manager_unregister_callback(KEY_ID_VOLUME_UP, KEY_EVENT_CLICK, zoom_in_key_cb, data);
+    (void)key_manager_unregister_callback(KEY_ID_VOLUME_DOWN, KEY_EVENT_CLICK, zoom_out_key_cb, data);
     (void)key_manager_unregister_callback(KEY_ID_LEFT, KEY_EVENT_CLICK, left_key_click_cb, NULL);
     (void)key_manager_unregister_callback(KEY_ID_RIGHT, KEY_EVENT_CLICK, right_key_click_cb, NULL);
     filter_panel_hide();
@@ -535,6 +534,7 @@ void page_ai_photo_show(void)
 
     MLOG_INFO("AI Photo page show");
     filter_panel_hide();
+    zoom_bar_show();
     /* 显示 UI */
     lv_obj_clear_flag(data->container, LV_OBJ_FLAG_HIDDEN);
 
@@ -565,10 +565,10 @@ void page_ai_photo_show(void)
     if (key_manager_register_callback(KEY_ID_MENU, KEY_EVENT_LONG_PRESS, menu_key_long_press_cb, NULL) != 0) {
         MLOG_WARN("register menu key long press callback failed");
     }
-    if (key_manager_register_callback(KEY_ID_VOLUME_UP, KEY_EVENT_CLICK, zoom_in_key_cb, NULL) != 0) {
+    if (key_manager_register_callback(KEY_ID_VOLUME_UP, KEY_EVENT_CLICK, zoom_in_key_cb, data) != 0) {
         MLOG_WARN("register zoom in key callback failed");
     }
-    if (key_manager_register_callback(KEY_ID_VOLUME_DOWN, KEY_EVENT_CLICK, zoom_out_key_cb, NULL) != 0) {
+    if (key_manager_register_callback(KEY_ID_VOLUME_DOWN, KEY_EVENT_CLICK, zoom_out_key_cb, data) != 0) {
         MLOG_WARN("register zoom out key callback failed");
     }
     if (key_manager_register_callback(KEY_ID_LEFT, KEY_EVENT_CLICK, left_key_click_cb, NULL) != 0) {
@@ -589,12 +589,13 @@ void page_ai_photo_hide(void)
     MLOG_INFO("AI Photo page hide");
     /* 隐藏 UI */
     filter_panel_hide();
+    zoom_bar_hide();
     lv_obj_add_flag(data->container, LV_OBJ_FLAG_HIDDEN);
     status_bar_show(false);
     (void)key_manager_unregister_callback(KEY_ID_MENU, KEY_EVENT_CLICK, menu_key_cb, NULL);
     (void)key_manager_unregister_callback(KEY_ID_MENU, KEY_EVENT_LONG_PRESS, menu_key_long_press_cb, NULL);
-    (void)key_manager_unregister_callback(KEY_ID_VOLUME_UP, KEY_EVENT_CLICK, zoom_in_key_cb, NULL);
-    (void)key_manager_unregister_callback(KEY_ID_VOLUME_DOWN, KEY_EVENT_CLICK, zoom_out_key_cb, NULL);
+    (void)key_manager_unregister_callback(KEY_ID_VOLUME_UP, KEY_EVENT_CLICK, zoom_in_key_cb, data);
+    (void)key_manager_unregister_callback(KEY_ID_VOLUME_DOWN, KEY_EVENT_CLICK, zoom_out_key_cb, data);
     (void)key_manager_unregister_callback(KEY_ID_LEFT, KEY_EVENT_CLICK, left_key_click_cb, NULL);
     (void)key_manager_unregister_callback(KEY_ID_RIGHT, KEY_EVENT_CLICK, right_key_click_cb, NULL);
     (void)key_manager_unregister_callback(KEY_ID_CAMERA, KEY_EVENT_CLICK, take_photo_key_cb, data);
