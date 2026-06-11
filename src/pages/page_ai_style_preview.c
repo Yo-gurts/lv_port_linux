@@ -98,6 +98,8 @@ static void gesture_event_cb(lv_event_t* e);
 static void process_poll_timer_cb(lv_timer_t* timer);
 static void ai_key_cb(key_id_t key, key_event_type_t event_type, void* user_data);
 
+static int g_target_photo_index = -1;
+
 // #endregion
 // #############################################################################
 // ! #region 4. 内部工具函数
@@ -106,6 +108,7 @@ static void ai_key_cb(key_id_t key, key_event_type_t event_type, void* user_data
 static void refresh_latest_photo(page_ai_style_preview_data_t* data)
 {
     int total_photos;
+    int photo_index;
 
     if (!data || !data->image) {
         return;
@@ -123,10 +126,15 @@ static void refresh_latest_photo(page_ai_style_preview_data_t* data)
         return;
     }
 
-    if (file_manager_get_photo_subpic_path(0, data->latest_photo_display_path, sizeof(data->latest_photo_display_path),
+    photo_index = (g_target_photo_index >= 0 && g_target_photo_index < total_photos)
+        ? g_target_photo_index
+        : 0;
+    g_target_photo_index = -1;
+
+    if (file_manager_get_photo_subpic_path(photo_index, data->latest_photo_display_path, sizeof(data->latest_photo_display_path),
             FILE_PATH_LV)
         != 0) {
-        if (file_manager_get_photo_path(0, data->latest_photo_display_path, sizeof(data->latest_photo_display_path),
+        if (file_manager_get_photo_path(photo_index, data->latest_photo_display_path, sizeof(data->latest_photo_display_path),
                 FILE_PATH_LV)
             != 0) {
             data->latest_photo_display_path[0] = '\0';
@@ -136,7 +144,7 @@ static void refresh_latest_photo(page_ai_style_preview_data_t* data)
         }
     }
 
-    if (file_manager_get_photo_path(0, data->latest_photo_real_path, sizeof(data->latest_photo_real_path),
+    if (file_manager_get_photo_path(photo_index, data->latest_photo_real_path, sizeof(data->latest_photo_real_path),
             FILE_PATH_REAL)
         != 0) {
         data->latest_photo_real_path[0] = '\0';
@@ -144,7 +152,7 @@ static void refresh_latest_photo(page_ai_style_preview_data_t* data)
 
     lv_img_set_src(data->image, data->latest_photo_display_path);
     lv_obj_center(data->image);
-    MLOG_INFO("Style preview showing photo: %s", data->latest_photo_display_path);
+    MLOG_INFO("Style preview showing photo[%d]: %s", photo_index, data->latest_photo_display_path);
 }
 
 static void update_style_selection(page_ai_style_preview_data_t* data)
@@ -801,13 +809,11 @@ void page_ai_style_preview_hide(void)
 
 void page_ai_style_preview_update(void)
 {
-    page_ai_style_preview_data_t* data = (page_ai_style_preview_data_t*)page_get_private_data();
+}
 
-    if (!data) {
-        return;
-    }
-
-    refresh_latest_photo(data);
+void page_ai_style_preview_set_photo_index(int photo_index)
+{
+    g_target_photo_index = photo_index;
 }
 
 // #endregion

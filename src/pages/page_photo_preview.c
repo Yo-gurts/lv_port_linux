@@ -10,6 +10,7 @@
 #include "core/page_manager.h"
 #include "core/style_manager.h"
 #include "mlog.h"
+#include "pages/page_ai_style_preview.h"
 #include "pages/page_album.h"
 #include "ui/gesture_back.h"
 #include "ui/top_notice.h"
@@ -257,6 +258,18 @@ static void menu_key_cb(key_id_t key, key_event_type_t event_type, void* user_da
         page_album_set_focus_photo_index(current_photo_index);
     page_manager_back();
     reset_swipe_state(data);
+}
+
+static void assistant_key_click_cb(key_id_t key, key_event_type_t event_type, void* user_data)
+{
+    page_photo_preview_data_t* data = (page_photo_preview_data_t*)user_data;
+
+    if (key != KEY_ID_ASSISTANT || event_type != KEY_EVENT_CLICK) {
+        return;
+    }
+
+    page_ai_style_preview_set_photo_index(get_current_photo_index(data));
+    page_manager_navigate("ai_style_preview");
 }
 
 static void switch_photo_by_key(page_photo_preview_data_t* data, int delta)
@@ -540,6 +553,7 @@ void page_photo_preview_destroy(void)
     }
 
     key_manager_unregister_callback(KEY_ID_MENU, KEY_EVENT_CLICK, menu_key_cb, NULL);
+    key_manager_unregister_callback(KEY_ID_ASSISTANT, KEY_EVENT_CLICK, assistant_key_click_cb, data);
     key_manager_unregister_callback(KEY_ID_LEFT, KEY_EVENT_CLICK, left_key_click_cb, data);
     key_manager_unregister_callback(KEY_ID_RIGHT, KEY_EVENT_CLICK, right_key_click_cb, data);
     free(data);
@@ -554,6 +568,7 @@ void page_photo_preview_show(void)
     /* gesture_back 为全局单实例，页面显示时重新声明当前活跃容器。 */
     gesture_back_set_left_edge_swipe_cb(data->container, back_btn_cb);
     key_manager_register_callback(KEY_ID_MENU, KEY_EVENT_CLICK, menu_key_cb, NULL);
+    key_manager_register_callback(KEY_ID_ASSISTANT, KEY_EVENT_CLICK, assistant_key_click_cb, data);
     key_manager_register_callback(KEY_ID_LEFT, KEY_EVENT_CLICK, left_key_click_cb, data);
     key_manager_register_callback(KEY_ID_RIGHT, KEY_EVENT_CLICK, right_key_click_cb, data);
 
@@ -586,6 +601,7 @@ void page_photo_preview_hide(void)
         return;
 
     key_manager_unregister_callback(KEY_ID_MENU, KEY_EVENT_CLICK, menu_key_cb, NULL);
+    key_manager_unregister_callback(KEY_ID_ASSISTANT, KEY_EVENT_CLICK, assistant_key_click_cb, data);
     key_manager_unregister_callback(KEY_ID_LEFT, KEY_EVENT_CLICK, left_key_click_cb, data);
     key_manager_unregister_callback(KEY_ID_RIGHT, KEY_EVENT_CLICK, right_key_click_cb, data);
 

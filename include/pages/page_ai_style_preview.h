@@ -40,6 +40,7 @@ void page_ai_style_preview_destroy(void);
 void page_ai_style_preview_show(void);
 void page_ai_style_preview_hide(void);
 void page_ai_style_preview_update(void);
+void page_ai_style_preview_set_photo_index(int photo_index);
 
 #ifdef __cplusplus
 }
