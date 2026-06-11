@@ -50,7 +50,7 @@ To use SDL2 support, adjust `lv_conf.h` as follows:
 
 ```
 mkdir build
-cd build 
+cd build
 cmake ..
 make -j
 ```
@@ -83,7 +83,7 @@ The following variables are supported.
 
 ### As root
 
-Normal users don't have access to `/dev/fb0` so use `sudo` (or see below) : 
+Normal users don't have access to `/dev/fb0` so use `sudo` (or see below) :
 
 cmake:
 ```
@@ -99,7 +99,7 @@ sudo main
 
 ### Userland
 
-You can give a normal user access to the framebuffer by adding them to the `video` group : 
+You can give a normal user access to the framebuffer by adding them to the `video` group :
 
 
 cmake:
@@ -117,3 +117,35 @@ newgrp video
 cd build/bin/
 ./main
 ```
+
+## 键盘映射表
+
+┌──────────┬───────────┬───────────┐
+│ SDL 按键 │ 物理按键  │   说明    │
+├──────────┼───────────┼───────────┤
+│ ↑        │ UP        │ 方向上    │
+├──────────┼───────────┼───────────┤
+│ ↓        │ DOWN      │ 方向下    │
+├──────────┼───────────┼───────────┤
+│ ←        │ LEFT      │ 方向左    │
+├──────────┼───────────┼───────────┤
+│ →        │ RIGHT     │ 方向右    │
+├──────────┼───────────┼───────────┤
+│ Enter    │ OK        │ 确认键    │
+├──────────┼───────────┼───────────┤
+│ Space    │ CAMERA    │ 拍照/快门 │
+├──────────┼───────────┼───────────┤
+│ F        │ FOCUS     │ 对焦      │
+├──────────┼───────────┼───────────┤
+│ M        │ MODE      │ 模式切换  │
+├──────────┼───────────┼───────────┤
+│ Tab      │ MENU      │ 菜单      │
+├──────────┼───────────┼───────────┤
+│ P        │ POWER     │ 电源键    │
+├──────────┼───────────┼───────────┤
+│ I        │ ASSISTANT │ 助手键    │
+├──────────┼───────────┼───────────┤
+│ =        │ VOL_UP    │ 音量+     │
+├──────────┼───────────┼───────────┤
+│ -        │ VOL_DOWN  │ 音量-     │
+└──────────┴───────────┴───────────┘

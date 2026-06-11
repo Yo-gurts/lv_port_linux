@@ -73,6 +73,56 @@ static void lv_linux_disp_init(void)
 #endif
 }
 #elif LV_USE_SDL
+#include <SDL2/SDL.h>
+
+static key_id_t sdl_key_to_key_id(SDL_Keycode sym)
+{
+    switch (sym) {
+    case SDLK_UP:
+        return KEY_ID_UP;
+    case SDLK_DOWN:
+        return KEY_ID_DOWN;
+    case SDLK_LEFT:
+        return KEY_ID_LEFT;
+    case SDLK_RIGHT:
+        return KEY_ID_RIGHT;
+    case SDLK_RETURN:
+    case SDLK_KP_ENTER:
+        return KEY_ID_OK;
+    case SDLK_SPACE:
+        return KEY_ID_CAMERA;
+    case SDLK_f:
+        return KEY_ID_FOCUS;
+    case SDLK_m:
+        return KEY_ID_MODE;
+    case SDLK_TAB:
+        return KEY_ID_MENU;
+    case SDLK_p:
+        return KEY_ID_POWER;
+    case SDLK_i:
+        return KEY_ID_ASSISTANT;
+    case SDLK_EQUALS:
+        return KEY_ID_VOLUME_UP;
+    case SDLK_MINUS:
+        return KEY_ID_VOLUME_DOWN;
+    default:
+        return KEY_ID_ANY;
+    }
+}
+
+static int sdl_key_event_watch(void* userdata, SDL_Event* event)
+{
+    (void)userdata;
+    if (event->type == SDL_KEYDOWN || event->type == SDL_KEYUP) {
+        key_id_t key = sdl_key_to_key_id(event->key.keysym.sym);
+        if (key != KEY_ID_ANY && event->key.repeat == 0) {
+            int value = (event->type == SDL_KEYDOWN) ? 1 : 0;
+            key_manager_inject_key(key, value);
+        }
+    }
+    return 1;
+}
+
 static void lv_linux_disp_init(void)
 {
     const int width = H_RES;
@@ -102,6 +152,8 @@ static void lv_linux_disp_init(void)
     lv_indev_t* kb = lv_sdl_keyboard_create();
     lv_indev_set_display(kb, disp);
     lv_indev_set_group(kb, lv_group_get_default());
+
+    SDL_AddEventWatch(sdl_key_event_watch, NULL);
 
     // return disp;
 }

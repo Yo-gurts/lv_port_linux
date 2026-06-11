@@ -435,7 +435,14 @@ void key_manager_poll(void)
     key_manager_process_hold_state(now_ms);
 }
 
-/* 按“按键+事件”维度注册回调。 */
+void key_manager_inject_key(key_id_t key, int value)
+{
+    if (!g_inited) {
+        return;
+    }
+    key_manager_handle_key_value(key, value, key_manager_now_ms());
+}
+
 int key_manager_register_callback(key_id_t key, key_event_type_t event_type, key_event_callback_t callback, void* user_data)
 {
     int key_bucket;

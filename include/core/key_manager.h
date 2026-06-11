@@ -50,6 +50,7 @@ typedef enum {
 int key_manager_init(void);
 void key_manager_deinit(void);
 void key_manager_bind_touch_indev(struct _lv_indev_t* indev);
+void key_manager_inject_key(key_id_t key, int value);
 
 /* 初始化按键管理器，打开输入设备并清理内部状态。 */
 /* 允许设备打开失败（例如模拟器环境），调用仍返回0。 */
