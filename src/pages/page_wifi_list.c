@@ -49,6 +49,12 @@ static void set_wifi_switch_checked(page_wifi_list_data_t* data, uint8_t checked
 static void set_wifi_switch_busy(page_wifi_list_data_t* data, uint8_t busy);
 static void update_wifi_selection(page_wifi_list_data_t* data, int old_index, int new_index);
 static void activate_selected_wifi(page_wifi_list_data_t* data);
+static void left_key_click_cb(key_id_t key, key_event_type_t event_type, void* user_data);
+static void right_key_click_cb(key_id_t key, key_event_type_t event_type, void* user_data);
+
+#define KB_FOCUS_ZONE_KEYBOARD 0
+#define KB_FOCUS_ZONE_CANCEL 1
+#define KB_FOCUS_ZONE_CONFIRM 2
 
 #define WIFI_CONNECT_POLL_MS 500
 #define WIFI_CONNECT_MAX_POLLS 40
@@ -151,6 +157,44 @@ static void update_wifi_selection(page_wifi_list_data_t* data, int old_index, in
     }
 }
 
+/* 获取键盘第一行按钮数量（遍历 map 到第一个 "\n"）。 */
+static uint32_t kb_get_first_row_btn_count(lv_obj_t* kb)
+{
+    const char* const* map = lv_buttonmatrix_get_map(kb);
+    uint32_t count = 0;
+
+    if (map == NULL) {
+        return 0;
+    }
+    while (map[count] != NULL && strcmp(map[count], "\n") != 0) {
+        count++;
+    }
+    return count;
+}
+
+/* 切换密码弹框内焦点区域的高亮状态。 */
+static void kb_update_focus_zone(page_wifi_list_data_t* data, uint8_t new_zone)
+{
+    uint8_t old_zone = data->kb_focus_zone;
+    data->kb_focus_zone = new_zone;
+
+    if (old_zone == KB_FOCUS_ZONE_KEYBOARD) {
+        lv_obj_remove_state(data->password_kb, LV_STATE_FOCUSED);
+    } else if (old_zone == KB_FOCUS_ZONE_CANCEL) {
+        lv_obj_remove_state(data->password_cancel_btn, LV_STATE_FOCUSED);
+    } else if (old_zone == KB_FOCUS_ZONE_CONFIRM) {
+        lv_obj_remove_state(data->password_confirm_btn, LV_STATE_FOCUSED);
+    }
+
+    if (new_zone == KB_FOCUS_ZONE_KEYBOARD) {
+        lv_obj_add_state(data->password_kb, LV_STATE_FOCUSED);
+    } else if (new_zone == KB_FOCUS_ZONE_CANCEL) {
+        lv_obj_add_state(data->password_cancel_btn, LV_STATE_FOCUSED);
+    } else if (new_zone == KB_FOCUS_ZONE_CONFIRM) {
+        lv_obj_add_state(data->password_confirm_btn, LV_STATE_FOCUSED);
+    }
+}
+
 /* 显示密码输入弹层并绑定目标 SSID。 */
 static void show_password_modal(page_wifi_list_data_t* data, const char* ssid)
 {
@@ -172,6 +216,11 @@ static void show_password_modal(page_wifi_list_data_t* data, const char* ssid)
     lv_obj_clear_flag(data->password_modal_mask, LV_OBJ_FLAG_HIDDEN);
     lv_obj_move_foreground(data->password_modal_mask);
     lv_obj_add_state(data->password_ta, LV_STATE_FOCUSED);
+
+    data->password_modal_visible = 1;
+    data->kb_focus_zone = KB_FOCUS_ZONE_KEYBOARD;
+    lv_buttonmatrix_set_selected_button(data->password_kb, 0);
+    lv_obj_add_state(data->password_kb, LV_STATE_FOCUSED);
 }
 
 /* 隐藏密码输入弹层。 */
@@ -183,6 +232,10 @@ static void hide_password_modal(page_wifi_list_data_t* data)
 
     lv_obj_add_flag(data->password_modal_mask, LV_OBJ_FLAG_HIDDEN);
     lv_obj_clear_state(data->password_ta, LV_STATE_FOCUSED);
+    lv_obj_remove_state(data->password_kb, LV_STATE_FOCUSED);
+    lv_obj_remove_state(data->password_cancel_btn, LV_STATE_FOCUSED);
+    lv_obj_remove_state(data->password_confirm_btn, LV_STATE_FOCUSED);
+    data->password_modal_visible = 0;
 }
 
 static void stop_connect_timer(page_wifi_list_data_t* data)
@@ -521,17 +574,29 @@ static void scan_timer_cb(lv_timer_t* timer)
 
 static void menu_key_cb(key_id_t key, key_event_type_t event_type, void* user_data)
 {
+    page_wifi_list_data_t* data = (page_wifi_list_data_t*)page_get_private_data();
     (void)key;
     (void)event_type;
     (void)user_data;
+
+    if (data != NULL && data->password_modal_visible) {
+        hide_password_modal(data);
+        return;
+    }
     page_manager_back();
 }
 
 static void menu_key_long_press_cb(key_id_t key, key_event_type_t event_type, void* user_data)
 {
+    page_wifi_list_data_t* data = (page_wifi_list_data_t*)page_get_private_data();
     (void)key;
     (void)event_type;
     (void)user_data;
+
+    if (data != NULL && data->password_modal_visible) {
+        hide_password_modal(data);
+        return;
+    }
     page_manager_back();
 }
 
@@ -542,7 +607,24 @@ static void up_key_click_cb(key_id_t key, key_event_type_t event_type, void* use
 
     if (key != KEY_ID_UP || event_type != KEY_EVENT_CLICK)
         return;
-    if (data == NULL || data->scan_count <= 0)
+    if (data == NULL)
+        return;
+
+    if (data->password_modal_visible) {
+        if (data->kb_focus_zone == KB_FOCUS_ZONE_KEYBOARD) {
+            uint32_t first_row_count = kb_get_first_row_btn_count(data->password_kb);
+            uint32_t sel = lv_buttonmatrix_get_selected_button(data->password_kb);
+            if (sel < first_row_count) {
+                kb_update_focus_zone(data, KB_FOCUS_ZONE_CANCEL);
+            } else {
+                uint32_t lv_key = LV_KEY_UP;
+                lv_obj_send_event(data->password_kb, LV_EVENT_KEY, &lv_key);
+            }
+        }
+        return;
+    }
+
+    if (data->scan_count <= 0)
         return;
 
     old_index = data->selected_ap_index;
@@ -560,7 +642,20 @@ static void down_key_click_cb(key_id_t key, key_event_type_t event_type, void* u
 
     if (key != KEY_ID_DOWN || event_type != KEY_EVENT_CLICK)
         return;
-    if (data == NULL || data->scan_count <= 0)
+    if (data == NULL)
+        return;
+
+    if (data->password_modal_visible) {
+        if (data->kb_focus_zone == KB_FOCUS_ZONE_CANCEL || data->kb_focus_zone == KB_FOCUS_ZONE_CONFIRM) {
+            kb_update_focus_zone(data, KB_FOCUS_ZONE_KEYBOARD);
+        } else {
+            uint32_t lv_key = LV_KEY_DOWN;
+            lv_obj_send_event(data->password_kb, LV_EVENT_KEY, &lv_key);
+        }
+        return;
+    }
+
+    if (data->scan_count <= 0)
         return;
 
     old_index = data->selected_ap_index;
@@ -577,6 +672,28 @@ static void ok_key_click_cb(key_id_t key, key_event_type_t event_type, void* use
 
     if (key != KEY_ID_OK || event_type != KEY_EVENT_CLICK)
         return;
+    if (data == NULL)
+        return;
+
+    if (data->password_modal_visible) {
+        if (data->kb_focus_zone == KB_FOCUS_ZONE_CANCEL) {
+            hide_password_modal(data);
+        } else if (data->kb_focus_zone == KB_FOCUS_ZONE_CONFIRM) {
+            const char* password = lv_textarea_get_text(data->password_ta);
+            if (password == NULL || password[0] == '\0') {
+                top_notice_show("请输入密码", TOP_NOTICE_TYPE_ERROR);
+                return;
+            }
+            connect_wifi_and_refresh(data, data->pending_ssid, password);
+            hide_password_modal(data);
+        } else {
+            uint32_t btn_id = lv_buttonmatrix_get_selected_button(data->password_kb);
+            if (btn_id != LV_BUTTONMATRIX_BUTTON_NONE) {
+                lv_obj_send_event(data->password_kb, LV_EVENT_VALUE_CHANGED, &btn_id);
+            }
+        }
+        return;
+    }
 
     activate_selected_wifi(data);
 }
@@ -608,6 +725,40 @@ static void activate_selected_wifi(page_wifi_list_data_t* data)
         return;
     }
     connect_wifi_and_refresh(data, ap->ssid, "");
+}
+
+static void left_key_click_cb(key_id_t key, key_event_type_t event_type, void* user_data)
+{
+    page_wifi_list_data_t* data = (page_wifi_list_data_t*)user_data;
+
+    if (key != KEY_ID_LEFT || event_type != KEY_EVENT_CLICK)
+        return;
+    if (data == NULL || !data->password_modal_visible)
+        return;
+
+    if (data->kb_focus_zone == KB_FOCUS_ZONE_CONFIRM) {
+        kb_update_focus_zone(data, KB_FOCUS_ZONE_CANCEL);
+    } else if (data->kb_focus_zone == KB_FOCUS_ZONE_KEYBOARD) {
+        uint32_t lv_key = LV_KEY_LEFT;
+        lv_obj_send_event(data->password_kb, LV_EVENT_KEY, &lv_key);
+    }
+}
+
+static void right_key_click_cb(key_id_t key, key_event_type_t event_type, void* user_data)
+{
+    page_wifi_list_data_t* data = (page_wifi_list_data_t*)user_data;
+
+    if (key != KEY_ID_RIGHT || event_type != KEY_EVENT_CLICK)
+        return;
+    if (data == NULL || !data->password_modal_visible)
+        return;
+
+    if (data->kb_focus_zone == KB_FOCUS_ZONE_CANCEL) {
+        kb_update_focus_zone(data, KB_FOCUS_ZONE_CONFIRM);
+    } else if (data->kb_focus_zone == KB_FOCUS_ZONE_KEYBOARD) {
+        uint32_t lv_key = LV_KEY_RIGHT;
+        lv_obj_send_event(data->password_kb, LV_EVENT_KEY, &lv_key);
+    }
 }
 
 static void wifi_item_click_cb(lv_event_t* e)
@@ -860,6 +1011,8 @@ void page_wifi_list_create(void)
     lv_obj_set_size(data->password_cancel_btn, 112, 38);
     lv_obj_align(data->password_cancel_btn, LV_ALIGN_BOTTOM_LEFT, 12, 2);
     lv_obj_add_event_cb(data->password_cancel_btn, password_cancel_btn_cb, LV_EVENT_CLICKED, data);
+    lv_obj_set_style_border_color(data->password_cancel_btn, lv_color_hex(0x0078D4), LV_PART_MAIN | LV_STATE_FOCUSED);
+    lv_obj_set_style_border_width(data->password_cancel_btn, 2, LV_PART_MAIN | LV_STATE_FOCUSED);
     /* 取消按钮文字。 */
     cancel_label = lv_label_create(data->password_cancel_btn);
     lv_label_set_text(cancel_label, "取消");
@@ -871,6 +1024,8 @@ void page_wifi_list_create(void)
     lv_obj_set_size(data->password_confirm_btn, 112, 38);
     lv_obj_align(data->password_confirm_btn, LV_ALIGN_BOTTOM_RIGHT, -12, 2);
     lv_obj_add_event_cb(data->password_confirm_btn, password_confirm_btn_cb, LV_EVENT_CLICKED, data);
+    lv_obj_set_style_border_color(data->password_confirm_btn, lv_color_hex(0x0078D4), LV_PART_MAIN | LV_STATE_FOCUSED);
+    lv_obj_set_style_border_width(data->password_confirm_btn, 2, LV_PART_MAIN | LV_STATE_FOCUSED);
     /* 确认按钮文字。 */
     confirm_label = lv_label_create(data->password_confirm_btn);
     lv_label_set_text(confirm_label, "确认");
@@ -901,6 +1056,7 @@ void page_wifi_list_create(void)
     lv_obj_set_style_text_color(data->password_kb, lv_color_white(), LV_PART_ITEMS);
     lv_obj_set_style_text_color(data->password_kb, lv_color_white(), LV_PART_ITEMS | LV_STATE_CHECKED);
     lv_obj_set_style_text_font(data->password_kb, &lv_font_montserrat_28, LV_PART_ITEMS);
+    lv_obj_set_style_bg_color(data->password_kb, lv_color_hex(0x0078D4), LV_PART_ITEMS | LV_STATE_FOCUSED);
     lv_keyboard_set_mode(data->password_kb, LV_KEYBOARD_MODE_TEXT_LOWER);
     lv_keyboard_set_textarea(data->password_kb, data->password_ta);
     lv_obj_add_event_cb(data->password_kb, password_keyboard_event_cb, LV_EVENT_ALL, data);
@@ -975,6 +1131,8 @@ void page_wifi_list_show(void)
     key_manager_register_callback(KEY_ID_UP, KEY_EVENT_CLICK, up_key_click_cb, data);
     key_manager_register_callback(KEY_ID_DOWN, KEY_EVENT_CLICK, down_key_click_cb, data);
     key_manager_register_callback(KEY_ID_OK, KEY_EVENT_CLICK, ok_key_click_cb, data);
+    key_manager_register_callback(KEY_ID_LEFT, KEY_EVENT_CLICK, left_key_click_cb, data);
+    key_manager_register_callback(KEY_ID_RIGHT, KEY_EVENT_CLICK, right_key_click_cb, data);
 
     /* 每次进入页面同步真实 WiFi 开关状态，避免显示陈旧状态。 */
     sync_wifi_enabled_state(data);
@@ -1006,6 +1164,8 @@ void page_wifi_list_hide(void)
     key_manager_unregister_callback(KEY_ID_UP, KEY_EVENT_CLICK, up_key_click_cb, data);
     key_manager_unregister_callback(KEY_ID_DOWN, KEY_EVENT_CLICK, down_key_click_cb, data);
     key_manager_unregister_callback(KEY_ID_OK, KEY_EVENT_CLICK, ok_key_click_cb, data);
+    key_manager_unregister_callback(KEY_ID_LEFT, KEY_EVENT_CLICK, left_key_click_cb, data);
+    key_manager_unregister_callback(KEY_ID_RIGHT, KEY_EVENT_CLICK, right_key_click_cb, data);
 
     /* 停止扫描定时器 */
     if (data->scan_timer != NULL) {

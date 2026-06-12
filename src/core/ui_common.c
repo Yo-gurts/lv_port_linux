@@ -149,9 +149,9 @@ static void lv_linux_disp_init(void)
     lv_indev_set_display(mousewheel, disp);
     lv_indev_set_group(mousewheel, lv_group_get_default());
 
-    lv_indev_t* kb = lv_sdl_keyboard_create();
-    lv_indev_set_display(kb, disp);
-    lv_indev_set_group(kb, lv_group_get_default());
+    /* 不创建 LVGL keyboard indev —— 所有按键通过 SDL_AddEventWatch +
+     * key_manager_inject_key 统一处理，避免 LVGL group/focus 路径
+     * 与 key_manager 回调产生双重响应冲突。 */
 
     SDL_AddEventWatch(sdl_key_event_watch, NULL);
 
