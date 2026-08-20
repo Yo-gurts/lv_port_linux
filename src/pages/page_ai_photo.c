@@ -353,6 +353,15 @@ static void menu_back_cb(lv_event_t* e)
     page_manager_navigate("ai_photo_settings");
 }
 
+/* 返回按钮回调：返回上一页前先切回 BOOT 模式，拆除 photo 媒体管线（对齐普通拍照页） */
+static void back_btn_cb(lv_event_t* e)
+{
+    LV_UNUSED(e);
+    filter_panel_hide();
+    (void)media_manager_execute(MEDIA_OP_SWITCH_TO_BOOT_MODE, 0);
+    page_manager_back();
+}
+
 // #endregion
 // #############################################################################
 // ! #region 8. 初始化、去初始化、资源管理
@@ -383,7 +392,7 @@ void page_ai_photo_create(void)
 
     /* 添加滑动手势回调：从左往右滑返回上一页 */
     gesture_back_register_events(data->container);
-    gesture_back_set_left_edge_swipe_cb(data->container, page_manager_back_cb);
+    gesture_back_set_left_edge_swipe_cb(data->container, back_btn_cb);
 
     /* 中央对焦框（默认隐藏），由 param 回调驱动显示/颜色切换。 */
     data->focus_box = lv_obj_create(data->container);
@@ -437,7 +446,7 @@ void page_ai_photo_create(void)
     data->back_btn = lv_btn_create(data->top_bar);
     lv_obj_set_size(data->back_btn, 50, 50);
     lv_obj_add_style(data->back_btn, &style_noboarder, LV_PART_MAIN);
-    lv_obj_add_event_cb(data->back_btn, page_manager_back_cb, LV_EVENT_CLICKED, NULL);
+    lv_obj_add_event_cb(data->back_btn, back_btn_cb, LV_EVENT_CLICKED, NULL);
     lv_obj_align(data->back_btn, LV_ALIGN_TOP_LEFT, 10, 0);
     lv_obj_t* back_icon = lv_img_create(data->back_btn);
     lv_img_set_src(back_icon, "A:" RES_ICON_PATH "/back-circle.png");
@@ -530,7 +539,7 @@ void page_ai_photo_show(void)
         return;
     }
 
-    gesture_back_set_left_edge_swipe_cb(data->container, page_manager_back_cb);
+    gesture_back_set_left_edge_swipe_cb(data->container, back_btn_cb);
 
     MLOG_INFO("AI Photo page show");
     filter_panel_hide();
