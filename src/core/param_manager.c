@@ -20,7 +20,7 @@ typedef struct {
 
 /* 参数默认值 - 与configs数组的value字段对应 */
 static const int default_values[PARAM_ID_BUTT] = {
-    [PARAM_ID_RESOLUTION] = PHOTO_RESOLUTION_8M,
+    [PARAM_ID_RESOLUTION] = PHOTO_RESOLUTION_12M,
     [PARAM_ID_WHITE_BALANCE] = WHITE_BALANCE_AUTO,
     [PARAM_ID_ISO] = ISO_AUTO,
     [PARAM_ID_EXPOSURE] = EXPOSURE_EV_0,
