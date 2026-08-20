@@ -308,7 +308,7 @@ static void back_btn_cb(lv_event_t* e)
     (void)param_manager_set(PARAM_ID_ZOOM, param_manager_get_default(PARAM_ID_ZOOM));
     filter_panel_hide();
     zoom_bar_hide();
-    (void)media_manager_execute(MEDIA_OP_SWITCH_TO_PHOTO_MODE, 0);
+    (void)media_manager_execute(MEDIA_OP_SWITCH_TO_BOOT_MODE, 0);
     page_manager_back();
 }
 
