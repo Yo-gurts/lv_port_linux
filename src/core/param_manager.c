@@ -6,6 +6,7 @@
 #include <unistd.h>
 
 #include "mlog.h"
+#include "param.h"
 
 #define PARAM_MANAGER_TAG "param_manager"
 
@@ -120,6 +121,17 @@ static int validate_param_value(param_id_t id, int value)
     return 0;
 }
 
+/* 从底层持久化参数(app_cfg.bin)同步启动值，避免 UI 每次开机用硬编码默认值与底层不对齐。
+ * 仅同步底层会持久化且有 UI 对应项的参数；值非法时保留 UI 默认。 */
+static void sync_from_bottom(param_id_t id, int value)
+{
+    if (validate_param_value(id, value) != 0) {
+        MLOG_WARN("param[%d] bottom value %d invalid, keep default %d\n", id, value, current_values[id]);
+        return;
+    }
+    current_values[id] = value;
+}
+
 int param_manager_init(void)
 {
     int i = 0;
@@ -143,6 +155,21 @@ int param_manager_init(void)
             value = param_rules[i].min_value;
         }
         current_values[i] = value;
+    }
+
+    /* 从底层持久化参数(app_cfg.bin)同步有对应项的配置。
+     * 直接取共享内存参数指针(PARAM_GetCtx)而非深拷贝，避免 308KB 拷贝；
+     * 注意：PARAM_CFG_S 约 308KB，禁止在 UI 线程(栈 256KB)栈上声明。 */
+    PARAM_CONTEXT_S* pstParamCtx = PARAM_GetCtx();
+    if (pstParamCtx != NULL && pstParamCtx->bInit == true && pstParamCtx->pstCfg != NULL) {
+        PARAM_CFG_S* cfg = pstParamCtx->pstCfg;
+        sync_from_bottom(PARAM_ID_RESOLUTION, (int)cfg->Menu.PhotoSize.Current);
+        sync_from_bottom(PARAM_ID_QUALITY, (int)cfg->Menu.PhotoQuality.Current);
+        sync_from_bottom(PARAM_ID_VIDEO_RESOLUTION, (int)cfg->Menu.VideoSize.Current);
+        sync_from_bottom(PARAM_ID_FACE_DETECTION, (int)cfg->Menu.FaceDet.Current);
+        sync_from_bottom(PARAM_ID_SMILE_CAPTURE, (int)cfg->Menu.FaceSmile.Current);
+    } else {
+        MLOG_WARN("PARAM ctx not ready, keep UI defaults\n");
     }
 
     g_initialized = 1;
