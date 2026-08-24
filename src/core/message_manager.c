@@ -51,45 +51,52 @@ static EVENTHUB_SUBSCRIBER_S* g_subscriber_desc = NULL;
 static MW_PTR g_subscriber_hdl = NULL;
 static bool g_msgmgr_created = false;
 
-static void message_manager_async_status_bar_refresh_cb(void* user_data)
-{
-    (void)user_data;
-    status_bar_refresh();
-}
-
-static void message_manager_async_top_notice_cb(void* user_data)
-{
-    async_top_notice_param_t* param = (async_top_notice_param_t*)user_data;
-
-    if (param == NULL) {
-        return;
-    }
-
-    top_notice_show_for(param->text, param->type, param->duration_ms);
-    free(param);
-}
+/* EventHub 线程只置 pending，UI 线程 message_manager_poll() 消费——不碰 LVGL。
+ * 通知类事件（SD 卡插拔/格式化）稀疏且不突发，top-notice 单槽 last-wins 足够。
+ * 全部由 g_msg_ctx.msg_mutex 保护（与回包匹配同一把锁）。 */
+static bool g_pending_status_refresh = false;
+static bool g_pending_top_notice = false;
+static async_top_notice_param_t g_pending_notice;
 
 static void message_manager_post_top_notice_async(const char* text, top_notice_type_t type, uint32_t duration_ms)
 {
-    async_top_notice_param_t* param;
-
     if (text == NULL) {
         return;
     }
 
-    param = (async_top_notice_param_t*)calloc(1, sizeof(*param));
-    if (param == NULL) {
-        return;
+    MUTEX_LOCK(g_msg_ctx.msg_mutex);
+    if (snprintf(g_pending_notice.text, sizeof(g_pending_notice.text), "%s", text) >= (int)sizeof(g_pending_notice.text)) {
+        g_pending_notice.text[0] = '\0';
     }
+    g_pending_notice.type = type;
+    g_pending_notice.duration_ms = duration_ms;
+    g_pending_top_notice = true;
+    MUTEX_UNLOCK(g_msg_ctx.msg_mutex);
+}
 
-    if (snprintf(param->text, sizeof(param->text), "%s", text) >= (int)sizeof(param->text)) {
-        param->text[0] = '\0';
+/* UI 线程：消费 EventHub 线程置的 status-bar 刷新 / top-notice 待处理项，
+ * 在 UI 上下文调 LVGL。仿 param_manager_poll「锁内快照+清标志、锁外执行」。 */
+void message_manager_poll(void)
+{
+    bool do_status_refresh;
+    bool do_top_notice;
+    async_top_notice_param_t notice;
+
+    MUTEX_LOCK(g_msg_ctx.msg_mutex);
+    do_status_refresh = g_pending_status_refresh;
+    do_top_notice = g_pending_top_notice;
+    if (do_top_notice) {
+        notice = g_pending_notice;
     }
-    param->type = type;
-    param->duration_ms = duration_ms;
+    g_pending_status_refresh = false;
+    g_pending_top_notice = false;
+    MUTEX_UNLOCK(g_msg_ctx.msg_mutex);
 
-    if (lv_async_call(message_manager_async_top_notice_cb, param) != LV_RESULT_OK) {
-        free(param);
+    if (do_status_refresh) {
+        status_bar_refresh();
+    }
+    if (do_top_notice) {
+        top_notice_show_for(notice.text, notice.type, notice.duration_ms);
     }
 }
 
@@ -155,7 +162,9 @@ static bool handle_sd_card_event_notice(TOPIC_ID topic)
     }
 
     (void)param_manager_set(PARAM_ID_SD_READY, sd_ready);
-    (void)lv_async_call(message_manager_async_status_bar_refresh_cb, NULL);
+    MUTEX_LOCK(g_msg_ctx.msg_mutex);
+    g_pending_status_refresh = true;
+    MUTEX_UNLOCK(g_msg_ctx.msg_mutex);
     message_manager_post_top_notice_async(notice_text, notice_type, notice_duration_ms);
     return true;
 }

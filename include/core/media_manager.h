@@ -47,6 +47,8 @@ int media_manager_execute(media_operation_t op, int32_t args);
 /* 异步模式切换：仅支持 SWITCH_TO_PHOTO_MODE / SWITCH_TO_BOOT_MODE，发起后立即返回，
  * 切换完成时在 UI 线程回调 done_cb。同一时刻仅允许一个在途请求，忙时返回 EBUSY。 */
 int media_manager_execute_async(media_operation_t op, media_switch_done_cb_t done_cb);
+/* UI 主循环每帧调用：消费异步切换完成信号并在 UI 线程回调 done_cb。 */
+void media_manager_poll(void);
 int media_manager_get_current_work_mode(void);
 int media_manager_is_playback_work_mode(int work_mode);
 int media_manager_restore_work_mode(int work_mode);

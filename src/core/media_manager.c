@@ -8,6 +8,8 @@
 #include "mode.h"
 #include "param.h"
 #include "ui/top_notice.h"
+#include <pthread.h>
+#include <stdbool.h>
 #include <stdio.h>
 
 #define MEDIA_MANAGER_TAKE_PHOTO_TIMEOUT_MS 5000U
@@ -610,28 +612,25 @@ int media_manager_execute(media_operation_t op, int32_t args)
 
 /* 异步模式切换：把「EventHub 线程回包 -> UI 线程回调」的跨线程 hop 收在本层，
  * 对上层只暴露模式无关的 media_switch_done_cb_t。msg_processed 门保证同一时刻仅一个
- * 在途请求，故单槽 static 存 done_cb/result 足够。 */
+ * 在途请求，故单槽 static 存 done_cb/result 足够。
+ * LVGL 单线程：EventHub 线程绝不能碰 lv_async_call（会与 UI 线程 lv_timer_handler
+ * 并发操作 LVGL 内存池/timer 链表致崩）。改为 EventHub 线程持锁置 pending，
+ * UI 线程 media_manager_poll() 消费并在 UI 上下文回调，仿 param_manager 既有范式。 */
+static pthread_mutex_t g_switch_mutex = PTHREAD_MUTEX_INITIALIZER;
 static media_switch_done_cb_t g_switch_done_cb = NULL;
-static volatile int g_switch_result = 0;
+static int g_switch_result = 0;
+static bool g_switch_pending = false;
 
-/* UI 线程：由 lv_async 调度，把结果交给上层回调。 */
-static void mm_switch_done_on_ui(void* param)
-{
-    media_switch_done_cb_t cb = g_switch_done_cb;
-
-    (void)param;
-    g_switch_done_cb = NULL;
-    if (cb != NULL) {
-        cb((int)g_switch_result);
-    }
-}
-
-/* EventHub 线程：回包到达，记录结果并 hop 到 UI 线程（仿 message_manager 既有做法）。 */
+/* EventHub 线程：回包到达，持锁记录结果并置 pending（不碰任何 LVGL）。 */
 static int32_t mm_switch_result_cb(EVENT_S* evt)
 {
-    g_switch_result = (evt != NULL) ? evt->s32Result : MEDIA_MANAGER_ESTATE;
-    (void)lv_async_call(mm_switch_done_on_ui, NULL);
-    return g_switch_result;
+    int result = (evt != NULL) ? evt->s32Result : MEDIA_MANAGER_ESTATE;
+
+    pthread_mutex_lock(&g_switch_mutex);
+    g_switch_result = result;
+    g_switch_pending = true;
+    pthread_mutex_unlock(&g_switch_mutex);
+    return result;
 }
 
 /* 发起一次异步模式切换：组 msg 后 send_async，回包走 mm_switch_result_cb。
@@ -685,15 +684,42 @@ int media_manager_execute_async(media_operation_t op, media_switch_done_cb_t don
         return MEDIA_MANAGER_EUNSUP;
     }
 
+    pthread_mutex_lock(&g_switch_mutex);
     g_switch_done_cb = done_cb;
+    g_switch_pending = false; /* 清掉可能残留的上一次 pending */
+    pthread_mutex_unlock(&g_switch_mutex);
+
     ret = handler();
     if (ret != MEDIA_MANAGER_OK) {
+        pthread_mutex_lock(&g_switch_mutex);
         g_switch_done_cb = NULL; /* 发起失败：清回单槽，避免残留 cb 被下次误触发 */
+        pthread_mutex_unlock(&g_switch_mutex);
         return ret;
     }
 
     MLOG_INFO("已异步请求切换: op=%d", op);
     return MEDIA_MANAGER_OK;
+}
+
+/* UI 线程：消费 EventHub 线程置的完成信号并在 UI 上下文回调。仿 param_manager_poll
+ * 的「锁内快照+清标志、锁外回调」，回调里可安全调 LVGL。 */
+void media_manager_poll(void)
+{
+    media_switch_done_cb_t cb = NULL;
+    int result = 0;
+
+    pthread_mutex_lock(&g_switch_mutex);
+    if (g_switch_pending) {
+        cb = g_switch_done_cb;
+        result = g_switch_result;
+        g_switch_pending = false;
+        g_switch_done_cb = NULL;
+    }
+    pthread_mutex_unlock(&g_switch_mutex);
+
+    if (cb != NULL) {
+        cb(result);
+    }
 }
 
 int media_manager_get_current_work_mode(void)

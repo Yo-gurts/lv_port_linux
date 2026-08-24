@@ -6,6 +6,8 @@
 #include "config.h"
 #include "core/font_manager.h"
 #include "core/key_manager.h"
+#include "core/media_manager.h"
+#include "core/message_manager.h"
 #include "core/page_manager.h"
 #include "core/param_manager.h"
 #include "core/power_manager.h"
@@ -344,6 +346,8 @@ int32_t ui_main(void)
         power_manager_poll();
         wifi_manager_poll();
         param_manager_poll();
+        media_manager_poll();
+        message_manager_poll();
         lv_timer_handler();
         usleep(5000);
     }
