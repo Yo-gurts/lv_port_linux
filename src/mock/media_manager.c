@@ -270,9 +270,15 @@ static int mock_switch_to_boot_mode_async(void)
     return media_manager_execute(MEDIA_OP_SWITCH_TO_BOOT_MODE, 0);
 }
 
+static int mock_switch_to_video_mode_async(void)
+{
+    return media_manager_execute(MEDIA_OP_SWITCH_TO_VIDEO_MODE, 0);
+}
+
 static const media_async_handler_t g_media_async_handlers[MEDIA_OP_BUTT] = {
     [MEDIA_OP_SWITCH_TO_PHOTO_MODE] = mock_switch_to_photo_mode_async,
     [MEDIA_OP_SWITCH_TO_BOOT_MODE] = mock_switch_to_boot_mode_async,
+    [MEDIA_OP_SWITCH_TO_VIDEO_MODE] = mock_switch_to_video_mode_async,
 };
 
 int media_manager_execute_async(media_operation_t op, media_switch_done_cb_t done_cb)

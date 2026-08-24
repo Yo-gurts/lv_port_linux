@@ -114,7 +114,7 @@ void page_test_create(void)
     lv_obj_set_scrollbar_mode(list, LV_SCROLLBAR_MODE_OFF);
 
     data->key_touch_item = create_menu_item(list, "触摸与按键", key_touch_item_cb);
-    data->boot_switch_item = create_menu_item(list, "boot切换开关测试", boot_switch_item_cb);
+    data->boot_switch_item = create_menu_item(list, "模式切换测试", boot_switch_item_cb);
 
     page_set_private_data(data);
 }
