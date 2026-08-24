@@ -18,8 +18,10 @@
 #include "pages/page_ai_recognition_preview.h"
 #include "pages/page_ai_style_preview.h"
 #include "pages/page_album.h"
+#include "pages/page_boot_switch_test.h"
 #include "pages/page_chat.h"
 #include "pages/page_home.h"
+#include "pages/page_key_touch_test.h"
 #include "pages/page_photo.h"
 #include "pages/page_photo_preview.h"
 #include "pages/page_photo_settings.h"
@@ -305,6 +307,22 @@ static page_interface_t test_page_interface = {
     .update = page_test_update,
 };
 
+static page_interface_t key_touch_test_page_interface = {
+    .create = page_key_touch_test_create,
+    .destroy = page_key_touch_test_destroy,
+    .show = page_key_touch_test_show,
+    .hide = page_key_touch_test_hide,
+    .update = page_key_touch_test_update,
+};
+
+static page_interface_t boot_switch_test_page_interface = {
+    .create = page_boot_switch_test_create,
+    .destroy = page_boot_switch_test_destroy,
+    .show = page_boot_switch_test_show,
+    .hide = page_boot_switch_test_hide,
+    .update = page_boot_switch_test_update,
+};
+
 int32_t ui_main(void)
 {
     lv_init();
@@ -362,6 +380,8 @@ int32_t ui_main(void)
     page_manager_register("album", &album_page_interface, NULL);
     page_manager_register("photo_preview", &photo_preview_page_interface, NULL);
     page_manager_register("test", &test_page_interface, NULL);
+    page_manager_register("key_touch_test", &key_touch_test_page_interface, NULL);
+    page_manager_register("boot_switch_test", &boot_switch_test_page_interface, NULL);
 
     /* Navigate to home page */
     page_manager_navigate("home");
