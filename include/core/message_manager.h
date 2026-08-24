@@ -19,6 +19,8 @@ typedef int32_t (*message_manager_result_cb_t)(EVENT_S* evt);
 
 int32_t message_manager_create(void);
 void message_manager_destroy(void);
+/* UI 主循环每帧调用：消费 status-bar 刷新 / top-notice 待处理项并在 UI 线程执行。 */
+void message_manager_poll(void);
 int32_t message_manager_send_async(const MESSAGE_S* msg, message_manager_result_cb_t cb);
 int32_t message_manager_send_sync_timeout(const MESSAGE_S* msg, uint32_t timeout_ms);
 int32_t message_manager_send_sync_topics_timeout(

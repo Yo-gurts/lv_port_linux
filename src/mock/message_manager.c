@@ -21,6 +21,7 @@ typedef int32_t (*message_manager_result_cb_t)(EVENT_S* evt);
 
 int32_t message_manager_create(void);
 void message_manager_destroy(void);
+void message_manager_poll(void);
 int32_t message_manager_send_async(const MESSAGE_S* msg, message_manager_result_cb_t cb);
 int32_t message_manager_send_sync_timeout(const MESSAGE_S* msg, uint32_t timeout_ms);
 int32_t message_manager_send_sync_topics_timeout(
@@ -34,6 +35,11 @@ int32_t message_manager_create(void)
 
 /* mock 销毁：保持空实现。 */
 void message_manager_destroy(void)
+{
+}
+
+/* mock poll：SDL 仿真无 EventHub 线程，无待处理项，空实现。 */
+void message_manager_poll(void)
 {
 }
 

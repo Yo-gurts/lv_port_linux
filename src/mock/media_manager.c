@@ -301,6 +301,11 @@ int media_manager_execute_async(media_operation_t op, media_switch_done_cb_t don
     return MEDIA_MANAGER_OK;
 }
 
+/* SDL 仿真单线程：异步完成仍走 lv_async_call，poll 无需做事。占位保持与真实实现同签名。 */
+void media_manager_poll(void)
+{
+}
+
 int media_manager_get_current_work_mode(void)
 {
     return g_mock_work_mode;
