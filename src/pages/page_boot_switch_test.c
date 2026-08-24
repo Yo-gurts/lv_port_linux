@@ -15,10 +15,11 @@
 #include <string.h>
 
 #define BST_TOP_BAR_HEIGHT 56
-#define BST_COUNT_BTN_WIDTH 108
-#define BST_COUNT_BTN_HEIGHT 64
-#define BST_ACTION_BTN_WIDTH 160
-#define BST_ACTION_BTN_HEIGHT 64
+#define BST_BTN_HEIGHT 50 /* 三个操作按钮统一高度（<=55px，尽量不遮画面） */
+#define BST_ACTION_BTN_WIDTH 150
+#define BST_COUNT_BTN_WIDTH 110
+#define BST_START_BTN_WIDTH 110
+#define BST_BTN_MARGIN 10
 
 #define BST_TARGET_INFINITE UINT32_MAX /* 无穷次哨兵：done 永不可达，只能手动暂停/返回 */
 
@@ -96,68 +97,48 @@ static void refresh_progress(page_boot_switch_test_data_t* data)
 /* 运行中锁定动作与次数按钮（不可改动作/次数）；非运行态恢复可选。 */
 static void set_options_enabled(page_boot_switch_test_data_t* data, int enabled)
 {
+    lv_obj_t* btns[2];
     int i;
 
     if (data == NULL) {
         return;
     }
-    for (i = 0; i < PAGE_BOOT_SWITCH_TEST_ACTION_COUNT; ++i) {
-        if (data->action_btns[i] == NULL) {
+    btns[0] = data->action_btn;
+    btns[1] = data->count_btn;
+    for (i = 0; i < 2; ++i) {
+        if (btns[i] == NULL) {
             continue;
         }
         if (enabled) {
-            lv_obj_clear_state(data->action_btns[i], LV_STATE_DISABLED);
+            lv_obj_clear_state(btns[i], LV_STATE_DISABLED);
         } else {
-            lv_obj_add_state(data->action_btns[i], LV_STATE_DISABLED);
-        }
-    }
-    for (i = 0; i < PAGE_BOOT_SWITCH_TEST_OPTION_COUNT; ++i) {
-        if (data->count_btns[i] == NULL) {
-            continue;
-        }
-        if (enabled) {
-            lv_obj_clear_state(data->count_btns[i], LV_STATE_DISABLED);
-        } else {
-            lv_obj_add_state(data->count_btns[i], LV_STATE_DISABLED);
+            lv_obj_add_state(btns[i], LV_STATE_DISABLED);
         }
     }
 }
 
-static void highlight_selected_option(page_boot_switch_test_data_t* data)
+/* 刷新动作按钮文字为当前选中动作。 */
+static void refresh_action_label(page_boot_switch_test_data_t* data)
 {
-    int i;
-
-    if (data == NULL) {
+    if (data == NULL || data->action_label == NULL) {
         return;
     }
-    for (i = 0; i < PAGE_BOOT_SWITCH_TEST_OPTION_COUNT; ++i) {
-        if (data->count_btns[i] == NULL) {
-            continue;
-        }
-        if (g_bst_options[i] == data->target) {
-            lv_obj_set_style_bg_color(data->count_btns[i], lv_color_hex(0x2F80ED), LV_PART_MAIN);
-        } else {
-            lv_obj_set_style_bg_color(data->count_btns[i], lv_color_hex(0x444444), LV_PART_MAIN);
-        }
-    }
+    lv_label_set_text(data->action_label, g_bst_action_labels[data->action]);
 }
 
-static void highlight_selected_action(page_boot_switch_test_data_t* data)
+/* 刷新次数按钮文字为当前选中次数（无穷显示「无穷」）。 */
+static void refresh_count_label(page_boot_switch_test_data_t* data)
 {
-    int i;
+    char buf[16];
 
-    if (data == NULL) {
+    if (data == NULL || data->count_label == NULL) {
         return;
     }
-    for (i = 0; i < PAGE_BOOT_SWITCH_TEST_ACTION_COUNT; ++i) {
-        if (data->action_btns[i] == NULL) {
-            continue;
-        }
-        if ((bst_action_t)i == data->action) {
-            lv_obj_set_style_bg_color(data->action_btns[i], lv_color_hex(0x2F80ED), LV_PART_MAIN);
-        } else {
-            lv_obj_set_style_bg_color(data->action_btns[i], lv_color_hex(0x444444), LV_PART_MAIN);
-        }
+    if (data->target == BST_TARGET_INFINITE) {
+        lv_label_set_text(data->count_label, "无穷");
+    } else {
+        snprintf(buf, sizeof(buf), "%u", (unsigned)data->target);
+        lv_label_set_text(data->count_label, buf);
     }
 }
 
@@ -348,41 +329,30 @@ static void back_btn_cb(lv_event_t* e)
     page_manager_back();
 }
 
+/* 次数按钮：点一下循环切下一个次数（1->100->1000->10000->无穷->回到 1）。 */
 static void count_btn_cb(lv_event_t* e)
 {
     page_boot_switch_test_data_t* data = (page_boot_switch_test_data_t*)lv_event_get_user_data(e);
-    lv_obj_t* btn = lv_event_get_target(e);
-    int i;
 
     if (data == NULL || data->running) {
         return;
     }
-    for (i = 0; i < PAGE_BOOT_SWITCH_TEST_OPTION_COUNT; ++i) {
-        if (data->count_btns[i] == btn) {
-            data->target = g_bst_options[i];
-            break;
-        }
-    }
-    highlight_selected_option(data);
+    data->count_idx = (uint8_t)((data->count_idx + 1U) % PAGE_BOOT_SWITCH_TEST_OPTION_COUNT);
+    data->target = g_bst_options[data->count_idx];
+    refresh_count_label(data);
     refresh_progress(data);
 }
 
+/* 动作按钮：点一下循环切下一个动作（拍照-boot->录像-boot->拍照-录像->回到拍照-boot）。 */
 static void action_btn_cb(lv_event_t* e)
 {
     page_boot_switch_test_data_t* data = (page_boot_switch_test_data_t*)lv_event_get_user_data(e);
-    lv_obj_t* btn = lv_event_get_target(e);
-    int i;
 
     if (data == NULL || data->running) {
         return;
     }
-    for (i = 0; i < PAGE_BOOT_SWITCH_TEST_ACTION_COUNT; ++i) {
-        if (data->action_btns[i] == btn) {
-            data->action = (bst_action_t)i;
-            break;
-        }
-    }
-    highlight_selected_action(data);
+    data->action = (bst_action_t)(((int)data->action + 1) % PAGE_BOOT_SWITCH_TEST_ACTION_COUNT);
+    refresh_action_label(data);
 }
 
 /* 开始/暂停 切换。非运行态点击 = 从头开始，发起第一个异步半步。运行态点击 = 暂停：
@@ -440,9 +410,6 @@ void page_boot_switch_test_create(void)
     lv_obj_t* top_bar;
     lv_obj_t* back_btn;
     lv_obj_t* back_icon;
-    lv_obj_t* action_row;
-    lv_obj_t* option_row;
-    int i;
 
     if (data == NULL) {
         return;
@@ -475,94 +442,58 @@ void page_boot_switch_test_create(void)
 
     data->title_label = lv_label_create(top_bar);
     lv_label_set_text(data->title_label, "模式切换测试");
-    lv_obj_add_style(data->title_label, &NORMAL_SIZE, LV_PART_MAIN);
+    lv_obj_add_style(data->title_label, &SMALL_SIZE, LV_PART_MAIN);
     lv_obj_set_style_text_color(data->title_label, lv_color_white(), LV_PART_MAIN);
     lv_obj_align(data->title_label, LV_ALIGN_LEFT_MID, 70, 0);
 
-    /* 切换动作：拍照-boot / 录像-boot / 拍照-录像 */
-    action_row = lv_obj_create(data->container);
-    lv_obj_remove_style_all(action_row);
-    lv_obj_set_size(action_row, LV_PCT(100), BST_ACTION_BTN_HEIGHT + 16);
-    lv_obj_align(action_row, LV_ALIGN_TOP_MID, 0, BST_TOP_BAR_HEIGHT + 16);
-    lv_obj_set_flex_flow(action_row, LV_FLEX_FLOW_ROW);
-    lv_obj_set_flex_align(action_row, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-    lv_obj_set_style_pad_column(action_row, 12, LV_PART_MAIN);
-    lv_obj_clear_flag(action_row, LV_OBJ_FLAG_SCROLLABLE);
+    /* 动作按钮（顶栏最右，与返回按钮同一行）：点一下循环切下一个动作，文字显示当前动作。 */
+    data->action_btn = lv_btn_create(top_bar);
+    lv_obj_set_size(data->action_btn, BST_ACTION_BTN_WIDTH, BST_BTN_HEIGHT);
+    lv_obj_set_style_radius(data->action_btn, 10, LV_PART_MAIN);
+    lv_obj_set_style_bg_color(data->action_btn, lv_color_hex(0x2F80ED), LV_PART_MAIN);
+    lv_obj_set_style_bg_opa(data->action_btn, LV_OPA_80, LV_PART_MAIN);
+    lv_obj_align(data->action_btn, LV_ALIGN_RIGHT_MID, -BST_BTN_MARGIN, 0);
+    lv_obj_add_event_cb(data->action_btn, action_btn_cb, LV_EVENT_CLICKED, data);
+    data->action_label = lv_label_create(data->action_btn);
+    lv_obj_add_style(data->action_label, &SMALL_SIZE, LV_PART_MAIN);
+    lv_obj_set_style_text_color(data->action_label, lv_color_white(), LV_PART_MAIN);
+    lv_obj_center(data->action_label);
 
-    for (i = 0; i < PAGE_BOOT_SWITCH_TEST_ACTION_COUNT; ++i) {
-        lv_obj_t* btn = lv_btn_create(action_row);
-        lv_obj_t* lbl;
+    /* 次数按钮（左下角）：点一下循环切下一个次数，文字显示当前次数。 */
+    data->count_btn = lv_btn_create(data->container);
+    lv_obj_set_size(data->count_btn, BST_COUNT_BTN_WIDTH, BST_BTN_HEIGHT);
+    lv_obj_set_style_radius(data->count_btn, 10, LV_PART_MAIN);
+    lv_obj_set_style_bg_color(data->count_btn, lv_color_hex(0x2F80ED), LV_PART_MAIN);
+    lv_obj_set_style_bg_opa(data->count_btn, LV_OPA_80, LV_PART_MAIN);
+    lv_obj_align(data->count_btn, LV_ALIGN_BOTTOM_LEFT, BST_BTN_MARGIN, -BST_BTN_MARGIN);
+    lv_obj_add_event_cb(data->count_btn, count_btn_cb, LV_EVENT_CLICKED, data);
+    data->count_label = lv_label_create(data->count_btn);
+    lv_obj_add_style(data->count_label, &SMALL_SIZE, LV_PART_MAIN);
+    lv_obj_set_style_text_color(data->count_label, lv_color_white(), LV_PART_MAIN);
+    lv_obj_center(data->count_label);
 
-        lv_obj_set_size(btn, BST_ACTION_BTN_WIDTH, BST_ACTION_BTN_HEIGHT);
-        lv_obj_set_style_radius(btn, 12, LV_PART_MAIN);
-        lv_obj_set_style_bg_opa(btn, LV_OPA_80, LV_PART_MAIN);
-        lv_obj_add_event_cb(btn, action_btn_cb, LV_EVENT_CLICKED, data);
-
-        lbl = lv_label_create(btn);
-        lv_label_set_text(lbl, g_bst_action_labels[i]);
-        lv_obj_add_style(lbl, &NORMAL_SIZE, LV_PART_MAIN);
-        lv_obj_set_style_text_color(lbl, lv_color_white(), LV_PART_MAIN);
-        lv_obj_center(lbl);
-
-        data->action_btns[i] = btn;
-    }
-
-    /* 切换次数：1 / 100 / 1000 / 10000 / ∞ */
-    option_row = lv_obj_create(data->container);
-    lv_obj_remove_style_all(option_row);
-    lv_obj_set_size(option_row, LV_PCT(100), BST_COUNT_BTN_HEIGHT + 16);
-    lv_obj_align(option_row, LV_ALIGN_TOP_MID, 0, BST_TOP_BAR_HEIGHT + BST_ACTION_BTN_HEIGHT + 48);
-    lv_obj_set_flex_flow(option_row, LV_FLEX_FLOW_ROW);
-    lv_obj_set_flex_align(option_row, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-    lv_obj_set_style_pad_column(option_row, 12, LV_PART_MAIN);
-    lv_obj_clear_flag(option_row, LV_OBJ_FLAG_SCROLLABLE);
-
-    for (i = 0; i < PAGE_BOOT_SWITCH_TEST_OPTION_COUNT; ++i) {
-        char label_buf[16];
-        lv_obj_t* btn = lv_btn_create(option_row);
-        lv_obj_t* lbl;
-
-        lv_obj_set_size(btn, BST_COUNT_BTN_WIDTH, BST_COUNT_BTN_HEIGHT);
-        lv_obj_set_style_radius(btn, 12, LV_PART_MAIN);
-        lv_obj_set_style_bg_opa(btn, LV_OPA_80, LV_PART_MAIN);
-        lv_obj_add_event_cb(btn, count_btn_cb, LV_EVENT_CLICKED, data);
-
-        lbl = lv_label_create(btn);
-        if (g_bst_options[i] == BST_TARGET_INFINITE) {
-            lv_label_set_text(lbl, "无穷");
-        } else {
-            snprintf(label_buf, sizeof(label_buf), "%u", (unsigned)g_bst_options[i]);
-            lv_label_set_text(lbl, label_buf);
-        }
-        lv_obj_add_style(lbl, &NORMAL_SIZE, LV_PART_MAIN);
-        lv_obj_set_style_text_color(lbl, lv_color_white(), LV_PART_MAIN);
-        lv_obj_center(lbl);
-
-        data->count_btns[i] = btn;
-    }
-
-    /* 开始按钮 */
+    /* 开始按钮（右下角）：开始/暂停。 */
     data->start_btn = lv_btn_create(data->container);
-    lv_obj_set_size(data->start_btn, 200, 72);
-    lv_obj_set_style_radius(data->start_btn, 12, LV_PART_MAIN);
+    lv_obj_set_size(data->start_btn, BST_START_BTN_WIDTH, BST_BTN_HEIGHT);
+    lv_obj_set_style_radius(data->start_btn, 10, LV_PART_MAIN);
     lv_obj_set_style_bg_color(data->start_btn, lv_color_hex(0x27AE60), LV_PART_MAIN);
     lv_obj_set_style_bg_opa(data->start_btn, LV_OPA_80, LV_PART_MAIN);
-    lv_obj_align(data->start_btn, LV_ALIGN_CENTER, 0, 60);
+    lv_obj_align(data->start_btn, LV_ALIGN_BOTTOM_RIGHT, -BST_BTN_MARGIN, -BST_BTN_MARGIN);
     lv_obj_add_event_cb(data->start_btn, start_btn_cb, LV_EVENT_CLICKED, data);
     data->start_label = lv_label_create(data->start_btn);
     lv_label_set_text(data->start_label, "开始");
-    lv_obj_add_style(data->start_label, &NORMAL_SIZE, LV_PART_MAIN);
+    lv_obj_add_style(data->start_label, &SMALL_SIZE, LV_PART_MAIN);
     lv_obj_set_style_text_color(data->start_label, lv_color_white(), LV_PART_MAIN);
     lv_obj_center(data->start_label);
 
-    /* 进度显示：白色字体 */
+    /* 进度显示：底部居中，白色小字。 */
     data->progress_label = lv_label_create(data->container);
-    lv_obj_add_style(data->progress_label, &NORMAL_SIZE, LV_PART_MAIN);
+    lv_obj_add_style(data->progress_label, &SMALL_SIZE, LV_PART_MAIN);
     lv_obj_set_style_text_color(data->progress_label, lv_color_white(), LV_PART_MAIN);
-    lv_obj_align(data->progress_label, LV_ALIGN_CENTER, 0, 150);
+    lv_obj_align(data->progress_label, LV_ALIGN_BOTTOM_MID, 0, -BST_BTN_MARGIN - 6);
 
-    highlight_selected_action(data);
-    highlight_selected_option(data);
+    refresh_action_label(data);
+    refresh_count_label(data);
     refresh_progress(data);
     page_set_private_data(data);
     g_bst_active = data;

@@ -21,13 +21,16 @@ typedef enum {
 typedef struct {
     lv_obj_t* container;
     lv_obj_t* title_label;
-    lv_obj_t* action_btns[PAGE_BOOT_SWITCH_TEST_ACTION_COUNT];
-    lv_obj_t* count_btns[PAGE_BOOT_SWITCH_TEST_OPTION_COUNT];
-    lv_obj_t* start_btn;
+    lv_obj_t* action_btn; /* 右上角：点一下循环切下一个动作 */
+    lv_obj_t* action_label;
+    lv_obj_t* count_btn; /* 左下角：点一下循环切下一个次数 */
+    lv_obj_t* count_label;
+    lv_obj_t* start_btn; /* 右下角：开始/暂停 */
     lv_obj_t* start_label;
     lv_obj_t* progress_label;
 
     bst_action_t action; /* 当前选中的切换动作，默认 BST_ACTION_PHOTO_BOOT */
+    uint8_t count_idx; /* 当前次数在 g_bst_options 中的下标 */
     uint32_t target; /* 目标切换轮数；BST_TARGET_INFINITE 表无穷 */
     uint32_t done; /* 已完成轮数 */
     uint8_t phase; /* 0=下一步切 op_a(此刻在 boot/op_b); 1=下一步切 op_b(此刻在 op_a) */
