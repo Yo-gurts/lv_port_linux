@@ -3,6 +3,7 @@
 #include "core/key_manager.h"
 #include "core/message_manager.h"
 #include "core/param_manager.h"
+#include "lvgl.h"
 #include "mlog.h"
 #include "mode.h"
 #include "param.h"
@@ -605,6 +606,94 @@ int media_manager_execute(media_operation_t op, int32_t args)
     }
 
     return handler(args);
+}
+
+/* 异步模式切换：把「EventHub 线程回包 -> UI 线程回调」的跨线程 hop 收在本层，
+ * 对上层只暴露模式无关的 media_switch_done_cb_t。msg_processed 门保证同一时刻仅一个
+ * 在途请求，故单槽 static 存 done_cb/result 足够。 */
+static media_switch_done_cb_t g_switch_done_cb = NULL;
+static volatile int g_switch_result = 0;
+
+/* UI 线程：由 lv_async 调度，把结果交给上层回调。 */
+static void mm_switch_done_on_ui(void* param)
+{
+    media_switch_done_cb_t cb = g_switch_done_cb;
+
+    (void)param;
+    g_switch_done_cb = NULL;
+    if (cb != NULL) {
+        cb((int)g_switch_result);
+    }
+}
+
+/* EventHub 线程：回包到达，记录结果并 hop 到 UI 线程（仿 message_manager 既有做法）。 */
+static int32_t mm_switch_result_cb(EVENT_S* evt)
+{
+    g_switch_result = (evt != NULL) ? evt->s32Result : MEDIA_MANAGER_ESTATE;
+    (void)lv_async_call(mm_switch_done_on_ui, NULL);
+    return g_switch_result;
+}
+
+/* 发起一次异步模式切换：组 msg 后 send_async，回包走 mm_switch_result_cb。
+ * 不屏蔽 TP（异步切换正是为了 UI 全程可响应）。 */
+static int media_manager_send_switch_async(int32_t work_mode)
+{
+    MESSAGE_S msg = { 0 };
+    int32_t ret = 0;
+
+    msg.topic = EVENT_MODEMNG_MODESWITCH;
+    msg.arg1 = work_mode;
+    ret = message_manager_send_async(&msg, mm_switch_result_cb);
+    if (ret != 0) {
+        MLOG_ERR("异步切换发送失败: work_mode=%d ret=%d", (int)work_mode, (int)ret);
+        return MEDIA_MANAGER_ESTATE;
+    }
+    return MEDIA_MANAGER_OK;
+}
+
+/* 异步 handler：与同步 handle_switch_to_*_mode 并行，op->WORK_MODE 映射同样收在各自 handler 里。 */
+typedef int (*media_async_handler_t)(void);
+
+static int handle_switch_to_photo_mode_async(void)
+{
+    return media_manager_send_switch_async(WORK_MODE_PHOTO);
+}
+
+static int handle_switch_to_boot_mode_async(void)
+{
+    return media_manager_send_switch_async(WORK_MODE_BOOT);
+}
+
+static const media_async_handler_t g_media_async_handlers[MEDIA_OP_BUTT] = {
+    [MEDIA_OP_SWITCH_TO_PHOTO_MODE] = handle_switch_to_photo_mode_async,
+    [MEDIA_OP_SWITCH_TO_BOOT_MODE] = handle_switch_to_boot_mode_async,
+};
+
+int media_manager_execute_async(media_operation_t op, media_switch_done_cb_t done_cb)
+{
+    media_async_handler_t handler = NULL;
+    int ret = 0;
+
+    if (op < 0 || op >= MEDIA_OP_BUTT) {
+        MLOG_WARN("异步切换非法操作: %d", op);
+        return MEDIA_MANAGER_EINVAL;
+    }
+
+    handler = g_media_async_handlers[op];
+    if (handler == NULL) {
+        MLOG_WARN("异步切换不支持的操作: %d", op);
+        return MEDIA_MANAGER_EUNSUP;
+    }
+
+    g_switch_done_cb = done_cb;
+    ret = handler();
+    if (ret != MEDIA_MANAGER_OK) {
+        g_switch_done_cb = NULL; /* 发起失败：清回单槽，避免残留 cb 被下次误触发 */
+        return ret;
+    }
+
+    MLOG_INFO("已异步请求切换: op=%d", op);
+    return MEDIA_MANAGER_OK;
 }
 
 int media_manager_get_current_work_mode(void)

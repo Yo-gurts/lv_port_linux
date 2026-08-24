@@ -1,5 +1,6 @@
 #include "core/media_manager.h"
 #include "core/param_manager.h"
+#include "lvgl.h"
 #include "mlog.h"
 
 typedef int (*media_op_handler_t)(int32_t args);
@@ -238,6 +239,66 @@ int media_manager_execute(media_operation_t op, int32_t args)
     }
 
     return handler(args);
+}
+
+/* mock 异步切换：SDL 的 message_manager_send_async 忽略 cb 从不回调，故这里自己模拟完成——
+ * 同步切好 g_mock_work_mode，再用 lv_async 在下一 UI 循环回调 done_cb(0)，模拟异步时序。 */
+static media_switch_done_cb_t g_mock_switch_done_cb = NULL;
+
+static void mock_switch_done_on_ui(void* param)
+{
+    media_switch_done_cb_t cb = g_mock_switch_done_cb;
+
+    (void)param;
+    g_mock_switch_done_cb = NULL;
+    if (cb != NULL) {
+        cb(0);
+    }
+}
+
+/* 异步 handler：与真实版对称，走 handler 表分派。mock 里同步切好 g_mock_work_mode，
+ * 再由 execute_async 统一 lv_async 回调（模拟异步时序）。 */
+typedef int (*media_async_handler_t)(void);
+
+static int mock_switch_to_photo_mode_async(void)
+{
+    return media_manager_execute(MEDIA_OP_SWITCH_TO_PHOTO_MODE, 0);
+}
+
+static int mock_switch_to_boot_mode_async(void)
+{
+    return media_manager_execute(MEDIA_OP_SWITCH_TO_BOOT_MODE, 0);
+}
+
+static const media_async_handler_t g_media_async_handlers[MEDIA_OP_BUTT] = {
+    [MEDIA_OP_SWITCH_TO_PHOTO_MODE] = mock_switch_to_photo_mode_async,
+    [MEDIA_OP_SWITCH_TO_BOOT_MODE] = mock_switch_to_boot_mode_async,
+};
+
+int media_manager_execute_async(media_operation_t op, media_switch_done_cb_t done_cb)
+{
+    media_async_handler_t handler = NULL;
+    int ret;
+
+    if (op < 0 || op >= MEDIA_OP_BUTT) {
+        MLOG_WARN("media_manager 异步切换非法操作: %d", op);
+        return MEDIA_MANAGER_EINVAL;
+    }
+
+    handler = g_media_async_handlers[op];
+    if (handler == NULL) {
+        MLOG_WARN("media_manager 异步切换不支持的操作: %d", op);
+        return MEDIA_MANAGER_EUNSUP;
+    }
+
+    ret = handler();
+    if (ret != MEDIA_MANAGER_OK) {
+        return ret;
+    }
+
+    g_mock_switch_done_cb = done_cb;
+    (void)lv_async_call(mock_switch_done_on_ui, NULL);
+    return MEDIA_MANAGER_OK;
 }
 
 int media_manager_get_current_work_mode(void)
