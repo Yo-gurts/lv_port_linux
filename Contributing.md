@@ -4,7 +4,8 @@
 - **尽量避免使用线程，优先使用 LVGL 的 timer**
   - LVGL 不是线程安全框架。
   - 多线程操作 LVGL 对象容易造成崩溃或 UI 异常。
-  - 若必须跨线程更新 UI，应使用 **lv_async_call()** 或消息队列回到 LVGL 线程执行。
+  - 若必须跨线程更新 UI，用**消息/标志 + UI 主循环 poll**（子线程只置线程安全标志，UI 线程在 poll 里消费并回调，参考 `param_manager` / `media_manager` / `message_manager`）。
+  - **不要在非 UI 线程调用 `lv_async_call()`**：它的 "async" 指「延迟到本线程下一帧 `lv_timer_handler` 执行回调」，其投递动作内部是 `lv_malloc + lv_timer_create` 且**无加锁**——只有在全工程用一把全局 mutex 包住所有 `lv_*`（含 `lv_timer_handler` 前后）时跨线程调用才安全，本工程没有这把锁，跨线程调会撞坏 LVGL 内存池导致随机崩溃。
 
 - **所有 LVGL 调用必须在同一个线程进行（一般是 GUI 主线程）**
   - 包含控件创建、删除、事件、样式操作。
@@ -19,7 +20,7 @@
 
 - **定时器不要阻塞（timer 回调必须短）**
   - 避免在定时器里执行 IO、延迟、死循环。
-  - 重活放到后台线程，再用 lv_async_call 回来更新 UI。
+  - 重活放到后台线程，后台线程只置标志，再由 UI 主循环 poll 回来更新 UI（勿在后台线程调 lv_async_call，理由见上「LVGL 开发规范」）。
 
 - **避免长时间阻塞 LVGL 的 task handler**
   - 主循环要持续执行 `lv_timer_handler()`。
