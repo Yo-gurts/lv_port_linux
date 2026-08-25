@@ -10,10 +10,11 @@
 #define ZOOM_BAR_LEVEL_COUNT 16
 #define ZOOM_BAR_MIN_VALUE 1
 #define ZOOM_BAR_MAX_VALUE 16
-#define ZOOM_PANEL_WIDTH 56
-#define ZOOM_PANEL_HEIGHT 190
+/* 横向面板宽 = 5 个圈 + 4 段间距，正好容纳 5 档可见：5*36 + 4*2 = 188。 */
+#define ZOOM_PANEL_WIDTH 188
+#define ZOOM_PANEL_HEIGHT 50
 #define ZOOM_ITEM_SIZE 36
-#define ZOOM_ITEM_GAP 10
+#define ZOOM_ITEM_GAP 2
 #define ZOOM_ITEM_STEP (ZOOM_ITEM_SIZE + ZOOM_ITEM_GAP)
 #define ZOOM_FOCUS_SIZE 40
 
@@ -26,7 +27,7 @@ typedef struct {
     int visual_index; /* 当前居中高亮档位下标（拖动中实时变化） */
     /* 程序化滚动的目标档位下标；SCROLL_END 唯一事实源。
      * >=0 表示有在飞的目标滚动：只有滚到该档（nearest==pending）才 commit，
-     * 半路被 lv_obj_scroll_to_y 内 lv_anim_delete 触发的 deleted_cb→SCROLL_END
+     * 半路被 lv_obj_scroll_to_x 内 lv_anim_delete 触发的 deleted_cb→SCROLL_END
      * 会读到 nearest!=pending，直接忽略，杜绝点击/回授时的中途误下发。
      * -1 表示无待确认目标（纯拖动松手停下），此时才由 SCROLL_END 自吸附。 */
     int pending_index;
@@ -70,27 +71,27 @@ static void update_selection_style(void)
 /* 程序化滚动到目标档中心，并记录 pending_index 供 SCROLL_END 一致性确认。 */
 static void scroll_to_index(int index, lv_anim_enable_t anim_en)
 {
-    int32_t target_y;
-    int32_t max_scroll_y;
+    int32_t target_x;
+    int32_t max_scroll_x;
 
     if (g_zoom_bar.list == NULL || index < 0 || index >= ZOOM_BAR_LEVEL_COUNT) {
         return;
     }
 
-    target_y = index * ZOOM_ITEM_STEP;
-    if (target_y < 0) {
-        target_y = 0;
+    target_x = index * ZOOM_ITEM_STEP;
+    if (target_x < 0) {
+        target_x = 0;
     }
 
-    max_scroll_y = lv_obj_get_scroll_top(g_zoom_bar.list) + lv_obj_get_scroll_bottom(g_zoom_bar.list);
-    if (target_y > max_scroll_y) {
-        target_y = max_scroll_y;
+    max_scroll_x = lv_obj_get_scroll_left(g_zoom_bar.list) + lv_obj_get_scroll_right(g_zoom_bar.list);
+    if (target_x > max_scroll_x) {
+        target_x = max_scroll_x;
     }
 
-    /* 先记目标再启动滚动：lv_obj_scroll_to_y 会先 lv_anim_delete 杀在飞动画，
+    /* 先记目标再启动滚动：lv_obj_scroll_to_x 会先 lv_anim_delete 杀在飞动画，
      * 其 deleted_cb 在半路发 SCROLL_END——届时 nearest!=pending_index 被忽略。 */
     g_zoom_bar.pending_index = index;
-    lv_obj_scroll_to_y(g_zoom_bar.list, target_y, anim_en);
+    lv_obj_scroll_to_x(g_zoom_bar.list, target_x, anim_en);
 }
 
 /* 设置选中下标：applied 变化时才下发 param/media，visual 始终同步刷新。 */
@@ -124,18 +125,18 @@ static void set_selected_index(int index, const char* source)
 }
 
 /* 读当前滚动位置换算最近档位下标（先偏移半档再 clamp 再整除，
- * 避免顶部弹性负位置时 C 整除朝零取整先产出 -1 的瞬时窗口）。 */
+ * 避免左侧弹性负位置时 C 整除朝零取整先产出 -1 的瞬时窗口）。 */
 static int nearest_center_index(void)
 {
-    int32_t scroll_y;
+    int32_t scroll_x;
     int32_t v;
 
     if (g_zoom_bar.list == NULL) {
         return 0;
     }
 
-    scroll_y = lv_obj_get_scroll_top(g_zoom_bar.list);
-    v = scroll_y + ZOOM_ITEM_STEP / 2;
+    scroll_x = lv_obj_get_scroll_left(g_zoom_bar.list);
+    v = scroll_x + ZOOM_ITEM_STEP / 2;
     if (v < 0) {
         v = 0;
     }
@@ -170,7 +171,7 @@ static void list_scroll_cb(lv_event_t* e)
  *     这是「拖动打断上一次吸附动画后 pending 陈旧、卡两档中间」的根治点。
  *  B) 动画完成/被删：indev == NULL（lv_obj_scroll.c scroll_end_cb 发出，param=NULL）。
  *     只有 nearest==pending 才是「到位」——commit 一次并清 pending；
- *     nearest!=pending 是 lv_obj_scroll_to_y 内 lv_anim_delete 杀在飞动画触发的
+ *     nearest!=pending 是 lv_obj_scroll_to_x 内 lv_anim_delete 杀在飞动画触发的
  *     半路 deleted_cb→SCROLL_END，直接忽略，杜绝点击/回授时的中途误下发。 */
 static void list_scroll_end_cb(lv_event_t* e)
 {
@@ -190,7 +191,7 @@ static void list_scroll_end_cb(lv_event_t* e)
     if (indev != NULL) {
         /* A) 用户拖动松手：陈旧 pending 作废，按当前位置自吸附 */
         g_zoom_bar.pending_index = -1;
-        if (nearest_index * ZOOM_ITEM_STEP == lv_obj_get_scroll_top(g_zoom_bar.list)) {
+        if (nearest_index * ZOOM_ITEM_STEP == lv_obj_get_scroll_left(g_zoom_bar.list)) {
             set_selected_index(nearest_index, "scroll_snap"); /* 恰好停在中心 */
         } else {
             scroll_to_index(nearest_index, LV_ANIM_ON); /* 自吸附到中心，到位再下发 */
@@ -269,7 +270,7 @@ void zoom_bar_init(void)
 
     g_zoom_bar.container = lv_obj_create(lv_screen_active());
     lv_obj_set_size(g_zoom_bar.container, ZOOM_PANEL_WIDTH, ZOOM_PANEL_HEIGHT);
-    lv_obj_align(g_zoom_bar.container, LV_ALIGN_LEFT_MID, 8, 0);
+    lv_obj_align(g_zoom_bar.container, LV_ALIGN_BOTTOM_MID, 0, -2);
     lv_obj_add_style(g_zoom_bar.container, &style_zoom_container, LV_PART_MAIN);
     lv_obj_clear_flag(g_zoom_bar.container, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_set_scrollbar_mode(g_zoom_bar.container, LV_SCROLLBAR_MODE_OFF);
@@ -277,23 +278,24 @@ void zoom_bar_init(void)
 
     g_zoom_bar.list = lv_obj_create(g_zoom_bar.container);
     lv_obj_set_size(g_zoom_bar.list, lv_pct(100), lv_pct(100));
-    lv_obj_set_scroll_dir(g_zoom_bar.list, LV_DIR_VER);
+    lv_obj_set_scroll_dir(g_zoom_bar.list, LV_DIR_HOR);
     /* 不开原生 SNAP_CENTER：原生 snap 在惯性结束时「先启动 snap 动画、再立即
      * 发 SCROLL_END」（lv_indev_scroll.c），事件到达时位置未到位，且与自己的
      * scroll_to 形成双定位竞争。吸附完全收回自己手里：拖动松手的 SCROLL_END
      * 里算最近档并 scroll_to_index(ANIM_ON) 自吸附，到位后再唯一下发。 */
     lv_obj_set_scrollbar_mode(g_zoom_bar.list, LV_SCROLLBAR_MODE_OFF);
     lv_obj_set_layout(g_zoom_bar.list, LV_LAYOUT_FLEX);
-    lv_obj_set_flex_flow(g_zoom_bar.list, LV_FLEX_FLOW_COLUMN);
+    lv_obj_set_flex_flow(g_zoom_bar.list, LV_FLEX_FLOW_ROW);
     lv_obj_set_flex_align(g_zoom_bar.list, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
     lv_obj_set_style_bg_opa(g_zoom_bar.list, LV_OPA_TRANSP, LV_PART_MAIN);
     lv_obj_set_style_border_width(g_zoom_bar.list, 0, LV_PART_MAIN);
     lv_obj_set_style_radius(g_zoom_bar.list, 0, LV_PART_MAIN);
-    lv_obj_set_style_pad_left(g_zoom_bar.list, 0, LV_PART_MAIN);
-    lv_obj_set_style_pad_right(g_zoom_bar.list, 0, LV_PART_MAIN);
-    lv_obj_set_style_pad_top(g_zoom_bar.list, (ZOOM_PANEL_HEIGHT - ZOOM_ITEM_SIZE) / 2, LV_PART_MAIN);
-    lv_obj_set_style_pad_bottom(g_zoom_bar.list, (ZOOM_PANEL_HEIGHT - ZOOM_ITEM_SIZE) / 2, LV_PART_MAIN);
-    lv_obj_set_style_pad_row(g_zoom_bar.list, ZOOM_ITEM_GAP, LV_PART_MAIN);
+    lv_obj_set_style_pad_top(g_zoom_bar.list, 0, LV_PART_MAIN);
+    lv_obj_set_style_pad_bottom(g_zoom_bar.list, 0, LV_PART_MAIN);
+    /* 主轴两端各留半个可视区，使第 1/16 档也能滚到正中央固定焦点框（主轴长度=面板宽 190）。 */
+    lv_obj_set_style_pad_left(g_zoom_bar.list, (ZOOM_PANEL_WIDTH - ZOOM_ITEM_SIZE) / 2, LV_PART_MAIN);
+    lv_obj_set_style_pad_right(g_zoom_bar.list, (ZOOM_PANEL_WIDTH - ZOOM_ITEM_SIZE) / 2, LV_PART_MAIN);
+    lv_obj_set_style_pad_column(g_zoom_bar.list, ZOOM_ITEM_GAP, LV_PART_MAIN);
     lv_obj_add_event_cb(g_zoom_bar.list, list_scroll_cb, LV_EVENT_SCROLL, NULL);
     lv_obj_add_event_cb(g_zoom_bar.list, list_scroll_end_cb, LV_EVENT_SCROLL_END, NULL);
 
