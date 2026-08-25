@@ -650,43 +650,77 @@ static int media_manager_send_switch_async(int32_t work_mode)
     return MEDIA_MANAGER_OK;
 }
 
-/* 异步 handler：与同步 handle_switch_to_*_mode 并行，op->WORK_MODE 映射同样收在各自 handler 里。 */
-typedef int (*media_async_handler_t)(void);
-
-static int handle_switch_to_photo_mode_async(void)
+/* 异步设置拍照分辨率：先设 param，再走与模式切换同一套回包->poll 机制（EVENT_MODEMNG_SETTING），
+ * 完成时经 mm_switch_result_cb 置 pending，UI 线程 poll 回调。args 为分辨率档位下标。
+ * 与同步 handle_set_photo_resolution 的区别仅在于用 send_async 且不屏蔽 TP。 */
+static int media_manager_send_set_photo_resolution_async(int32_t index)
 {
+    MESSAGE_S msg = { 0 };
+    int32_t ret = 0;
+
+    ret = media_manager_set_param_checked(PARAM_ID_RESOLUTION, (int)index, "设置拍照分辨率");
+    if (ret != MEDIA_MANAGER_OK) {
+        return ret;
+    }
+
+    msg.topic = EVENT_MODEMNG_SETTING;
+    msg.arg1 = PARAM_MENU_PHOTO_SIZE;
+    msg.arg2 = (uint32_t)index;
+    ret = message_manager_send_async(&msg, mm_switch_result_cb);
+    if (ret != 0) {
+        MLOG_ERR("异步设置拍照分辨率发送失败: index=%d ret=%d", (int)index, (int)ret);
+        return MEDIA_MANAGER_ESTATE;
+    }
+    return MEDIA_MANAGER_OK;
+}
+
+/* 异步 handler：与同步 handle_switch_to_*_mode 并行，op->WORK_MODE 映射同样收在各自 handler 里。
+ * args 仅分辨率下发使用（模式切换忽略）。 */
+typedef int (*media_async_handler_t)(int32_t args);
+
+static int handle_switch_to_photo_mode_async(int32_t args)
+{
+    (void)args;
     return media_manager_send_switch_async(WORK_MODE_PHOTO);
 }
 
-static int handle_switch_to_boot_mode_async(void)
+static int handle_switch_to_boot_mode_async(int32_t args)
 {
+    (void)args;
     return media_manager_send_switch_async(WORK_MODE_BOOT);
 }
 
-static int handle_switch_to_video_mode_async(void)
+static int handle_switch_to_video_mode_async(int32_t args)
 {
+    (void)args;
     return media_manager_send_switch_async(WORK_MODE_MOVIE);
+}
+
+static int handle_set_photo_resolution_async(int32_t args)
+{
+    return media_manager_send_set_photo_resolution_async(args);
 }
 
 static const media_async_handler_t g_media_async_handlers[MEDIA_OP_BUTT] = {
     [MEDIA_OP_SWITCH_TO_PHOTO_MODE] = handle_switch_to_photo_mode_async,
     [MEDIA_OP_SWITCH_TO_BOOT_MODE] = handle_switch_to_boot_mode_async,
     [MEDIA_OP_SWITCH_TO_VIDEO_MODE] = handle_switch_to_video_mode_async,
+    [MEDIA_OP_SET_PHOTO_RESOLUTION] = handle_set_photo_resolution_async,
 };
 
-int media_manager_execute_async(media_operation_t op, media_switch_done_cb_t done_cb)
+int media_manager_execute_async(media_operation_t op, int32_t args, media_switch_done_cb_t done_cb)
 {
     media_async_handler_t handler = NULL;
     int ret = 0;
 
     if (op < 0 || op >= MEDIA_OP_BUTT) {
-        MLOG_WARN("异步切换非法操作: %d", op);
+        MLOG_WARN("异步操作非法: %d", op);
         return MEDIA_MANAGER_EINVAL;
     }
 
     handler = g_media_async_handlers[op];
     if (handler == NULL) {
-        MLOG_WARN("异步切换不支持的操作: %d", op);
+        MLOG_WARN("异步操作不支持: %d", op);
         return MEDIA_MANAGER_EUNSUP;
     }
 
@@ -695,7 +729,7 @@ int media_manager_execute_async(media_operation_t op, media_switch_done_cb_t don
     g_switch_pending = false; /* 清掉可能残留的上一次 pending */
     pthread_mutex_unlock(&g_switch_mutex);
 
-    ret = handler();
+    ret = handler(args);
     if (ret != MEDIA_MANAGER_OK) {
         pthread_mutex_lock(&g_switch_mutex);
         g_switch_done_cb = NULL; /* 发起失败：清回单槽，避免残留 cb 被下次误触发 */
@@ -703,7 +737,7 @@ int media_manager_execute_async(media_operation_t op, media_switch_done_cb_t don
         return ret;
     }
 
-    MLOG_INFO("已异步请求切换: op=%d", op);
+    MLOG_INFO("已异步请求操作: op=%d", op);
     return MEDIA_MANAGER_OK;
 }
 

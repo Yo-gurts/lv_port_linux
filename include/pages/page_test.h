@@ -13,6 +13,7 @@ typedef struct {
     lv_obj_t* title_label;
     lv_obj_t* key_touch_item;
     lv_obj_t* boot_switch_item;
+    lv_obj_t* photo_resolution_item;
 } page_test_data_t;
 
 void page_test_create(void);

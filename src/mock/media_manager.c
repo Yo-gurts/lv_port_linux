@@ -143,7 +143,11 @@ static int handle_factory_reset(int32_t args)
 
 static int handle_set_photo_resolution(int32_t args)
 {
-    return media_manager_set_param_checked(PARAM_ID_RESOLUTION, (int)args, "设置拍照分辨率");
+    int ret = media_manager_set_param_checked(PARAM_ID_RESOLUTION, (int)args, "设置拍照分辨率");
+    if (ret == MEDIA_MANAGER_OK) {
+        MLOG_INFO("media_manager[mock] 设置拍照分辨率: index=%d", (int)args);
+    }
+    return ret;
 }
 
 static int handle_set_white_balance(int32_t args)
@@ -247,65 +251,81 @@ int media_manager_execute(media_operation_t op, int32_t args)
 #define MOCK_SWITCH_DELAY_MS 300
 
 static media_switch_done_cb_t g_mock_switch_done_cb = NULL;
+static media_operation_t g_mock_switch_op = MEDIA_OP_BUTT; /* 记住在途 op，供完成日志打印 */
 
 static void mock_switch_done_timer_cb(lv_timer_t* timer)
 {
     media_switch_done_cb_t cb = g_mock_switch_done_cb;
+    media_operation_t op = g_mock_switch_op;
 
     lv_timer_del(timer);
     g_mock_switch_done_cb = NULL;
+    g_mock_switch_op = MEDIA_OP_BUTT;
+    MLOG_INFO("media_manager[mock] 异步操作完成: op=%d (延迟 %dms)", (int)op, MOCK_SWITCH_DELAY_MS);
     if (cb != NULL) {
         cb(0);
     }
 }
 
-/* 异步 handler：与真实版对称，走 handler 表分派。mock 里同步切好 g_mock_work_mode，
- * 再由 execute_async 统一 lv_async 回调（模拟异步时序）。 */
-typedef int (*media_async_handler_t)(void);
+/* 异步 handler：与真实版对称，走 handler 表分派。mock 里同步切好状态（模式/param），
+ * 再由 execute_async 统一延迟 lv_timer 回调（模拟异步时序）。args 仅分辨率下发使用。 */
+typedef int (*media_async_handler_t)(int32_t args);
 
-static int mock_switch_to_photo_mode_async(void)
+static int mock_switch_to_photo_mode_async(int32_t args)
 {
+    (void)args;
     return media_manager_execute(MEDIA_OP_SWITCH_TO_PHOTO_MODE, 0);
 }
 
-static int mock_switch_to_boot_mode_async(void)
+static int mock_switch_to_boot_mode_async(int32_t args)
 {
+    (void)args;
     return media_manager_execute(MEDIA_OP_SWITCH_TO_BOOT_MODE, 0);
 }
 
-static int mock_switch_to_video_mode_async(void)
+static int mock_switch_to_video_mode_async(int32_t args)
 {
+    (void)args;
     return media_manager_execute(MEDIA_OP_SWITCH_TO_VIDEO_MODE, 0);
+}
+
+static int mock_set_photo_resolution_async(int32_t args)
+{
+    return media_manager_execute(MEDIA_OP_SET_PHOTO_RESOLUTION, args);
 }
 
 static const media_async_handler_t g_media_async_handlers[MEDIA_OP_BUTT] = {
     [MEDIA_OP_SWITCH_TO_PHOTO_MODE] = mock_switch_to_photo_mode_async,
     [MEDIA_OP_SWITCH_TO_BOOT_MODE] = mock_switch_to_boot_mode_async,
     [MEDIA_OP_SWITCH_TO_VIDEO_MODE] = mock_switch_to_video_mode_async,
+    [MEDIA_OP_SET_PHOTO_RESOLUTION] = mock_set_photo_resolution_async,
 };
 
-int media_manager_execute_async(media_operation_t op, media_switch_done_cb_t done_cb)
+int media_manager_execute_async(media_operation_t op, int32_t args, media_switch_done_cb_t done_cb)
 {
     media_async_handler_t handler = NULL;
     int ret;
 
     if (op < 0 || op >= MEDIA_OP_BUTT) {
-        MLOG_WARN("media_manager 异步切换非法操作: %d", op);
+        MLOG_WARN("media_manager 异步操作非法: %d", op);
         return MEDIA_MANAGER_EINVAL;
     }
 
     handler = g_media_async_handlers[op];
     if (handler == NULL) {
-        MLOG_WARN("media_manager 异步切换不支持的操作: %d", op);
+        MLOG_WARN("media_manager 异步操作不支持: %d", op);
         return MEDIA_MANAGER_EUNSUP;
     }
 
-    ret = handler();
+    MLOG_INFO("media_manager[mock] 发起异步操作: op=%d args=%d", (int)op, (int)args);
+    ret = handler(args);
     if (ret != MEDIA_MANAGER_OK) {
+        MLOG_WARN("media_manager[mock] 异步操作发起失败: op=%d ret=%d", (int)op, ret);
         return ret;
     }
 
     g_mock_switch_done_cb = done_cb;
+    g_mock_switch_op = op;
     (void)lv_timer_create(mock_switch_done_timer_cb, MOCK_SWITCH_DELAY_MS, NULL);
     return MEDIA_MANAGER_OK;
 }

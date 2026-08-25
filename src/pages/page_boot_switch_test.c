@@ -192,7 +192,7 @@ static void start_next_half_step(page_boot_switch_test_data_t* data)
 
     bst_action_modes(data->action, &op_a, &op_b);
     op = (data->phase == 0U) ? op_a : op_b;
-    ret = media_manager_execute_async(op, on_switch_done);
+    ret = media_manager_execute_async(op, 0, on_switch_done);
     if (ret != MEDIA_MANAGER_OK) {
         MLOG_ERR("模式切换测试: 发起异步切换失败 op=%d ret=%d, 停止", op, ret);
         stop_loop(data);
@@ -236,7 +236,7 @@ static void finish_to_boot_then_stop(page_boot_switch_test_data_t* data, int kee
     /* 拍照-录像：多切一次 boot 收尾（不计数）。记住 keep_progress 到 finishing 回调。 */
     MLOG_INFO("模式切换测试: 收尾切回 boot");
     data->finishing = keep_progress ? 2U : 1U; /* 1=归零收尾, 2=保留进度收尾 */
-    ret = media_manager_execute_async(MEDIA_OP_SWITCH_TO_BOOT_MODE, on_switch_done);
+    ret = media_manager_execute_async(MEDIA_OP_SWITCH_TO_BOOT_MODE, 0, on_switch_done);
     if (ret != MEDIA_MANAGER_OK) {
         MLOG_ERR("模式切换测试: 收尾切 boot 失败 ret=%d, 直接停止", ret);
         data->finishing = 0U;
