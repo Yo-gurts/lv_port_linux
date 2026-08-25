@@ -26,6 +26,7 @@
 #include "pages/page_key_touch_test.h"
 #include "pages/page_photo.h"
 #include "pages/page_photo_preview.h"
+#include "pages/page_photo_resolution_test.h"
 #include "pages/page_photo_settings.h"
 #include "pages/page_system_settings.h"
 #include "pages/page_test.h"
@@ -325,6 +326,14 @@ static page_interface_t boot_switch_test_page_interface = {
     .update = page_boot_switch_test_update,
 };
 
+static page_interface_t photo_resolution_test_page_interface = {
+    .create = page_photo_resolution_test_create,
+    .destroy = page_photo_resolution_test_destroy,
+    .show = page_photo_resolution_test_show,
+    .hide = page_photo_resolution_test_hide,
+    .update = page_photo_resolution_test_update,
+};
+
 int32_t ui_main(void)
 {
     lv_init();
@@ -384,6 +393,7 @@ int32_t ui_main(void)
     page_manager_register("test", &test_page_interface, NULL);
     page_manager_register("key_touch_test", &key_touch_test_page_interface, NULL);
     page_manager_register("boot_switch_test", &boot_switch_test_page_interface, NULL);
+    page_manager_register("photo_resolution_test", &photo_resolution_test_page_interface, NULL);
 
     /* Navigate to home page */
     page_manager_navigate("home");
