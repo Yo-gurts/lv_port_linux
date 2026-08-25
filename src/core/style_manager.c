@@ -61,6 +61,8 @@ lv_style_t style_zoom_btn_active;
 lv_style_t style_zoom_label;
 /* 缩放文字选中样式 */
 lv_style_t style_zoom_label_active;
+/* 缩放居中圆形选中框样式 */
+lv_style_t style_zoom_focus_frame;
 
 /**
  * @brief 初始化所有公共样式
@@ -315,4 +317,14 @@ void style_common_init(void)
     lv_style_init(&style_zoom_label_active);
     lv_style_set_text_color(&style_zoom_label_active, lv_color_hex(0xF05A28));
     lv_style_set_text_align(&style_zoom_label_active, LV_TEXT_ALIGN_CENTER);
+
+    /* 初始化缩放居中圆形选中框样式 */
+    lv_style_init(&style_zoom_focus_frame);
+    lv_style_set_bg_opa(&style_zoom_focus_frame, LV_OPA_TRANSP);
+    lv_style_set_border_width(&style_zoom_focus_frame, 3);
+    lv_style_set_border_color(&style_zoom_focus_frame, lv_color_hex(0xF05A28));
+    lv_style_set_radius(&style_zoom_focus_frame, LV_RADIUS_CIRCLE);
+    lv_style_set_shadow_width(&style_zoom_focus_frame, 10);
+    lv_style_set_shadow_color(&style_zoom_focus_frame, lv_color_hex(0xF05A28));
+    lv_style_set_shadow_opa(&style_zoom_focus_frame, LV_OPA_30);
 }
