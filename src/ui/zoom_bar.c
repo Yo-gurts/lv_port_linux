@@ -324,6 +324,11 @@ void zoom_bar_init(void)
     lv_obj_align(g_zoom_bar.focus_frame, LV_ALIGN_CENTER, 0, 0);
     lv_obj_add_style(g_zoom_bar.focus_frame, &style_zoom_focus_frame, LV_PART_MAIN);
 
+    /* 初始高亮 visual_index(默认 0=档位1)：否则第一次点开且 zoom 仍是默认值时，
+     * zoom_bar_set_value 因 applied==active 早退，CHECKED 从未加到 1 号 label，
+     * 数字显示成未选中的白色。 */
+    update_selection_style();
+
     g_zoom_bar.inited = 1;
 }
 
