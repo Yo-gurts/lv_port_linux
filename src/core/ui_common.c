@@ -350,8 +350,10 @@ int32_t ui_main(void)
     /* Initialize param manager */
     param_manager_init();
 
-#if !FB_RUN
-    /* SDL/mock 环境默认模拟 SD 卡常驻，避免相册入口因未就绪被直接拦截。 */
+#if defined(FB_RUN) && !FB_RUN
+    /* SDL 仿真默认模拟 SD 卡常驻，避免相册入口因未就绪被直接拦截。
+     * 注意板级构建不定义 FB_RUN，`#if !FB_RUN` 会恒真导致本行漏进板端，
+     * 必须用 defined(FB_RUN) 守卫（与 message_manager.h 宏隔离同款写法）。 */
     (void)param_manager_set(PARAM_ID_SD_READY, SD_READY_TRUE);
 #endif
 
