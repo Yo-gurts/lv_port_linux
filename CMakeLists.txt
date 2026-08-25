@@ -69,7 +69,6 @@ set(SOURCES
     src/core/font_manager.c
     src/core/key_manager.c
     src/core/page_manager.c
-    src/core/param_manager.c
     src/core/style_manager.c
     src/core/ui_common.c
     src/main/simulator/main_simulator.c
@@ -79,6 +78,7 @@ set(SOURCES
     src/mock/file_manager.c
     src/mock/media_manager.c
     src/mock/message_manager.c
+    src/mock/param_manager.c
     src/mock/power_manager.c
     src/mock/player_manager.c
     src/pages/page_ai_photo_settings.c

@@ -2,8 +2,29 @@
 #define __MESSAGE_MANAGER_H__
 
 #include <stdint.h>
+
+/* 宏隔离：板级/FB 构建（FB_RUN 未定义或 =1）走底层真身；
+ * SDL 仿真（CMake 定义 FB_RUN=0）无 SDK 头可引，用本地最小类型镜像。
+ * 镜像布局对齐 sysutils_eventhub.h 的 EVENT_S（MESSAGE_S 同
+ * sysutils_hfsm.h 为其别名）；事件常量（EVENT_MODEMNG_* 等）仅
+ * SDK-only 的 core 实现使用，SDL 路径不引用，故不在此提供。 */
+#if defined(FB_RUN) && !FB_RUN
+typedef uint32_t TOPIC_ID;
+
+typedef struct ps_msg_s {
+    uint32_t topic; /* Message topic */
+    int32_t arg1;
+    int32_t arg2;
+    int32_t s32Result;
+    uint64_t u64CreateTime;
+    uint8_t aszPayload[128];
+} EVENT_S;
+
+typedef EVENT_S MESSAGE_S;
+#else
 #include "mode.h"
 #include "sysutils_eventhub.h"
+#endif
 
 #ifdef __cplusplus
 extern "C" {
