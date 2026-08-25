@@ -242,14 +242,17 @@ int media_manager_execute(media_operation_t op, int32_t args)
 }
 
 /* mock 异步切换：SDL 的 message_manager_send_async 忽略 cb 从不回调，故这里自己模拟完成——
- * 同步切好 g_mock_work_mode，再用 lv_async 在下一 UI 循环回调 done_cb(0)，模拟异步时序。 */
+ * 同步切好 g_mock_work_mode，再用单次 lv_timer 延迟 MOCK_SWITCH_DELAY_MS 回调 done_cb(0)，
+ * 模拟真实硬件模式切换的几百 ms 时延（否则 SDL 里一瞬间跑完，模式切换测试压根看不出节奏）。 */
+#define MOCK_SWITCH_DELAY_MS 300
+
 static media_switch_done_cb_t g_mock_switch_done_cb = NULL;
 
-static void mock_switch_done_on_ui(void* param)
+static void mock_switch_done_timer_cb(lv_timer_t* timer)
 {
     media_switch_done_cb_t cb = g_mock_switch_done_cb;
 
-    (void)param;
+    lv_timer_del(timer);
     g_mock_switch_done_cb = NULL;
     if (cb != NULL) {
         cb(0);
@@ -303,11 +306,11 @@ int media_manager_execute_async(media_operation_t op, media_switch_done_cb_t don
     }
 
     g_mock_switch_done_cb = done_cb;
-    (void)lv_async_call(mock_switch_done_on_ui, NULL);
+    (void)lv_timer_create(mock_switch_done_timer_cb, MOCK_SWITCH_DELAY_MS, NULL);
     return MEDIA_MANAGER_OK;
 }
 
-/* SDL 仿真单线程：异步完成仍走 lv_async_call，poll 无需做事。占位保持与真实实现同签名。 */
+/* SDL 仿真单线程：异步完成走单次 lv_timer 延迟回调，poll 无需做事。占位保持与真实实现同签名。 */
 void media_manager_poll(void)
 {
 }
