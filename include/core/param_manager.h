@@ -104,6 +104,7 @@ typedef enum {
     ZOOM_LEVEL_2X = 2,
     ZOOM_LEVEL_3X = 3,
     ZOOM_LEVEL_6X = 6,
+    ZOOM_LEVEL_16X = 16,
 } zoom_level_t;
 
 typedef enum {

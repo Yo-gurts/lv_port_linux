@@ -37,6 +37,7 @@ extern lv_style_t style_zoom_btn; /* 缩放按钮基础样式 */
 extern lv_style_t style_zoom_btn_active; /* 缩放按钮选中样式 */
 extern lv_style_t style_zoom_label; /* 缩放文字默认样式 */
 extern lv_style_t style_zoom_label_active; /* 缩放文字选中样式 */
+extern lv_style_t style_zoom_focus_frame; /* 缩放居中圆形选中框样式 */
 
 void style_common_init(void);
 
