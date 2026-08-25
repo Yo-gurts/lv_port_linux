@@ -461,6 +461,7 @@ static void record_key_cb(key_id_t key, key_event_type_t event_type, void* user_
         data->record_start_tick = lv_tick_get();
         data->record_dot_visible = 1U;
         lv_label_set_text(data->record_time_label, "00:00:00");
+        zoom_bar_hide(); /* 录像中隐藏 zoom bar，避免底部与录制计时重叠 */
         update_recording_input_lock(data);
         update_recording_indicator(data);
         update_remaining_record_time(data);
@@ -473,6 +474,7 @@ static void record_key_cb(key_id_t key, key_event_type_t event_type, void* user_
         return;
     }
     data->is_recording = 0;
+    zoom_bar_show(); /* 停止录像后恢复 zoom bar */
     update_recording_input_lock(data);
     update_recording_indicator(data);
     update_remaining_record_time(data);
@@ -691,7 +693,9 @@ void page_video_show(void)
     power_manager_disable_auto_sleep();
     power_manager_register_shutdown_prepare_cb(page_video_stop_recording_if_needed, data);
     filter_panel_hide();
-    zoom_bar_show();
+    if (!data->is_recording) {
+        zoom_bar_show(); /* 录像中不显示 zoom bar，避免与底部录制计时重叠 */
+    }
     update_resolution_display();
     update_zoom_buttons_display(data);
     update_recording_input_lock(data);
