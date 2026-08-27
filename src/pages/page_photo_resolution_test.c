@@ -10,6 +10,7 @@
 #include "core/power_manager.h"
 #include "core/style_manager.h"
 #include "mlog.h"
+#include "ui/top_notice.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -31,6 +32,12 @@
 /* 次数档：区别于模式切换测试无「1」，用户指定 100/1000/10000/无穷。 */
 static const uint32_t g_prt_options[PAGE_PHOTO_RES_TEST_OPTION_COUNT]
     = { 100U, 1000U, 10000U, PRT_TARGET_INFINITE };
+
+/* 分辨率档位文字：下标与 res_idx / PHOTO_RESOLUTION_* 一致（0..4），
+ * 与拍照设置页 page_photo_settings.c 的分辨率选项文案保持一致。 */
+static const char* const g_prt_res_names[PAGE_PHOTO_RES_RESOLUTION_COUNT]
+    = { "8M(3840x2160)", "12M(4000x3000)", "24M(5600x4200)", "48M(8000x6000)",
+          "64M(8192x8192)" };
 
 /* 存活实例指针：异步完成回调 / 延时定时器可能在页面销毁后才到，用它做生命周期守卫，
  * 避免解引用已 free 的 data。create 末尾置本实例，destroy 开头(free 前)置 NULL。 */
@@ -146,6 +153,13 @@ static void start_next_resolution(page_photo_resolution_test_data_t* data)
 
     if (data == NULL || !data->running) {
         return;
+    }
+
+    /* notice bar 提示本次切到的分辨率档位。 */
+    if (data->res_idx < PAGE_PHOTO_RES_RESOLUTION_COUNT) {
+        char notice[48];
+        snprintf(notice, sizeof(notice), "切换分辨率: %s", g_prt_res_names[data->res_idx]);
+        top_notice_show(notice, TOP_NOTICE_TYPE_INFO);
     }
 
     ret = media_manager_execute_async(MEDIA_OP_SET_PHOTO_RESOLUTION, (int32_t)data->res_idx, on_switch_done);
