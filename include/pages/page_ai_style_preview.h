@@ -1,6 +1,7 @@
 #ifndef __PAGE_AI_STYLE_PREVIEW_H__
 #define __PAGE_AI_STYLE_PREVIEW_H__
 
+#include "core/ai_style_config.h"
 #include "core/file_manager.h"
 #include "core/page_manager.h"
 
@@ -8,7 +9,8 @@
 extern "C" {
 #endif
 
-#define AI_STYLE_PREVIEW_STYLE_COUNT 27
+/* 风格数量在运行时由配置文件决定；UI item 按上限一次性建好，show 时按实际数量刷新可见。 */
+#define AI_STYLE_PREVIEW_STYLE_MAX AI_STYLE_MAX_COUNT
 
 typedef struct {
     lv_obj_t* container;
@@ -19,8 +21,10 @@ typedef struct {
     lv_obj_t* style_panel;
     lv_obj_t* style_list;
     lv_obj_t* style_focus_frame;
-    lv_obj_t* style_items[AI_STYLE_PREVIEW_STYLE_COUNT];
-    lv_obj_t* style_labels[AI_STYLE_PREVIEW_STYLE_COUNT];
+    lv_obj_t* style_items[AI_STYLE_PREVIEW_STYLE_MAX];
+    lv_obj_t* style_labels[AI_STYLE_PREVIEW_STYLE_MAX];
+    lv_obj_t* style_thumb_imgs[AI_STYLE_PREVIEW_STYLE_MAX];
+    int style_count; /* 当前生效的风格数量（含原图） */
     lv_obj_t* loading_overlay;
     lv_obj_t* loading_spinner;
     lv_obj_t* loading_label;

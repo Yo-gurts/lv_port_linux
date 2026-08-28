@@ -16,6 +16,12 @@ extern "C" {
 #define RES_ICON_PATH PROJECT_PATH "/res/icons"
 #define RES_ISP_PATH PROJECT_PATH "/res/isp"
 
+/* AI 风格转换类型配置文件：
+ * - RES 版随 res/ 打包进 /app/res，作为出厂基线，启动时读一次
+ * - DATA 版位于可写分区，每次进入风格预览页检查，存在则整体覆盖基线 */
+#define AI_STYLE_INI_RES_PATH PROJECT_PATH "/res/ai_style.ini"
+#define AI_STYLE_INI_DATA_PATH "/mnt/data/param/ai_style.ini"
+
 /* =======================
  * 相册路径配置
  * ======================= */

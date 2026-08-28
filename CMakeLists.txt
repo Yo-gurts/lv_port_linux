@@ -66,6 +66,7 @@ include_directories(${PROJECT_SOURCE_DIR}/include)
 
 # Source files
 set(SOURCES
+    src/core/ai_style_config.c
     src/core/font_manager.c
     src/core/key_manager.c
     src/core/page_manager.c

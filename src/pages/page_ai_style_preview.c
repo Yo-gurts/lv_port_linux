@@ -44,43 +44,9 @@
 
 #define STYLE_PROCESS_POLL_MS 100
 
-static const char* g_style_names[AI_STYLE_PREVIEW_STYLE_COUNT] = {
-    "原图", "3D风格", "写实风", "天使风", "动漫风",
-    "日漫风", "公主风", "梦幻风", "水墨风", "新莫奈花园风",
-    "水彩风", "莫奈花园风", "精致美漫", "赛博机械", "精致韩漫",
-    "国风-水墨", "浪漫光影", "瓷娃娃", "中国红", "丑萌粘土",
-    "可爱玩偶", "3D游戏Z世代风", "动画电影", "玩偶", "青年15岁",
-    "中年35岁", "老年80岁"
-};
+/* 风格名称与提示词由 ai_style_config 从 INI 配置文件加载，不再硬编码。 */
 
-static const char* g_style_prompts[AI_STYLE_PREVIEW_STYLE_COUNT - 1] = {
-    "将这张照片重绘成 3D 风格",
-    "将这张照片重绘成 写实风 风格",
-    "将这张照片重绘成 天使风 风格",
-    "将这张照片重绘成 动漫风 风格",
-    "将这张照片重绘成 日漫风 风格",
-    "将这张照片重绘成 公主风 风格",
-    "将这张照片重绘成 梦幻风 风格",
-    "将这张照片重绘成 水墨风 风格",
-    "将这张照片重绘成 新莫奈花园风 风格",
-    "将这张照片重绘成 水彩风 风格",
-    "将这张照片重绘成 莫奈花园风 风格",
-    "将这张照片重绘成 精致美漫 风格",
-    "将这张照片重绘成 赛博机械 风格",
-    "将这张照片重绘成 精致韩漫 风格",
-    "将这张照片重绘成 国风-水墨 风格",
-    "将这张照片重绘成 浪漫光影 风格",
-    "将这张照片重绘成 瓷娃娃 风格",
-    "将这张照片重绘成 中国红 风格",
-    "将这张照片重绘成 丑萌粘土 风格",
-    "将这张照片重绘成 可爱玩偶 风格",
-    "将这张照片重绘成 3D游戏Z世代风 风格",
-    "将这张照片重绘成 动画电影 风格",
-    "将这张照片重绘成 玩偶 风格",
-    "将这张照片重绘成 青年15岁 风格，年轻，稚嫩",
-    "将这张照片重绘成 中年35岁 风格，成熟，稳重",
-    "将这张照片重绘成 老年80岁 风格，白发，皱纹",
-};
+static void apply_style_config(page_ai_style_preview_data_t* data);
 
 static void refresh_latest_photo(page_ai_style_preview_data_t* data);
 static void update_style_selection(page_ai_style_preview_data_t* data);
@@ -104,6 +70,56 @@ static int g_target_photo_index = -1;
 // #############################################################################
 // ! #region 4. 内部工具函数
 // #############################################################################
+
+/* 重新加载风格配置并刷新列表：前 style_count 项设置名称/缩略图并显示，其余隐藏。
+ * item 在 create() 里已按上限建好，这里只刷状态，符合「show 不重建对象」规范。 */
+static void apply_style_config(page_ai_style_preview_data_t* data)
+{
+    int i;
+
+    if (!data) {
+        return;
+    }
+
+    data->style_count = ai_style_config_load();
+    if (data->style_count < 1) {
+        data->style_count = 1;
+    }
+    if (data->style_count > AI_STYLE_PREVIEW_STYLE_MAX) {
+        data->style_count = AI_STYLE_PREVIEW_STYLE_MAX;
+    }
+
+    for (i = 0; i < AI_STYLE_PREVIEW_STYLE_MAX; i++) {
+        if (!data->style_items[i]) {
+            continue;
+        }
+
+        if (i < data->style_count) {
+            const ai_style_entry_t* entry = ai_style_config_get(i);
+            if (entry) {
+                if (data->style_labels[i]) {
+                    lv_label_set_text(data->style_labels[i], entry->name);
+                }
+                if (data->style_thumb_imgs[i]) {
+                    if (entry->thumb[0] != '\0') {
+                        char thumb_path[2 + AI_STYLE_THUMB_MAX]; /* "A:" 前缀 + thumb */
+                        snprintf(thumb_path, sizeof(thumb_path), "A:%s", entry->thumb);
+                        lv_img_set_src(data->style_thumb_imgs[i], thumb_path);
+                    } else {
+                        lv_img_set_src(data->style_thumb_imgs[i], "A:" RES_ICON_PATH "/filter.png");
+                    }
+                }
+            }
+            lv_obj_clear_flag(data->style_items[i], LV_OBJ_FLAG_HIDDEN);
+        } else {
+            lv_obj_add_flag(data->style_items[i], LV_OBJ_FLAG_HIDDEN);
+        }
+    }
+
+    if (data->selected_style_index < 0 || data->selected_style_index >= data->style_count) {
+        data->selected_style_index = 0;
+    }
+}
 
 static void refresh_latest_photo(page_ai_style_preview_data_t* data)
 {
@@ -163,7 +179,7 @@ static void update_style_selection(page_ai_style_preview_data_t* data)
         return;
     }
 
-    for (i = 0; i < AI_STYLE_PREVIEW_STYLE_COUNT; i++) {
+    for (i = 0; i < data->style_count; i++) {
         if (data->style_labels[i] == NULL || data->style_items[i] == NULL) {
             continue;
         }
@@ -184,7 +200,7 @@ static void scroll_to_style(page_ai_style_preview_data_t* data, int index, lv_an
     int32_t target_x;
     int32_t max_scroll_x;
 
-    if (!data || !data->style_list || index < 0 || index >= AI_STYLE_PREVIEW_STYLE_COUNT) {
+    if (!data || !data->style_list || index < 0 || index >= data->style_count) {
         return;
     }
 
@@ -284,12 +300,15 @@ static void stop_process_poll_timer(page_ai_style_preview_data_t* data)
 static void start_style_process(page_ai_style_preview_data_t* data)
 {
     int ret;
-    int prompt_index;
+    const ai_style_entry_t* entry;
 
     if (!data)
         return;
 
-    if (data->selected_style_index <= 0) {
+    entry = ai_style_config_get(data->selected_style_index);
+
+    /* 无提示词（原图或未配置提示词的项）：仅还原展示原图，不做 AI 处理 */
+    if (!entry || entry->prompt[0] == '\0') {
         if (data->latest_photo_display_path[0] != '\0') {
             lv_img_set_src(data->image, data->latest_photo_display_path);
             lv_obj_center(data->image);
@@ -309,12 +328,7 @@ static void start_style_process(page_ai_style_preview_data_t* data)
         return;
     }
 
-    prompt_index = data->selected_style_index - 1;
-    if (prompt_index < 0 || prompt_index >= AI_STYLE_PREVIEW_STYLE_COUNT - 1) {
-        return;
-    }
-
-    ret = image_process_manager_start_style(data->latest_photo_real_path, g_style_prompts[prompt_index]);
+    ret = image_process_manager_start_style(data->latest_photo_real_path, entry->prompt);
     if (ret != 0) {
         top_notice_show("启动处理失败，请稍后重试", TOP_NOTICE_TYPE_WARNING);
         return;
@@ -350,7 +364,7 @@ static void style_item_click_cb(lv_event_t* e)
     page_ai_style_preview_data_t* data = (page_ai_style_preview_data_t*)lv_event_get_user_data(e);
     int index = (int)(intptr_t)lv_obj_get_user_data(lv_event_get_current_target(e));
 
-    if (!data || index < 0 || index >= AI_STYLE_PREVIEW_STYLE_COUNT) {
+    if (!data || index < 0 || index >= data->style_count) {
         return;
     }
 
@@ -376,8 +390,8 @@ static void style_list_scroll_end_cb(lv_event_t* e)
     if (nearest_index < 0) {
         nearest_index = 0;
     }
-    if (nearest_index >= AI_STYLE_PREVIEW_STYLE_COUNT) {
-        nearest_index = AI_STYLE_PREVIEW_STYLE_COUNT - 1;
+    if (nearest_index >= data->style_count) {
+        nearest_index = data->style_count - 1;
     }
 
     data->selected_style_index = nearest_index;
@@ -464,7 +478,7 @@ static void right_key_click_cb(key_id_t key, key_event_type_t event_type, void* 
         return;
     }
 
-    if (data->selected_style_index < AI_STYLE_PREVIEW_STYLE_COUNT - 1) {
+    if (data->selected_style_index < data->style_count - 1) {
         data->selected_style_index++;
         update_style_selection(data);
         scroll_to_style(data, data->selected_style_index, LV_ANIM_ON);
@@ -647,8 +661,8 @@ void page_ai_style_preview_create(void)
     lv_obj_set_style_pad_column(data->style_list, STYLE_ITEM_GAP, LV_PART_MAIN);
     lv_obj_add_event_cb(data->style_list, style_list_scroll_end_cb, LV_EVENT_SCROLL_END, data);
 
-    // 样式项
-    for (i = 0; i < AI_STYLE_PREVIEW_STYLE_COUNT; i++) {
+    // 样式项：按上限一次性建好，默认隐藏，具体名称/缩略图/可见由 apply_style_config 刷新
+    for (i = 0; i < AI_STYLE_PREVIEW_STYLE_MAX; i++) {
         lv_obj_t* item = lv_obj_create(data->style_list);
         lv_obj_t* thumb = lv_obj_create(item);
         lv_obj_t* thumb_img = lv_img_create(thumb);
@@ -664,6 +678,7 @@ void page_ai_style_preview_create(void)
         lv_obj_set_style_pad_row(item, 8, LV_PART_MAIN);
         lv_obj_add_event_cb(item, style_item_click_cb, LV_EVENT_CLICKED, data);
         lv_obj_set_user_data(item, (void*)(intptr_t)i);
+        lv_obj_add_flag(item, LV_OBJ_FLAG_HIDDEN);
 
         lv_obj_set_size(thumb, STYLE_THUMB_WIDTH, STYLE_THUMB_HEIGHT);
         lv_obj_clear_flag(thumb, LV_OBJ_FLAG_SCROLLABLE);
@@ -672,13 +687,15 @@ void page_ai_style_preview_create(void)
         lv_img_set_src(thumb_img, "A:" RES_ICON_PATH "/filter.png");
         lv_obj_center(thumb_img);
 
-        lv_label_set_text(label, g_style_names[i]);
         lv_obj_add_style(label, &SMALL_SIZE, LV_PART_MAIN);
         lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
 
         data->style_items[i] = item;
         data->style_labels[i] = label;
+        data->style_thumb_imgs[i] = thumb_img;
     }
+
+    apply_style_config(data);
 
     // 焦点框
     data->style_focus_frame = lv_obj_create(data->style_panel);
@@ -710,9 +727,7 @@ void page_ai_style_preview_create(void)
 
     data->selected_style_index = 0;
     data->panel_visible = 1;
-    update_style_selection(data);
-    scroll_to_style(data, data->selected_style_index, LV_ANIM_OFF);
-    align_focus_frame(data);
+    /* 选中态/滚动/焦点框的刷新统一在 show() 里做，避免与 show 重复 */
 
     (void)image_process_manager_init();
     image_process_manager_reset();
@@ -759,6 +774,15 @@ void page_ai_style_preview_show(void)
     key_manager_register_callback(KEY_ID_OK, KEY_EVENT_CLICK, ok_key_click_cb, data);
     key_manager_register_callback(KEY_ID_LEFT, KEY_EVENT_CLICK, left_key_click_cb, data);
     key_manager_register_callback(KEY_ID_RIGHT, KEY_EVENT_CLICK, right_key_click_cb, data);
+
+    /* 每次进页面重读配置（/mnt/data 覆盖版存在则整体替换）。
+     * 进页面固定展示原图，故选中态复位到「原图」，避免高亮与所示图片不一致。 */
+    apply_style_config(data);
+    data->selected_style_index = 0;
+    update_style_selection(data);
+    scroll_to_style(data, data->selected_style_index, LV_ANIM_OFF);
+    align_focus_frame(data);
+
     refresh_latest_photo(data);
     set_style_panel_visible(data, true, LV_ANIM_OFF);
     set_loading_visible(data, false);
