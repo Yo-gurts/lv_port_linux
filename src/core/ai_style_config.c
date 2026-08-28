@@ -53,7 +53,7 @@ static void reset_to_original_only(void)
 static int parse_ini(const char* path)
 {
     FILE* fp;
-    char line[512];
+    char line[1152]; /* 需容纳最长一行：prompt= 前缀 + 提示词(AI_STYLE_PROMPT_MAX) */
     int count = 1; /* 已含内置原图 */
     int in_section = 0;
 

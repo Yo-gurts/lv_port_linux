@@ -9,7 +9,7 @@ extern "C" {
  * 第 0 项固定为「原图」（prompt 为空，不做 AI 处理），后续项来自配置文件。 */
 
 #define AI_STYLE_NAME_MAX 32
-#define AI_STYLE_PROMPT_MAX 256
+#define AI_STYLE_PROMPT_MAX 1024
 #define AI_STYLE_THUMB_MAX 128
 #define AI_STYLE_MAX_COUNT 64 /* 风格条目数上限（含原图） */
 
