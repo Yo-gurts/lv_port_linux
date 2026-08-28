@@ -5,6 +5,7 @@
 #include "pages/page_photo_resolution_test.h"
 #include "config.h"
 #include "core/font_manager.h"
+#include "core/key_manager.h"
 #include "core/media_manager.h"
 #include "core/page_manager.h"
 #include "core/power_manager.h"
@@ -293,8 +294,9 @@ static void on_switch_done(int result)
  * 在一档完成点(on_switch_done)收尾回 boot 后再 page_manager_back。满足「返回必须先暂停再返回」。 */
 static void back_btn_cb(lv_event_t* e)
 {
+    /* 触摸时从 event 取 data；按键调用(e==NULL)时用存活实例指针。 */
     page_photo_resolution_test_data_t* data
-        = (page_photo_resolution_test_data_t*)lv_event_get_user_data(e);
+        = e ? (page_photo_resolution_test_data_t*)lv_event_get_user_data(e) : g_prt_active;
 
     if (data != NULL && data->running) {
         MLOG_INFO("拍照分辨率测试运行中点返回: 等切回 boot 完成后返回");
@@ -312,8 +314,9 @@ static void back_btn_cb(lv_event_t* e)
 /* 次数按钮：点一下循环切下一个次数（100->1000->10000->无穷->回到 100）。 */
 static void count_btn_cb(lv_event_t* e)
 {
+    /* 触摸时从 event 取 data；按键调用(e==NULL)时用存活实例指针。 */
     page_photo_resolution_test_data_t* data
-        = (page_photo_resolution_test_data_t*)lv_event_get_user_data(e);
+        = e ? (page_photo_resolution_test_data_t*)lv_event_get_user_data(e) : g_prt_active;
 
     if (data == NULL || data->running) {
         return;
@@ -329,8 +332,9 @@ static void count_btn_cb(lv_event_t* e)
  * (无在途异步)则立即收尾。保证暂停一定停在 boot 模式。异步全程不阻塞 UI。 */
 static void start_btn_cb(lv_event_t* e)
 {
+    /* 触摸时从 event 取 data；按键调用(e==NULL)时用存活实例指针。 */
     page_photo_resolution_test_data_t* data
-        = (page_photo_resolution_test_data_t*)lv_event_get_user_data(e);
+        = e ? (page_photo_resolution_test_data_t*)lv_event_get_user_data(e) : g_prt_active;
     int ret;
 
     if (data == NULL) {
@@ -369,6 +373,33 @@ static void start_btn_cb(lv_event_t* e)
         return;
     }
     data->waiting = 1U;
+}
+
+/* Mode 键：切换计数（复用次数按钮点击逻辑）。 */
+static void mode_key_cb(key_id_t key, key_event_type_t event_type, void* user_data)
+{
+    (void)key;
+    (void)event_type;
+    (void)user_data;
+    count_btn_cb(NULL);
+}
+
+/* OK 键：开始/暂停（复用开始按钮点击逻辑）。 */
+static void ok_key_cb(key_id_t key, key_event_type_t event_type, void* user_data)
+{
+    (void)key;
+    (void)event_type;
+    (void)user_data;
+    start_btn_cb(NULL);
+}
+
+/* 菜单键：返回上一级（复用返回按钮点击逻辑）。 */
+static void menu_key_cb(key_id_t key, key_event_type_t event_type, void* user_data)
+{
+    (void)key;
+    (void)event_type;
+    (void)user_data;
+    back_btn_cb(NULL);
 }
 
 // #endregion
@@ -495,6 +526,9 @@ void page_photo_resolution_test_show(void)
 
     /* 复位测试状态（不自动启动）。 */
     stop_loop(data);
+    key_manager_register_callback(KEY_ID_MODE, KEY_EVENT_CLICK, mode_key_cb, NULL);
+    key_manager_register_callback(KEY_ID_OK, KEY_EVENT_CLICK, ok_key_cb, NULL);
+    key_manager_register_callback(KEY_ID_MENU, KEY_EVENT_CLICK, menu_key_cb, NULL);
     lv_obj_clear_flag(data->container, LV_OBJ_FLAG_HIDDEN);
 }
 
@@ -507,6 +541,9 @@ void page_photo_resolution_test_hide(void)
     }
 
     MLOG_INFO("Photo resolution test page hide");
+    key_manager_unregister_callback(KEY_ID_MODE, KEY_EVENT_CLICK, mode_key_cb, NULL);
+    key_manager_unregister_callback(KEY_ID_OK, KEY_EVENT_CLICK, ok_key_cb, NULL);
+    key_manager_unregister_callback(KEY_ID_MENU, KEY_EVENT_CLICK, menu_key_cb, NULL);
     stop_loop(data);
     if (data->auto_sleep_disabled) {
         power_manager_enable_auto_sleep();
