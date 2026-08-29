@@ -182,8 +182,17 @@ static void photo_param_cb(param_id_t id, int value, void* user_data)
 static void mode_switch_cb(lv_event_t* e)
 {
     int reset_filter;
+    page_photo_data_t* data = page_get_private_data();
 
     LV_UNUSED(e);
+
+    /* 离开拍照页（切到录像）前解除对焦锁定：下方 SWITCH_TO_VIDEO_MODE 会重建 pipeline
+     * 并使能硬件 AF，这里同步清掉锁定标志与对焦框状态，避免锁定态残留到下次进入本页。 */
+    if (data && data->focus_locked) {
+        data->focus_locked = 0;
+        (void)param_manager_set(PARAM_ID_FOCUS_FRAME_STATE, FOCUS_FRAME_STATE_HIDDEN);
+    }
+
     reset_filter = param_manager_get(PARAM_ID_FILTER_RESET_ON_MODE_SWITCH);
     if (reset_filter == 1) {
         (void)param_manager_set(PARAM_ID_FILTER_INDEX, 0);
@@ -253,6 +262,17 @@ static void focus_key_cb(key_id_t key, key_event_type_t event_type, void* user_d
     }
 
     if (event_type == KEY_EVENT_PRESS) {
+        if (data->focus_locked) {
+            /* 锁定态下再次按下：解除对焦锁定，恢复自动对焦并隐藏对焦框，本次不做单次对焦 */
+            ret = media_manager_execute(MEDIA_OP_SET_FOCUS_ENABLE, 1);
+            if (ret != 0) {
+                MLOG_ERR("Unlock AF by key press failed: ret=%d", ret);
+            }
+            data->focus_locked = 0;
+            data->focus_press_consumed = 1;
+            (void)param_manager_set(PARAM_ID_FOCUS_FRAME_STATE, FOCUS_FRAME_STATE_HIDDEN);
+            return;
+        }
         ret = media_manager_execute(MEDIA_OP_FOCUS_ONCE, 0);
         if (ret != 0) {
             MLOG_ERR("Focus by key failed: ret=%d", ret);
@@ -263,8 +283,18 @@ static void focus_key_cb(key_id_t key, key_event_type_t event_type, void* user_d
         if (ret != 0) {
             MLOG_ERR("Disable AF by key long-press failed: ret=%d", ret);
         }
+        data->focus_locked = 1;
         (void)param_manager_set(PARAM_ID_FOCUS_FRAME_STATE, FOCUS_FRAME_STATE_LOCKING);
     } else if (event_type == KEY_EVENT_RELEASE) {
+        if (data->focus_press_consumed) {
+            /* 本次按下已在 PRESS 解锁并发过 enable，松开不再重复发，避免 AF 正忙时报错 */
+            data->focus_press_consumed = 0;
+            return;
+        }
+        if (data->focus_locked) {
+            /* 已锁定：松开不解锁，保持锁定状态与对焦框 */
+            return;
+        }
         ret = media_manager_execute(MEDIA_OP_SET_FOCUS_ENABLE, 1);
         if (ret != 0) {
             MLOG_ERR("Enable AF by key release failed: ret=%d", ret);
@@ -276,7 +306,17 @@ static void focus_key_cb(key_id_t key, key_event_type_t event_type, void* user_d
 /* 顶部返回按钮回调：返回时切换到 boot mode */
 static void back_btn_cb(lv_event_t* e)
 {
+    page_photo_data_t* data = page_get_private_data();
+
     LV_UNUSED(e);
+
+    /* 离开拍照页前解除对焦锁定：下方 SWITCH_TO_BOOT_MODE 会重建 pipeline 并使能硬件 AF，
+     * 这里同步清掉锁定标志与对焦框状态，避免锁定态残留到下次进入本页。 */
+    if (data && data->focus_locked) {
+        data->focus_locked = 0;
+        (void)param_manager_set(PARAM_ID_FOCUS_FRAME_STATE, FOCUS_FRAME_STATE_HIDDEN);
+    }
+
     (void)param_manager_set(PARAM_ID_ZOOM, param_manager_get_default(PARAM_ID_ZOOM));
     filter_panel_hide();
     zoom_bar_hide();

@@ -18,6 +18,8 @@ typedef struct {
     lv_obj_t* menu_btn; /* 菜单按钮 */
     lv_obj_t* focus_box; /* 对焦框 */
     lv_obj_t* focus_corners[4]; /* 对焦框四角 */
+    uint8_t focus_locked; /* 对焦锁定态：长按锁定后置 1，松开不解锁，再次按下才解除 */
+    uint8_t focus_press_consumed; /* 本次按下已解锁，抑制随后的 RELEASE 重复发 enable */
 } page_ai_photo_data_t;
 
 void page_ai_photo_create(void);

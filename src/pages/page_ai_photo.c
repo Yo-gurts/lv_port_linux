@@ -187,6 +187,17 @@ static void focus_key_cb(key_id_t key, key_event_type_t event_type, void* user_d
     }
 
     if (event_type == KEY_EVENT_PRESS) {
+        if (data->focus_locked) {
+            /* 锁定态下再次按下：解除对焦锁定，恢复自动对焦并隐藏对焦框，本次不做单次对焦 */
+            ret = media_manager_execute(MEDIA_OP_SET_FOCUS_ENABLE, 1);
+            if (ret != 0) {
+                MLOG_ERR("AI unlock AF by key press failed: ret=%d", ret);
+            }
+            data->focus_locked = 0;
+            data->focus_press_consumed = 1;
+            (void)param_manager_set(PARAM_ID_FOCUS_FRAME_STATE, FOCUS_FRAME_STATE_HIDDEN);
+            return;
+        }
         ret = media_manager_execute(MEDIA_OP_FOCUS_ONCE, 0);
         if (ret != 0) {
             MLOG_ERR("AI focus by key failed: ret=%d", ret);
@@ -197,8 +208,18 @@ static void focus_key_cb(key_id_t key, key_event_type_t event_type, void* user_d
         if (ret != 0) {
             MLOG_ERR("AI disable AF by key long-press failed: ret=%d", ret);
         }
+        data->focus_locked = 1;
         (void)param_manager_set(PARAM_ID_FOCUS_FRAME_STATE, FOCUS_FRAME_STATE_LOCKING);
     } else if (event_type == KEY_EVENT_RELEASE) {
+        if (data->focus_press_consumed) {
+            /* 本次按下已在 PRESS 解锁并发过 enable，松开不再重复发，避免 AF 正忙时报错 */
+            data->focus_press_consumed = 0;
+            return;
+        }
+        if (data->focus_locked) {
+            /* 已锁定：松开不解锁，保持锁定状态与对焦框 */
+            return;
+        }
         ret = media_manager_execute(MEDIA_OP_SET_FOCUS_ENABLE, 1);
         if (ret != 0) {
             MLOG_ERR("AI enable AF by key release failed: ret=%d", ret);
@@ -356,7 +377,17 @@ static void menu_back_cb(lv_event_t* e)
 /* 返回按钮回调：返回上一页前先切回 BOOT 模式，拆除 photo 媒体管线（对齐普通拍照页） */
 static void back_btn_cb(lv_event_t* e)
 {
+    page_ai_photo_data_t* data = page_get_private_data();
+
     LV_UNUSED(e);
+
+    /* 离开 AI 拍照页前解除对焦锁定：下方 SWITCH_TO_BOOT_MODE 会重建 pipeline 并使能硬件 AF，
+     * 这里同步清掉锁定标志与对焦框状态，避免锁定态残留到下次进入本页。 */
+    if (data && data->focus_locked) {
+        data->focus_locked = 0;
+        (void)param_manager_set(PARAM_ID_FOCUS_FRAME_STATE, FOCUS_FRAME_STATE_HIDDEN);
+    }
+
     filter_panel_hide();
     (void)media_manager_execute(MEDIA_OP_SWITCH_TO_BOOT_MODE, 0);
     page_manager_back();
