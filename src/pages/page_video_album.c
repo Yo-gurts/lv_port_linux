@@ -1433,6 +1433,7 @@ void page_video_album_show(void)
 
     gesture_back_set_left_edge_swipe_cb(data->container, page_manager_back_cb);
     key_manager_register_callback(KEY_ID_MENU, KEY_EVENT_CLICK, menu_key_cb, NULL);
+    key_manager_register_callback(KEY_ID_MENU, KEY_EVENT_LONG_PRESS, menu_key_cb, NULL);
     key_manager_register_callback(KEY_ID_MODE, KEY_EVENT_CLICK, mode_key_click_cb, NULL);
     key_manager_register_callback(KEY_ID_OK, KEY_EVENT_CLICK, va_ok_key_click_cb, data);
     key_manager_register_callback(KEY_ID_UP, KEY_EVENT_CLICK, va_up_key_click_cb, data);
@@ -1491,6 +1492,7 @@ void page_video_album_hide(void)
         return;
 
     key_manager_unregister_callback(KEY_ID_MENU, KEY_EVENT_CLICK, menu_key_cb, NULL);
+    key_manager_unregister_callback(KEY_ID_MENU, KEY_EVENT_LONG_PRESS, menu_key_cb, NULL);
     key_manager_unregister_callback(KEY_ID_MODE, KEY_EVENT_CLICK, mode_key_click_cb, NULL);
     key_manager_unregister_callback(KEY_ID_OK, KEY_EVENT_CLICK, va_ok_key_click_cb, data);
     key_manager_unregister_callback(KEY_ID_UP, KEY_EVENT_CLICK, va_up_key_click_cb, data);

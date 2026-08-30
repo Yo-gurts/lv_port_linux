@@ -553,6 +553,7 @@ void page_photo_preview_destroy(void)
     }
 
     key_manager_unregister_callback(KEY_ID_MENU, KEY_EVENT_CLICK, menu_key_cb, NULL);
+    key_manager_unregister_callback(KEY_ID_MENU, KEY_EVENT_LONG_PRESS, menu_key_cb, NULL);
     key_manager_unregister_callback(KEY_ID_ASSISTANT, KEY_EVENT_CLICK, assistant_key_click_cb, data);
     key_manager_unregister_callback(KEY_ID_LEFT, KEY_EVENT_CLICK, left_key_click_cb, data);
     key_manager_unregister_callback(KEY_ID_RIGHT, KEY_EVENT_CLICK, right_key_click_cb, data);
@@ -568,6 +569,7 @@ void page_photo_preview_show(void)
     /* gesture_back 为全局单实例，页面显示时重新声明当前活跃容器。 */
     gesture_back_set_left_edge_swipe_cb(data->container, back_btn_cb);
     key_manager_register_callback(KEY_ID_MENU, KEY_EVENT_CLICK, menu_key_cb, NULL);
+    key_manager_register_callback(KEY_ID_MENU, KEY_EVENT_LONG_PRESS, menu_key_cb, NULL);
     key_manager_register_callback(KEY_ID_ASSISTANT, KEY_EVENT_CLICK, assistant_key_click_cb, data);
     key_manager_register_callback(KEY_ID_LEFT, KEY_EVENT_CLICK, left_key_click_cb, data);
     key_manager_register_callback(KEY_ID_RIGHT, KEY_EVENT_CLICK, right_key_click_cb, data);
@@ -601,6 +603,7 @@ void page_photo_preview_hide(void)
         return;
 
     key_manager_unregister_callback(KEY_ID_MENU, KEY_EVENT_CLICK, menu_key_cb, NULL);
+    key_manager_unregister_callback(KEY_ID_MENU, KEY_EVENT_LONG_PRESS, menu_key_cb, NULL);
     key_manager_unregister_callback(KEY_ID_ASSISTANT, KEY_EVENT_CLICK, assistant_key_click_cb, data);
     key_manager_unregister_callback(KEY_ID_LEFT, KEY_EVENT_CLICK, left_key_click_cb, data);
     key_manager_unregister_callback(KEY_ID_RIGHT, KEY_EVENT_CLICK, right_key_click_cb, data);

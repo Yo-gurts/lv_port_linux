@@ -574,6 +574,7 @@ void page_boot_switch_test_show(void)
     key_manager_register_callback(KEY_ID_MODE, KEY_EVENT_CLICK, mode_key_cb, NULL);
     key_manager_register_callback(KEY_ID_OK, KEY_EVENT_CLICK, ok_key_cb, NULL);
     key_manager_register_callback(KEY_ID_MENU, KEY_EVENT_CLICK, menu_key_cb, NULL);
+    key_manager_register_callback(KEY_ID_MENU, KEY_EVENT_LONG_PRESS, menu_key_cb, NULL);
     lv_obj_clear_flag(data->container, LV_OBJ_FLAG_HIDDEN);
 }
 
@@ -589,6 +590,7 @@ void page_boot_switch_test_hide(void)
     key_manager_unregister_callback(KEY_ID_MODE, KEY_EVENT_CLICK, mode_key_cb, NULL);
     key_manager_unregister_callback(KEY_ID_OK, KEY_EVENT_CLICK, ok_key_cb, NULL);
     key_manager_unregister_callback(KEY_ID_MENU, KEY_EVENT_CLICK, menu_key_cb, NULL);
+    key_manager_unregister_callback(KEY_ID_MENU, KEY_EVENT_LONG_PRESS, menu_key_cb, NULL);
     stop_loop(data);
     if (data->auto_sleep_disabled) {
         power_manager_enable_auto_sleep();
