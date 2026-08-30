@@ -101,10 +101,16 @@ static void ok_key_click_cb(key_id_t key, key_event_type_t event_type, void* use
     lv_obj_send_event(data->items[data->selected_index], LV_EVENT_CLICKED, NULL);
 }
 
-static void key_touch_item_cb(lv_event_t* e)
+static void key_test_item_cb(lv_event_t* e)
 {
     LV_UNUSED(e);
-    page_manager_navigate("key_touch_test");
+    page_manager_navigate("key_test");
+}
+
+static void touch_test_item_cb(lv_event_t* e)
+{
+    LV_UNUSED(e);
+    page_manager_navigate("touch_test");
 }
 
 static void boot_switch_item_cb(lv_event_t* e)
@@ -201,9 +207,10 @@ void page_test_create(void)
     lv_obj_set_flex_align(list, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
     lv_obj_set_scrollbar_mode(list, LV_SCROLLBAR_MODE_OFF);
 
-    data->items[0] = create_menu_item(list, "触摸与按键", key_touch_item_cb);
-    data->items[1] = create_menu_item(list, "模式切换测试", boot_switch_item_cb);
-    data->items[2] = create_menu_item(list, "拍照分辨率切换测试", photo_resolution_item_cb);
+    data->items[0] = create_menu_item(list, "按键测试", key_test_item_cb);
+    data->items[1] = create_menu_item(list, "触摸测试", touch_test_item_cb);
+    data->items[2] = create_menu_item(list, "模式切换测试", boot_switch_item_cb);
+    data->items[3] = create_menu_item(list, "拍照分辨率切换测试", photo_resolution_item_cb);
     data->selected_index = 0;
 
     page_set_private_data(data);

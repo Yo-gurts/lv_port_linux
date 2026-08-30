@@ -23,13 +23,14 @@
 #include "pages/page_boot_switch_test.h"
 #include "pages/page_chat.h"
 #include "pages/page_home.h"
-#include "pages/page_key_touch_test.h"
+#include "pages/page_key_test.h"
 #include "pages/page_photo.h"
 #include "pages/page_photo_preview.h"
 #include "pages/page_photo_resolution_test.h"
 #include "pages/page_photo_settings.h"
 #include "pages/page_system_settings.h"
 #include "pages/page_test.h"
+#include "pages/page_touch_test.h"
 #include "pages/page_version_info.h"
 #include "pages/page_video.h"
 #include "pages/page_video_album.h"
@@ -310,12 +311,20 @@ static page_interface_t test_page_interface = {
     .update = page_test_update,
 };
 
-static page_interface_t key_touch_test_page_interface = {
-    .create = page_key_touch_test_create,
-    .destroy = page_key_touch_test_destroy,
-    .show = page_key_touch_test_show,
-    .hide = page_key_touch_test_hide,
-    .update = page_key_touch_test_update,
+static page_interface_t key_test_page_interface = {
+    .create = page_key_test_create,
+    .destroy = page_key_test_destroy,
+    .show = page_key_test_show,
+    .hide = page_key_test_hide,
+    .update = page_key_test_update,
+};
+
+static page_interface_t touch_test_page_interface = {
+    .create = page_touch_test_create,
+    .destroy = page_touch_test_destroy,
+    .show = page_touch_test_show,
+    .hide = page_touch_test_hide,
+    .update = page_touch_test_update,
 };
 
 static page_interface_t boot_switch_test_page_interface = {
@@ -393,7 +402,8 @@ int32_t ui_main(void)
     page_manager_register("album", &album_page_interface, NULL);
     page_manager_register("photo_preview", &photo_preview_page_interface, NULL);
     page_manager_register("test", &test_page_interface, NULL);
-    page_manager_register("key_touch_test", &key_touch_test_page_interface, NULL);
+    page_manager_register("key_test", &key_test_page_interface, NULL);
+    page_manager_register("touch_test", &touch_test_page_interface, NULL);
     page_manager_register("boot_switch_test", &boot_switch_test_page_interface, NULL);
     page_manager_register("photo_resolution_test", &photo_resolution_test_page_interface, NULL);
 

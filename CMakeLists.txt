@@ -94,7 +94,8 @@ set(SOURCES
     src/pages/page_photo.c
     src/pages/page_system_settings.c
     src/pages/page_test.c
-    src/pages/page_key_touch_test.c
+    src/pages/page_key_test.c
+    src/pages/page_touch_test.c
     src/pages/page_boot_switch_test.c
     src/pages/page_photo_resolution_test.c
     src/pages/page_version_info.c

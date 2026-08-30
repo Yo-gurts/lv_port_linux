@@ -184,6 +184,13 @@ feat(system_settings): 增加格式化/恢复出厂确认弹框与处理提示
 - 复现：进入相册九宫格后，对图片区域连续做短距离高速上/下滑，滑动结束瞬间容易触发 `LV_EVENT_CLICKED`。
 - 结论：item 点击需增加滚动防误触门禁（滚动中拦截、滚动结束冷却、按下到抬起位移阈值判定），避免将滑动尾段误识别为点击。
 
+### 问题：物理键触发返回上一级用 `KEY_EVENT_PRESS` 会连退两级
+
+- 现象：用物理键（如 MENU）触发 `page_manager_back()` 返回上一级时，一次按键会连退两级页面。
+- 原因：`key_manager` 一次「按下→松手」会先后分发两个事件——按下时发 `KEY_EVENT_PRESS`，松手时发 `KEY_EVENT_RELEASE` 后再 `if (!long_fired) dispatch(CLICK)`（见 `src/core/key_manager.c` 的 `key_manager_handle_key_value`）。用 `PRESS` 做返回会在按下瞬间就跳页，剩下的 `CLICK` 落到上一级页面，若上级也监听同键就再返回一次。
+- 结论：**返回类操作一律用 `KEY_EVENT_CLICK`，不要用 `KEY_EVENT_PRESS`。** 若要「短按+长按都能返回」，同时注册 `KEY_EVENT_CLICK` + `KEY_EVENT_LONG_PRESS`——两者互斥（长按到 `g_long_press_ms`(700ms) 阈值置 `long_fired=1` 发 `LONG_PRESS` 后，松手不再发 `CLICK`），一次按键只触发其一，绝不重复、不连退。参考 `page_touch_test.c` 的 `register_menu_key/unregister_menu_key`（注册/注销成对，加 `menu_key_registered` 标志防重复注册与悬空回调）。
+- **待办**：其它页面的物理键返回也应统一按此加上 `CLICK` + `LONG_PRESS`（后续单独处理）。
+
 ### 命名约定
 
 - 控件：`lv_label_title`、`lv_btn_ok`
