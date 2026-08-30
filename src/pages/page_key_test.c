@@ -230,6 +230,15 @@ static void back_btn_cb(lv_event_t* e)
     page_manager_back();
 }
 
+/* 长按 MENU 返回上一级。此页 MENU 短按用于测试该键（点亮图标），故只挂长按、不挂短按。 */
+static void menu_long_press_cb(key_id_t key, key_event_type_t event_type, void* user_data)
+{
+    (void)key;
+    (void)event_type;
+    (void)user_data;
+    page_manager_back();
+}
+
 static void register_test_key_callbacks(page_key_test_data_t* data)
 {
     int ret_press;
@@ -249,6 +258,8 @@ static void register_test_key_callbacks(page_key_test_data_t* data)
     }
     if (ret_press == 0 && ret_release == 0) {
         data->key_callbacks_registered = 1U;
+        /* 长按 MENU 返回（短按仍作测键，不冲突） */
+        key_manager_register_callback(KEY_ID_MENU, KEY_EVENT_LONG_PRESS, menu_long_press_cb, NULL);
     } else {
         (void)key_manager_unregister_callback(KEY_ID_ANY, KEY_EVENT_PRESS, test_key_event_cb, data);
         (void)key_manager_unregister_callback(KEY_ID_ANY, KEY_EVENT_RELEASE, test_key_event_cb, data);
@@ -262,6 +273,7 @@ static void unregister_test_key_callbacks(page_key_test_data_t* data)
     }
     (void)key_manager_unregister_callback(KEY_ID_ANY, KEY_EVENT_PRESS, test_key_event_cb, data);
     (void)key_manager_unregister_callback(KEY_ID_ANY, KEY_EVENT_RELEASE, test_key_event_cb, data);
+    (void)key_manager_unregister_callback(KEY_ID_MENU, KEY_EVENT_LONG_PRESS, menu_long_press_cb, NULL);
     data->key_callbacks_registered = 0U;
 }
 
@@ -305,7 +317,7 @@ void page_key_test_create(void)
     lv_obj_align(back_btn, LV_ALIGN_LEFT_MID, 10, 0);
     lv_obj_add_event_cb(back_btn, back_btn_cb, LV_EVENT_CLICKED, NULL);
     back_icon = lv_img_create(back_btn);
-    lv_img_set_src(back_icon, "A:" RES_ICON_PATH "/back-circle.png");
+    lv_img_set_src(back_icon, "A:" RES_ICON_PATH "/back-circle-white.png");
     lv_obj_align(back_icon, LV_ALIGN_CENTER, 0, 0);
 
     data->title_label = lv_label_create(top_bar);
