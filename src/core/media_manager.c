@@ -701,11 +701,101 @@ static int handle_set_photo_resolution_async(int32_t args)
     return media_manager_send_set_photo_resolution_async(args);
 }
 
+/* 标记一次「立即完成」：给 fire-and-forget 操作用。发完消息后置 pending，
+ * media_manager_poll 下一帧即在 UI 线程回调 done_cb 推进。result 恒 0（成功）。 */
+static void mm_mark_done_immediately(void)
+{
+    pthread_mutex_lock(&g_switch_mutex);
+    g_switch_result = 0;
+    g_switch_pending = true;
+    pthread_mutex_unlock(&g_switch_mutex);
+}
+
+/* 异步开始/停止录像：底层 fire-and-forget，不回完成 topic（同产品 page_video 用同步 execute、
+ * 发完即认为完成）。故发完消息立即标记完成，由 poll 回调推进，不等任何回包。 */
+static int handle_start_record_async(int32_t args)
+{
+    MESSAGE_S msg = { 0 };
+
+    (void)args;
+    msg.topic = EVENT_MODEMNG_START_REC;
+    if (MODEMNG_SendMessage(&msg) != 0) {
+        MLOG_ERR("异步开始录像发送失败");
+        return MEDIA_MANAGER_ESTATE;
+    }
+    mm_mark_done_immediately();
+    return MEDIA_MANAGER_OK;
+}
+
+static int handle_stop_record_async(int32_t args)
+{
+    MESSAGE_S msg = { 0 };
+
+    (void)args;
+    msg.topic = EVENT_MODEMNG_STOP_REC;
+    if (MODEMNG_SendMessage(&msg) != 0) {
+        MLOG_ERR("异步停止录像发送失败");
+        return MEDIA_MANAGER_ESTATE;
+    }
+    mm_mark_done_immediately();
+    return MEDIA_MANAGER_OK;
+}
+
+/* 异步设置录像分辨率：先设 param，再走与拍照分辨率同一套 EVENT_MODEMNG_SETTING 回包->poll 机制。 */
+static int handle_set_video_resolution_async(int32_t args)
+{
+    MESSAGE_S msg = { 0 };
+    int32_t ret;
+
+    ret = media_manager_set_param_checked(PARAM_ID_VIDEO_RESOLUTION, (int)args, "设置录像分辨率");
+    if (ret != MEDIA_MANAGER_OK) {
+        return ret;
+    }
+
+    msg.topic = EVENT_MODEMNG_SETTING;
+    msg.arg1 = PARAM_MENU_VIDEO_SIZE;
+    msg.arg2 = (uint32_t)args;
+    if (message_manager_send_async(&msg, mm_switch_result_cb) != 0) {
+        MLOG_ERR("异步设置录像分辨率发送失败: index=%d", (int)args);
+        return MEDIA_MANAGER_ESTATE;
+    }
+    return MEDIA_MANAGER_OK;
+}
+
+/* 异步拍照：请求 topic=START_PIV，完成回包 topic=PHOTO_INDEXED/FAILED（异于请求 topic），
+ * 故须用 send_async_topics 按结果 topic 匹配。回包经 mm_switch_result_cb 记 s32Result
+ * （PHOTO_INDEXED=0 成功 / FAILED 非0）-> poll 回调。不阻塞 UI，也不 block TP。 */
+static int handle_take_photo_async(int32_t args)
+{
+    MESSAGE_S msg = { 0 };
+
+    (void)args;
+
+    if (param_manager_get(PARAM_ID_SD_READY) != SD_READY_TRUE) {
+        top_notice_show_for("SD卡未就绪", TOP_NOTICE_TYPE_WARNING, 2000);
+        MLOG_WARN("异步拍照失败: SD卡未就绪");
+        return MEDIA_MANAGER_ESTATE;
+    }
+
+    msg.topic = EVENT_MODEMNG_START_PIV;
+    if (message_manager_send_async_topics(
+            &msg, EVENT_MODEMNG_PHOTO_INDEXED, EVENT_MODEMNG_PHOTO_INDEX_FAILED, mm_switch_result_cb)
+        != 0) {
+        MLOG_ERR("异步拍照发送失败");
+        return MEDIA_MANAGER_ESTATE;
+    }
+    return MEDIA_MANAGER_OK;
+}
+
 static const media_async_handler_t g_media_async_handlers[MEDIA_OP_BUTT] = {
     [MEDIA_OP_SWITCH_TO_PHOTO_MODE] = handle_switch_to_photo_mode_async,
     [MEDIA_OP_SWITCH_TO_BOOT_MODE] = handle_switch_to_boot_mode_async,
     [MEDIA_OP_SWITCH_TO_VIDEO_MODE] = handle_switch_to_video_mode_async,
     [MEDIA_OP_SET_PHOTO_RESOLUTION] = handle_set_photo_resolution_async,
+    [MEDIA_OP_SET_VIDEO_RESOLUTION] = handle_set_video_resolution_async,
+    [MEDIA_OP_START_RECORD] = handle_start_record_async,
+    [MEDIA_OP_STOP_RECORD] = handle_stop_record_async,
+    [MEDIA_OP_TAKE_PHOTO] = handle_take_photo_async,
 };
 
 int media_manager_execute_async(media_operation_t op, int32_t args, media_switch_done_cb_t done_cb)

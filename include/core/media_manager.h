@@ -44,9 +44,10 @@ typedef enum {
 typedef void (*media_switch_done_cb_t)(int result);
 
 int media_manager_execute(media_operation_t op, int32_t args);
-/* 异步操作：支持 SWITCH_TO_PHOTO_MODE / SWITCH_TO_VIDEO_MODE / SWITCH_TO_BOOT_MODE / SET_PHOTO_RESOLUTION，
- * 发起后立即返回，完成时在 UI 线程回调 done_cb。args 语义同 media_manager_execute（模式切换忽略，
- * 分辨率为档位下标）。同一时刻仅允许一个在途请求，忙时返回 EBUSY。 */
+/* 异步操作：支持 SWITCH_TO_PHOTO_MODE / SWITCH_TO_VIDEO_MODE / SWITCH_TO_BOOT_MODE /
+ * SET_PHOTO_RESOLUTION / SET_VIDEO_RESOLUTION / START_RECORD / STOP_RECORD / TAKE_PHOTO，
+ * 发起后立即返回，完成时在 UI 线程回调 done_cb。args 语义同 media_manager_execute（模式切换/
+ * 录像开停忽略，分辨率为档位下标）。同一时刻仅允许一个在途请求，忙时返回 EBUSY。 */
 int media_manager_execute_async(media_operation_t op, int32_t args, media_switch_done_cb_t done_cb);
 /* UI 主循环每帧调用：消费异步切换完成信号并在 UI 线程回调 done_cb。 */
 void media_manager_poll(void);

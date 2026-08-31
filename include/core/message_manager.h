@@ -43,6 +43,11 @@ void message_manager_destroy(void);
 /* UI 主循环每帧调用：消费 status-bar 刷新 / top-notice 待处理项并在 UI 线程执行。 */
 void message_manager_poll(void);
 int32_t message_manager_send_async(const MESSAGE_S* msg, message_manager_result_cb_t cb);
+/* 异步发送并按成功/失败 topic 匹配回包（不阻塞，发起即返回）：用于请求 topic 与完成
+ * 回包 topic 不同的场景（如 START_PIV -> PHOTO_INDEXED/FAILED），回包到达时经订阅线程
+ * 回调 cb。同一时刻仅允许一个在途请求，忙时返回 EBUSY。 */
+int32_t message_manager_send_async_topics(
+    const MESSAGE_S* msg, TOPIC_ID success_topic, TOPIC_ID failure_topic, message_manager_result_cb_t cb);
 int32_t message_manager_send_sync_timeout(const MESSAGE_S* msg, uint32_t timeout_ms);
 int32_t message_manager_send_sync_topics_timeout(
     const MESSAGE_S* msg, TOPIC_ID success_topic, TOPIC_ID failure_topic, uint32_t timeout_ms);

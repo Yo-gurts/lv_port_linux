@@ -24,6 +24,7 @@
 #include "pages/page_chat.h"
 #include "pages/page_home.h"
 #include "pages/page_key_test.h"
+#include "pages/page_loop_ptest.h"
 #include "pages/page_photo.h"
 #include "pages/page_photo_preview.h"
 #include "pages/page_photo_resolution_test.h"
@@ -343,6 +344,14 @@ static page_interface_t photo_resolution_test_page_interface = {
     .update = page_photo_resolution_test_update,
 };
 
+static page_interface_t loop_ptest_page_interface = {
+    .create = page_loop_ptest_create,
+    .destroy = page_loop_ptest_destroy,
+    .show = page_loop_ptest_show,
+    .hide = page_loop_ptest_hide,
+    .update = page_loop_ptest_update,
+};
+
 int32_t ui_main(void)
 {
     lv_init();
@@ -406,6 +415,7 @@ int32_t ui_main(void)
     page_manager_register("touch_test", &touch_test_page_interface, NULL);
     page_manager_register("boot_switch_test", &boot_switch_test_page_interface, NULL);
     page_manager_register("photo_resolution_test", &photo_resolution_test_page_interface, NULL);
+    page_manager_register("loop_ptest", &loop_ptest_page_interface, NULL);
 
     /* Navigate to home page */
     page_manager_navigate("home");

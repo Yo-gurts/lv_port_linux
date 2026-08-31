@@ -125,6 +125,12 @@ static void photo_resolution_item_cb(lv_event_t* e)
     page_manager_navigate("photo_resolution_test");
 }
 
+static void loop_ptest_item_cb(lv_event_t* e)
+{
+    LV_UNUSED(e);
+    page_manager_navigate("loop_ptest");
+}
+
 // #endregion
 // #############################################################################
 // ! #region 8. 初始化、去初始化、资源管理
@@ -211,6 +217,7 @@ void page_test_create(void)
     data->items[1] = create_menu_item(list, "触摸测试", touch_test_item_cb);
     data->items[2] = create_menu_item(list, "模式切换测试", boot_switch_item_cb);
     data->items[3] = create_menu_item(list, "拍照分辨率切换测试", photo_resolution_item_cb);
+    data->items[4] = create_menu_item(list, "循环拍照录像测试", loop_ptest_item_cb);
     data->selected_index = 0;
 
     page_set_private_data(data);

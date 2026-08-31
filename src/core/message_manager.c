@@ -448,6 +448,48 @@ int32_t message_manager_send_async(const MESSAGE_S* msg, message_manager_result_
     return 0;
 }
 
+/* 异步发送并按成功/失败 topic 匹配回包（不阻塞）：形同 send_sync_topics_timeout 的登记，
+ * 但不 cond_wait，发起即返回；回包到达经订阅线程 process_result 命中 topic 后回调 cb。 */
+int32_t message_manager_send_async_topics(
+    const MESSAGE_S* msg, TOPIC_ID success_topic, TOPIC_ID failure_topic, message_manager_result_cb_t cb)
+{
+    int32_t ret;
+
+    if (msg == NULL || success_topic == 0 || failure_topic == 0) {
+        return MESSAGE_MANAGER_EINVAL;
+    }
+
+    if (!g_msgmgr_created) {
+        return MESSAGE_MANAGER_ESTATE;
+    }
+
+    MUTEX_LOCK(g_msg_ctx.msg_mutex);
+    if (!g_msg_ctx.msg_processed) {
+        MUTEX_UNLOCK(g_msg_ctx.msg_mutex);
+        return MESSAGE_MANAGER_EBUSY;
+    }
+
+    message_manager_reset_request_locked(false);
+    g_msg_ctx.result_cb = cb;
+    g_msg_ctx.success_topic = success_topic;
+    g_msg_ctx.failure_topic = failure_topic;
+    g_msg_ctx.use_result_topics = true;
+    g_msg_ctx.msg.topic = msg->topic;
+    g_msg_ctx.msg.arg1 = msg->arg1;
+    g_msg_ctx.msg.arg2 = msg->arg2;
+    memcpy(g_msg_ctx.msg.aszPayload, msg->aszPayload, sizeof(g_msg_ctx.msg.aszPayload));
+
+    ret = MODEMNG_SendMessage(msg);
+    if (ret != 0) {
+        message_manager_reset_request_locked(true);
+        MUTEX_UNLOCK(g_msg_ctx.msg_mutex);
+        return MESSAGE_MANAGER_ESEND;
+    }
+    MUTEX_UNLOCK(g_msg_ctx.msg_mutex);
+
+    return 0;
+}
+
 /* 发送同步消息，并在超时内等待匹配回包结果。 */
 int32_t message_manager_send_sync_timeout(const MESSAGE_S* msg, uint32_t timeout_ms)
 {
