@@ -223,3 +223,15 @@ feat(system_settings): 增加格式化/恢复出厂确认弹框与处理提示
 - 位置：`res/icons/`（PNG）、`res/svg/`（SVG）
 - 字体：`res/fonts/HarmonyOS_Sans_SC_Regular.ttf`
 - 批量调整尺寸：`mogrify -resize 45x45 res/icons/*.png`
+
+## 用户手册同步（提交时硬门禁）
+
+`docs/用户手册/` 是基于真实 UI 截图与按键注册表生成的操作手册。**每次有代码提交时，必须检查本次改动是否影响手册，漏检会直接交付过期手册。**
+
+### 检查流程（每次提交前）
+
+1. 判断本次改动是否涉及**交互逻辑**：页面新增/删除、按键回调注册变化（`key_manager_register_callback`/`unregister`）、按键行为语义变化、页面导航关系变化、菜单项/设置项增删、文案变化。涉及 → 必须更新手册；仅涉及 mock 层/内部实现/注释 → 无需更新。
+2. 手册每章的标题框记录了**当前应用 commit-id + 日期**（`v<短hash> · <yyyy-mm-dd>`，取手册覆盖的最后一个 commit，即 `git log -1 --format=%h`）。检查时先读该字段，**从它指向的 commit 开始用 `git log <hash>..HEAD --name-only` 逐笔排查**，不必从头翻全部历史——即使某次漏了同步，下次也能从断点续查。
+3. 手册更新方式：页面截图用 SDL 模拟器自动抓取（方法见 `.claude/skills/sdl-sim-automation/SKILL.md`），按键功能表以各 `page_*.c` 的按键注册表为准；**每张截图必须目视核对内容与文件名一致**，禁止只信脚本按序命名的产物。
+4. 手册有更新时，同笔提交（或紧随的手册提交）里把标题框的 commit-id/日期刷成新值。
+
