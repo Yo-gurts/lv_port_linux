@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>DC309 AI 相机 用户操作手册（主页面）</title>
+<style>
+:root{--bg:#f5f6f8;--card:#fff;--ink:#1c2330;--muted:#6b7482;--accent:#0f6fff;--line:#e4e8ef;--dim:#b6bdc9}
+*{box-sizing:border-box}
+body{margin:0;font-family:"PingFang SC","Microsoft YaHei","Noto Sans SC",sans-serif;background:var(--bg);color:var(--ink)}
+header.top{background:#101623;color:#fff;padding:18px 26px}
+header.top h1{font-size:20px;margin:0 0 4px}
+header.top .sub{font-size:12px;color:#9aa6bd}
+main{max-width:900px;margin:0 auto;padding:24px 20px 80px}
+h2{font-size:22px;margin:28px 0 6px}
+.crumb{font-size:13px;color:var(--muted);margin-bottom:14px}
+.shot{width:100%;max-width:640px;border:1px solid var(--line);border-radius:10px;display:block;background:#000}
+h3.sec{font-size:16px;margin:26px 0 10px;padding-left:10px;border-left:4px solid var(--accent)}
+table.keys{border-collapse:collapse;width:100%;max-width:760px;background:var(--card);border-radius:8px;overflow:hidden;box-shadow:0 1px 3px rgba(16,22,35,.06)}
+table.keys th,table.keys td{padding:10px 14px;border-bottom:1px solid var(--line);font-size:14px;text-align:left;vertical-align:middle}
+table.keys th{background:#f0f3f8;font-size:13px;color:var(--muted);font-weight:600}
+table.keys tr:last-child td{border-bottom:none}
+table.keys td.k{white-space:nowrap;width:170px}
+.keychip{display:inline-flex;align-items:center;gap:7px;background:#f5f7fb;border:1px solid var(--line);border-radius:20px;padding:3px 12px 3px 5px;font-size:13px}
+.keychip img{width:24px;height:24px}
+/* 灰态：本页无功能的按键 */
+.keychip.dim{background:#f1f2f4;border-color:#e3e5e9;color:var(--dim);filter:grayscale(1);opacity:.55}
+.keychip.dim img{opacity:.5}
+tr.dimrow td{color:var(--dim)}
+ul.feat{font-size:14px;line-height:1.9;padding-left:22px;max-width:760px}
+.note{background:#fff8e6;border:1px solid #f2e2b3;border-radius:8px;padding:10px 14px;font-size:13px;color:#7a5b00;max-width:760px;margin:12px 0}
+.legend{display:flex;gap:18px;align-items:center;font-size:13px;color:var(--muted);margin:8px 0 14px;flex-wrap:wrap}
+footer{max-width:900px;margin:0 auto;padding:0 20px 40px;font-size:12px;color:var(--muted)}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <h1>DC309 AI 相机 · 用户操作手册</h1>
+  <span class="sub">章节：主页（打样版）· 截图与按键功能基于模拟器实测与源码按键注册表 · 2026-08-31</span>
+</header>
+
+<main>
+
+<h2>1. 主页</h2>
+<div class="crumb">设备开机后进入的第一个页面 · 2 行 3 列应用宫格</div>
+
+<img class="shot" src="images/home_default.png" alt="主页默认状态">
+
+<h3 class="sec">页面说明</h3>
+<ul class="feat">
+  <li>顶部状态栏：左侧 WiFi / 录制等状态图标，中央实时时钟与日期，右侧电池电量</li>
+  <li>六个应用入口，按 2 行 3 列排布：
+    第一行 <b>拍照 · AI 拍照 · 相册</b>，
+    第二行 <b>AI 对话 · 测试页面 · 设置</b></li>
+  <li>当前选中的应用图标带高亮框；按方向键移动选中项，按 OK 进入</li>
+  <li>下方为移动选中项后的效果（第二行选中「设置」）：</li>
+</ul>
+
+<img class="shot" style="max-width:640px;margin-top:8px" src="images/home_settings.png" alt="主页选中第二行设置">
+
+<h3 class="sec">按键操作</h3>
+<div class="legend">
+  <span><span class="keychip"><img src="keys/key-ok.png">正常</span>＝本页可用</span>
+  <span><span class="keychip dim"><img src="keys/key-ok.png">灰色</span>＝本页无响应</span>
+</div>
+
+<table class="keys">
+  <tr><th style="width:170px">按键</th><th>功能</th></tr>
+  <tr><td class="k"><span class="keychip"><img src="keys/key-up.png">上</span></td>
+      <td>选中项移到上一行（第二行 → 第一行；已在第一行时无动作）</td></tr>
+  <tr><td class="k"><span class="keychip"><img src="keys/key-down.png">下</span></td>
+      <td>选中项移到下一行（第一行 → 第二行；已在第二行时无动作）</td></tr>
+  <tr><td class="k"><span class="keychip"><img src="keys/key-left.png">左</span></td>
+      <td>选中项在同一行内向左移动一格（已在最左列时无动作）</td></tr>
+  <tr><td class="k"><span class="keychip"><img src="keys/key-right.png">右</span></td>
+      <td>选中项在同一行内向右移动一格（已在最右列时无动作）</td></tr>
+  <tr><td class="k"><span class="keychip"><img src="keys/key-ok.png">OK</span></td>
+      <td>进入当前选中的应用：<br>
+          拍照 → 拍照模式 · AI 拍照 → AI 拍照（自动切 12M） · 相册 → 照片九宫格<br>
+          AI 对话 → 对话页 · 测试页面 → 测试菜单 · 设置 → 系统设置</td></tr>
+  <tr class="dimrow"><td class="k"><span class="keychip dim"><img src="keys/key-power.png">电源</span></td>
+      <td>本页无功能（电源键为全局按键：短按亮/熄屏，长按 3 秒关机）</td></tr>
+  <tr class="dimrow"><td class="k"><span class="keychip dim"><img src="keys/key-camera.png">快门</span></td>
+      <td>本页无响应</td></tr>
+  <tr class="dimrow"><td class="k"><span class="keychip dim"><img src="keys/key-focus.png">对焦</span></td>
+      <td>本页无响应</td></tr>
+  <tr class="dimrow"><td class="k"><span class="keychip dim"><img src="keys/key-tele.png">变焦 T</span></td>
+      <td>本页无响应</td></tr>
+  <tr class="dimrow"><td class="k"><span class="keychip dim"><img src="keys/key-wide.png">变焦 W</span></td>
+      <td>本页无响应</td></tr>
+  <tr class="dimrow"><td class="k"><span class="keychip dim"><img src="keys/key-mode.png">MODE</span></td>
+      <td>本页无响应</td></tr>
+  <tr class="dimrow"><td class="k"><span class="keychip dim"><img src="keys/key-menu.png">MENU</span></td>
+      <td>本页无响应（主页已是顶层，无更上级可返回）</td></tr>
+  <tr class="dimrow"><td class="k"><span class="keychip dim"><img src="keys/key-ai.png">AI 键</span></td>
+      <td>本页无响应</td></tr>
+</table>
+
+<div class="note">
+说明：灰色按键并非故障——主页只注册了方向键与 OK 共 5 个按键的响应，
+其余按键在本页设计上就不做任何事。电源键虽在本页无页面级功能，
+但其亮/熄屏与关机作用是全局的，在任何页面都生效。
+</div>
+
+<h3 class="sec">进入各入口后的去向</h3>
+<table class="keys">
+  <tr><th style="width:170px">入口</th><th>去向页面</th></tr>
+  <tr><td class="k">拍照</td><td>拍照模式（取景页），可按 MODE 切到录像</td></tr>
+  <tr><td class="k">AI 拍照</td><td>AI 拍照模式（自动设置 12M 分辨率后进入）</td></tr>
+  <tr><td class="k">相册</td><td>照片九宫格（需 SD 卡在位，否则提示「SD卡未插入」）</td></tr>
+  <tr><td class="k">AI 对话</td><td>AI 对话页</td></tr>
+  <tr><td class="k">测试页面</td><td>测试菜单（按键/触摸/模式切换等工厂测试项）</td></tr>
+  <tr><td class="k">设置</td><td>系统设置（语言/WiFi/音量/格式化/版本等）</td></tr>
+</table>
+
+</main>
+
+<footer>
+截图获取方式：SDL 模拟器 sim_automation 自动截图（无鼠标光标纯 UI 画面）。
+按键功能依据 src/pages/page_home.c 的 key_manager_register_callback 注册表；
+灰色判定 = 该按键在本页无任何注册回调（电源键除外，其为全局按键）。
+</footer>
+
+</body>
+</html>
