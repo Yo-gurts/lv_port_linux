@@ -70,6 +70,7 @@ set(SOURCES
     src/core/font_manager.c
     src/core/key_manager.c
     src/core/page_manager.c
+    src/core/sim_automation.c
     src/core/style_manager.c
     src/core/ui_common.c
     src/main/simulator/main_simulator.c
@@ -98,6 +99,7 @@ set(SOURCES
     src/pages/page_touch_test.c
     src/pages/page_boot_switch_test.c
     src/pages/page_photo_resolution_test.c
+    src/pages/page_loop_ptest.c
     src/pages/page_version_info.c
     src/pages/page_video_settings.c
     src/pages/page_video_album.c

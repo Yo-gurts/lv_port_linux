@@ -11,6 +11,7 @@
 #include "core/page_manager.h"
 #include "core/param_manager.h"
 #include "core/power_manager.h"
+#include "core/sim_automation.h"
 #include "core/style_manager.h"
 #include "core/wifi_manager.h"
 #include "lvgl/lvgl.h"
@@ -383,6 +384,11 @@ int32_t ui_main(void)
     /* Initialize key manager */
     key_manager_init();
 
+#if defined(FB_RUN) && !FB_RUN
+    /* SDL 仿真自动化通道（截图/按键注入），板端构建为空实现 */
+    (void)sim_auto_init();
+#endif
+
     /* Initialize power manager */
     power_manager_init();
 
@@ -426,6 +432,7 @@ int32_t ui_main(void)
 
     /* Handle LVGL tasks */
     while (1) {
+        sim_auto_poll();
         key_manager_poll();
         power_manager_poll();
         wifi_manager_poll();
