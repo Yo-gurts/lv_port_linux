@@ -3,7 +3,6 @@
 // #############################################################################
 
 #include "pages/page_video_album.h"
-#include "pages/page_video_preview.h"
 #include "config.h"
 #include "core/file_manager.h"
 #include "core/font_manager.h"
@@ -13,8 +12,10 @@
 #include "core/param_manager.h"
 #include "core/style_manager.h"
 #include "mlog.h"
+#include "pages/page_video_preview.h"
 #include "ui/gesture_back.h"
 #include "ui/top_notice.h"
+#include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -86,6 +87,20 @@ static void scroll_event_cb(lv_event_t* e);
 static void fast_scrollbar_event_cb(lv_event_t* e);
 
 static int g_video_album_focus_video_index = -1;
+
+/* 后台批量删除视频的状态。视频相册页为单例（page_manager 单页导航），
+ * 故用文件级静态即可。后台线程只在持锁时写共享进度/完成标志，绝不触碰 LVGL；
+ * UI 线程删除进度定时器读这些标志刷新提示，完成后在 UI 上下文收尾。
+ * 与照片相册 page_album.c 保持同一异步范式。 */
+static pthread_t g_video_album_delete_worker;
+static bool g_video_album_delete_worker_active = false;
+static pthread_mutex_t g_video_album_delete_mutex = PTHREAD_MUTEX_INITIALIZER;
+static int g_video_album_delete_done_count = 0; /* 已处理选中视频数 */
+static int g_video_album_delete_total = 0; /* 本次待删除选中视频总数 */
+static bool g_video_album_delete_done = false;
+static int g_video_album_delete_result = 0; /* 成功删除条数（0=全失败） */
+static int g_video_album_delete_prev_scroll_y = 0;
+static lv_timer_t* g_video_album_delete_progress_timer = NULL;
 
 // #endregion
 // #############################################################################
@@ -312,17 +327,112 @@ static void toggle_item_selected(page_video_album_data_t* data, video_album_item
         lv_label_set_text_fmt(data->selected_count_label, "已选择 %d 项", data->selected_count);
 }
 
-static int delete_selected_videos(page_video_album_data_t* data)
+/* 后台删除线程：仅执行删除与进度统计，绝不触碰 LVGL。
+ * 通过 g_video_album_delete_mutex 保护共享进度/完成标志；video_index 从 high->low
+ * 遍历，保证 DTCF 链路删除时其余索引仍有效（与旧同步逻辑一致）。 */
+static void* video_album_delete_worker(void* arg)
 {
-    int video_index;
+    page_video_album_data_t* data = (page_video_album_data_t*)arg;
     int deleted = 0;
-    int prev_scroll_y;
+    int processed = 0;
+    int video_index;
+
+    for (video_index = data->total_videos - 1; video_index >= 0; video_index--) {
+        if (video_index >= data->selected_capacity)
+            continue;
+        if (!data->selected_flags[video_index])
+            continue;
+
+        if (file_manager_delete_video_by_index(video_index) == 0)
+            deleted++;
+        processed++;
+
+        pthread_mutex_lock(&g_video_album_delete_mutex);
+        g_video_album_delete_done_count = processed;
+        pthread_mutex_unlock(&g_video_album_delete_mutex);
+    }
+
+    pthread_mutex_lock(&g_video_album_delete_mutex);
+    g_video_album_delete_done = true;
+    g_video_album_delete_result = deleted; /* 成功删除条数，0=全失败 */
+    pthread_mutex_unlock(&g_video_album_delete_mutex);
+    return NULL;
+}
+
+/* UI 线程收尾：恢复输入、刷新列表、退出选择模式。仅在 UI 线程（进度定时器回调）调用。 */
+static void video_album_delete_finalize(page_video_album_data_t* data, int deleted)
+{
     int target_scroll_y;
 
+    key_manager_set_block_non_power(data->prev_input_block_mask);
+    if (data->op_block_mask)
+        lv_obj_add_flag(data->op_block_mask, LV_OBJ_FLAG_HIDDEN);
+    data->deleting_in_progress = false;
+
+    if (deleted <= 0) {
+        top_notice_show("删除失败", TOP_NOTICE_TYPE_ERROR);
+        return;
+    }
+
+    data->total_videos = get_album_total_count();
+    if (!ensure_selected_buffer(data, data->total_videos))
+        MLOG_WARN("Video album selected buffer ensure failed after delete");
+    update_scroll_content_height(data);
+    target_scroll_y = clamp_int(g_video_album_delete_prev_scroll_y, 0, get_max_scroll_y(data));
+    data->first_visible_row = -1;
+    lv_obj_scroll_to_y(data->grid_container, target_scroll_y, LV_ANIM_OFF);
+    exit_selection_mode(data);
+    refresh_visible_items(data, true);
+    sync_fast_scrollbar_from_scroll(data);
+    set_fast_scrollbar_visible(data, true);
+    top_notice_show("删除成功", TOP_NOTICE_TYPE_SUCCESS);
+}
+
+/* UI 线程删除进度定时器：读后台进度刷新提示文本，后台完成后在 UI 上下文收尾。 */
+static void video_album_delete_progress_cb(lv_timer_t* timer)
+{
+    page_video_album_data_t* data = (page_video_album_data_t*)lv_timer_get_user_data(timer);
+    char text[64];
+    int done = 0;
+    int total = 0;
+    bool finished = false;
+    int result = 0;
+
+    if (!data)
+        return;
+
+    pthread_mutex_lock(&g_video_album_delete_mutex);
+    done = g_video_album_delete_done_count;
+    total = g_video_album_delete_total;
+    finished = g_video_album_delete_done;
+    result = g_video_album_delete_result;
+    pthread_mutex_unlock(&g_video_album_delete_mutex);
+
+    if (!finished) {
+        if (snprintf(text, sizeof(text), "正在删除 %d/%d", done, total) >= (int)sizeof(text))
+            return;
+        top_notice_update(text, TOP_NOTICE_TYPE_BLOCKING);
+        return;
+    }
+
+    /* 完成：停止定时器、回收后台线程、在 UI 上下文收尾 */
+    if (timer) {
+        lv_timer_delete(timer);
+        g_video_album_delete_progress_timer = NULL;
+    }
+    if (g_video_album_delete_worker_active) {
+        pthread_join(g_video_album_delete_worker, NULL);
+        g_video_album_delete_worker_active = false;
+    }
+    video_album_delete_finalize(data, result);
+}
+
+static int delete_selected_videos(page_video_album_data_t* data)
+{
     if (!data || !data->selected_flags || data->selected_count <= 0)
         return -1;
 
-    prev_scroll_y = clamp_int(lv_obj_get_scroll_y(data->grid_container), 0, get_max_scroll_y(data));
+    g_video_album_delete_prev_scroll_y = clamp_int(lv_obj_get_scroll_y(data->grid_container), 0, get_max_scroll_y(data));
 
     data->deleting_in_progress = true;
     data->prev_input_block_mask = key_manager_get_block_non_power();
@@ -333,37 +443,28 @@ static int delete_selected_videos(page_video_album_data_t* data)
     }
     top_notice_show_for("正在删除，请稍候...", TOP_NOTICE_TYPE_BLOCKING, 60000);
 
-    for (video_index = data->total_videos - 1; video_index >= 0; video_index--) {
-        if (video_index >= data->selected_capacity)
-            continue;
-        if (!data->selected_flags[video_index])
-            continue;
-        if (file_manager_delete_video_by_index(video_index) == 0)
-            deleted++;
-    }
+    /* 快照本次待删数量到文件级状态，供后台线程与 UI 进度共用 */
+    pthread_mutex_lock(&g_video_album_delete_mutex);
+    g_video_album_delete_total = data->selected_count;
+    g_video_album_delete_done_count = 0;
+    g_video_album_delete_done = false;
+    g_video_album_delete_result = -1;
+    pthread_mutex_unlock(&g_video_album_delete_mutex);
 
-    key_manager_set_block_non_power(data->prev_input_block_mask);
-    if (data->op_block_mask)
-        lv_obj_add_flag(data->op_block_mask, LV_OBJ_FLAG_HIDDEN);
-    data->deleting_in_progress = false;
-
-    if (deleted <= 0) {
+    if (pthread_create(&g_video_album_delete_worker, NULL, video_album_delete_worker, data) != 0) {
+        key_manager_set_block_non_power(data->prev_input_block_mask);
+        if (data->op_block_mask)
+            lv_obj_add_flag(data->op_block_mask, LV_OBJ_FLAG_HIDDEN);
+        data->deleting_in_progress = false;
         top_notice_show("删除失败", TOP_NOTICE_TYPE_ERROR);
         return -1;
     }
+    g_video_album_delete_worker_active = true;
 
-    data->total_videos = get_album_total_count();
-    if (!ensure_selected_buffer(data, data->total_videos))
-        MLOG_WARN("Video album selected buffer ensure failed after delete");
-    update_scroll_content_height(data);
-    target_scroll_y = clamp_int(prev_scroll_y, 0, get_max_scroll_y(data));
-    data->first_visible_row = -1;
-    lv_obj_scroll_to_y(data->grid_container, target_scroll_y, LV_ANIM_OFF);
-    exit_selection_mode(data);
-    refresh_visible_items(data, true);
-    sync_fast_scrollbar_from_scroll(data);
-    set_fast_scrollbar_visible(data, true);
-    top_notice_show("删除成功", TOP_NOTICE_TYPE_SUCCESS);
+    /* 删除搬到后台线程，UI 用定时器刷进度、完成后收尾，避免整段同步冻结 UI */
+    if (g_video_album_delete_progress_timer == NULL)
+        g_video_album_delete_progress_timer = lv_timer_create(video_album_delete_progress_cb, 200, data);
+
     return 0;
 }
 
@@ -1397,6 +1498,15 @@ void page_video_album_destroy(void)
     if (data->deleting_in_progress) {
         key_manager_set_block_non_power(data->prev_input_block_mask);
         data->deleting_in_progress = false;
+    }
+    /* 回收后台删除线程与进度定时器，避免页面 data 释放后被工作线程访问 */
+    if (g_video_album_delete_progress_timer) {
+        lv_timer_delete(g_video_album_delete_progress_timer);
+        g_video_album_delete_progress_timer = NULL;
+    }
+    if (g_video_album_delete_worker_active) {
+        pthread_join(g_video_album_delete_worker, NULL);
+        g_video_album_delete_worker_active = false;
     }
     destroy_item_pool(data);
     free(data->selected_flags);
