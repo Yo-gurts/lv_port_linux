@@ -8,7 +8,7 @@
 extern "C" {
 #endif
 
-#define PAGE_TEST_ITEM_COUNT 5
+#define PAGE_TEST_ITEM_COUNT 7
 
 typedef struct {
     lv_obj_t* container;

@@ -25,7 +25,9 @@
 #include "pages/page_chat.h"
 #include "pages/page_home.h"
 #include "pages/page_key_test.h"
+#include "pages/page_loop_captest.h"
 #include "pages/page_loop_ptest.h"
+#include "pages/page_loop_vtest.h"
 #include "pages/page_photo.h"
 #include "pages/page_photo_preview.h"
 #include "pages/page_photo_resolution_test.h"
@@ -353,6 +355,22 @@ static page_interface_t loop_ptest_page_interface = {
     .update = page_loop_ptest_update,
 };
 
+static page_interface_t loop_vtest_page_interface = {
+    .create = page_loop_vtest_create,
+    .destroy = page_loop_vtest_destroy,
+    .show = page_loop_vtest_show,
+    .hide = page_loop_vtest_hide,
+    .update = page_loop_vtest_update,
+};
+
+static page_interface_t loop_captest_page_interface = {
+    .create = page_loop_captest_create,
+    .destroy = page_loop_captest_destroy,
+    .show = page_loop_captest_show,
+    .hide = page_loop_captest_hide,
+    .update = page_loop_captest_update,
+};
+
 int32_t ui_main(void)
 {
     lv_init();
@@ -422,6 +440,8 @@ int32_t ui_main(void)
     page_manager_register("boot_switch_test", &boot_switch_test_page_interface, NULL);
     page_manager_register("photo_resolution_test", &photo_resolution_test_page_interface, NULL);
     page_manager_register("loop_ptest", &loop_ptest_page_interface, NULL);
+    page_manager_register("loop_vtest", &loop_vtest_page_interface, NULL);
+    page_manager_register("loop_captest", &loop_captest_page_interface, NULL);
 
     /* Navigate to home page */
     page_manager_navigate("home");

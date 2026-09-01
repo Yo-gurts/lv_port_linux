@@ -131,6 +131,18 @@ static void loop_ptest_item_cb(lv_event_t* e)
     page_manager_navigate("loop_ptest");
 }
 
+static void loop_vtest_item_cb(lv_event_t* e)
+{
+    LV_UNUSED(e);
+    page_manager_navigate("loop_vtest");
+}
+
+static void loop_captest_item_cb(lv_event_t* e)
+{
+    LV_UNUSED(e);
+    page_manager_navigate("loop_captest");
+}
+
 // #endregion
 // #############################################################################
 // ! #region 8. 初始化、去初始化、资源管理
@@ -218,6 +230,8 @@ void page_test_create(void)
     data->items[2] = create_menu_item(list, "模式切换测试", boot_switch_item_cb);
     data->items[3] = create_menu_item(list, "拍照分辨率切换测试", photo_resolution_item_cb);
     data->items[4] = create_menu_item(list, "循环拍照录像测试", loop_ptest_item_cb);
+    data->items[5] = create_menu_item(list, "循环录像测试", loop_vtest_item_cb);
+    data->items[6] = create_menu_item(list, "循环拍照测试", loop_captest_item_cb);
     data->selected_index = 0;
 
     page_set_private_data(data);

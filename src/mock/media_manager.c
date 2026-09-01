@@ -294,11 +294,38 @@ static int mock_set_photo_resolution_async(int32_t args)
     return media_manager_execute(MEDIA_OP_SET_PHOTO_RESOLUTION, args);
 }
 
+static int mock_set_video_resolution_async(int32_t args)
+{
+    return media_manager_execute(MEDIA_OP_SET_VIDEO_RESOLUTION, args);
+}
+
+static int mock_take_photo_async(int32_t args)
+{
+    (void)args;
+    return media_manager_execute(MEDIA_OP_TAKE_PHOTO, 0);
+}
+
+static int mock_start_record_async(int32_t args)
+{
+    (void)args;
+    return media_manager_execute(MEDIA_OP_START_RECORD, 0);
+}
+
+static int mock_stop_record_async(int32_t args)
+{
+    (void)args;
+    return media_manager_execute(MEDIA_OP_STOP_RECORD, 0);
+}
+
 static const media_async_handler_t g_media_async_handlers[MEDIA_OP_BUTT] = {
     [MEDIA_OP_SWITCH_TO_PHOTO_MODE] = mock_switch_to_photo_mode_async,
     [MEDIA_OP_SWITCH_TO_BOOT_MODE] = mock_switch_to_boot_mode_async,
     [MEDIA_OP_SWITCH_TO_VIDEO_MODE] = mock_switch_to_video_mode_async,
     [MEDIA_OP_SET_PHOTO_RESOLUTION] = mock_set_photo_resolution_async,
+    [MEDIA_OP_SET_VIDEO_RESOLUTION] = mock_set_video_resolution_async,
+    [MEDIA_OP_TAKE_PHOTO] = mock_take_photo_async,
+    [MEDIA_OP_START_RECORD] = mock_start_record_async,
+    [MEDIA_OP_STOP_RECORD] = mock_stop_record_async,
 };
 
 int media_manager_execute_async(media_operation_t op, int32_t args, media_switch_done_cb_t done_cb)
