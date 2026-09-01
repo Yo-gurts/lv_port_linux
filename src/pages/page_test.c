@@ -28,7 +28,17 @@ static void menu_key_cb(key_id_t key, key_event_type_t event_type, void* user_da
     page_manager_back();
 }
 
-/* 刷新选中高亮：移除旧项、给新项加选中样式。 */
+/* 把当前选中项滚动到列表可视区（仿 page_photo_settings.c 的 ensure_setting_visible）。 */
+static void ensure_item_visible(page_test_data_t* data, int index)
+{
+    if (data == NULL || index < 0 || index >= PAGE_TEST_ITEM_COUNT || data->items[index] == NULL) {
+        return;
+    }
+
+    lv_obj_scroll_to_view(data->items[index], LV_ANIM_ON);
+}
+
+/* 刷新选中高亮：移除旧项、给新项加选中样式，并把新项滚动到可见。 */
 static void update_selection_highlight(page_test_data_t* data, int old_index, int new_index)
 {
     if (data == NULL) {
@@ -39,6 +49,7 @@ static void update_selection_highlight(page_test_data_t* data, int old_index, in
     }
     if (new_index >= 0 && new_index < PAGE_TEST_ITEM_COUNT && data->items[new_index] != NULL) {
         lv_obj_add_style(data->items[new_index], &style_settings_item_selected, LV_PART_MAIN);
+        ensure_item_visible(data, new_index);
     }
 }
 
