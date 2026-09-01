@@ -234,7 +234,7 @@ void page_test_create(void)
     lv_obj_set_layout(list, LV_LAYOUT_FLEX);
     lv_obj_set_flex_flow(list, LV_FLEX_FLOW_COLUMN);
     lv_obj_set_flex_align(list, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-    lv_obj_set_scrollbar_mode(list, LV_SCROLLBAR_MODE_OFF);
+    lv_obj_set_scrollbar_mode(list, LV_SCROLLBAR_MODE_AUTO);
 
     data->items[0] = create_menu_item(list, "按键测试", key_test_item_cb);
     data->items[1] = create_menu_item(list, "触摸测试", touch_test_item_cb);
