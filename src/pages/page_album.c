@@ -3,7 +3,6 @@
 // #############################################################################
 
 #include "pages/page_album.h"
-#include "pages/page_photo_preview.h"
 #include "config.h"
 #include "core/file_manager.h"
 #include "core/font_manager.h"
@@ -12,8 +11,10 @@
 #include "core/param_manager.h"
 #include "core/style_manager.h"
 #include "mlog.h"
+#include "pages/page_photo_preview.h"
 #include "ui/gesture_back.h"
 #include "ui/top_notice.h"
+#include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -78,6 +79,20 @@ static void update_cursor_visuals(page_album_data_t* data);
 static void move_cursor_to_index(page_album_data_t* data, int photo_index);
 
 static int g_album_focus_photo_index = -1;
+
+/* 后台批量删除照片的状态。相册页为单例（page_manager 单页导航），
+ * 故用文件级静态即可。后台线程只在持锁时写共享进度/完成标志，绝不触碰 LVGL；
+ * UI 线程删除进度定时器读这些标志刷新提示，完成后在 UI 上下文收尾。
+ * 见 [[sm3_81-lv-async-call-cross-thread-crash]] 与本工程既有 *_poll 范式。 */
+static pthread_t g_album_delete_worker;
+static bool g_album_delete_worker_active = false;
+static pthread_mutex_t g_album_delete_mutex = PTHREAD_MUTEX_INITIALIZER;
+static int g_album_delete_done_count = 0; /* 已处理选中照片数 */
+static int g_album_delete_total = 0; /* 本次待删除选中照片总数 */
+static bool g_album_delete_done = false;
+static int g_album_delete_result = 0; /* 成功删除张数（0=全失败） */
+static int g_album_delete_prev_scroll_y = 0;
+static lv_timer_t* g_album_delete_progress_timer = NULL;
 
 // #endregion
 // #############################################################################
@@ -351,17 +366,112 @@ static void toggle_item_selected(page_album_data_t* data, album_item_t* item)
         lv_label_set_text_fmt(data->selected_count_label, "已选择 %d 项", data->selected_count);
 }
 
-static int delete_selected_photos(page_album_data_t* data)
+/* 后台删除线程：仅执行删除与进度统计，绝不触碰 LVGL。
+ * 通过 g_album_delete_mutex 保护共享进度/完成标志；photo_index 遍历从 high->low，
+ * 保证 DTCF 链路删除时其余索引仍有效（与旧同步逻辑一致）。 */
+static void* album_delete_photos_worker(void* arg)
 {
-    int photo_index;
+    page_album_data_t* data = (page_album_data_t*)arg;
     int deleted = 0;
-    int prev_scroll_y;
+    int processed = 0;
+    int photo_index;
+
+    for (photo_index = data->total_photos - 1; photo_index >= 0; photo_index--) {
+        if (photo_index >= data->selected_capacity)
+            continue;
+        if (!data->selected_flags[photo_index])
+            continue;
+
+        if (file_manager_delete_photo_by_index(photo_index) == 0)
+            deleted++;
+        processed++;
+
+        pthread_mutex_lock(&g_album_delete_mutex);
+        g_album_delete_done_count = processed;
+        pthread_mutex_unlock(&g_album_delete_mutex);
+    }
+
+    pthread_mutex_lock(&g_album_delete_mutex);
+    g_album_delete_done = true;
+    g_album_delete_result = deleted; /* 成功删除张数，0=全失败 */
+    pthread_mutex_unlock(&g_album_delete_mutex);
+    return NULL;
+}
+
+/* UI 线程收尾：恢复输入、刷新列表、退出选择模式。仅在 UI 线程（进度定时器回调）调用。 */
+static void album_delete_finalize(page_album_data_t* data, int deleted)
+{
     int target_scroll_y;
 
+    key_manager_set_block_non_power(data->prev_input_block_mask);
+    if (data->op_block_mask)
+        lv_obj_add_flag(data->op_block_mask, LV_OBJ_FLAG_HIDDEN);
+    data->deleting_in_progress = false;
+
+    if (deleted <= 0) {
+        top_notice_show("删除失败", TOP_NOTICE_TYPE_ERROR);
+        return;
+    }
+
+    data->total_photos = get_album_total_count();
+    if (!ensure_selected_buffer(data, data->total_photos))
+        MLOG_WARN("Album selected buffer ensure failed after delete");
+    update_scroll_content_height(data);
+    target_scroll_y = clamp_int(g_album_delete_prev_scroll_y, 0, get_max_scroll_y(data));
+    data->first_visible_row = -1;
+    lv_obj_scroll_to_y(data->grid_container, target_scroll_y, LV_ANIM_OFF);
+    exit_selection_mode(data);
+    refresh_visible_items(data, true);
+    sync_fast_scrollbar_from_scroll(data);
+    set_fast_scrollbar_visible(data, true);
+    top_notice_show("删除成功", TOP_NOTICE_TYPE_SUCCESS);
+}
+
+/* UI 线程删除进度定时器：读后台进度刷新提示文本，后台完成后在 UI 上下文收尾。 */
+static void album_delete_progress_cb(lv_timer_t* timer)
+{
+    page_album_data_t* data = (page_album_data_t*)lv_timer_get_user_data(timer);
+    char text[64];
+    int done = 0;
+    int total = 0;
+    bool finished = false;
+    int result = 0;
+
+    if (!data)
+        return;
+
+    pthread_mutex_lock(&g_album_delete_mutex);
+    done = g_album_delete_done_count;
+    total = g_album_delete_total;
+    finished = g_album_delete_done;
+    result = g_album_delete_result;
+    pthread_mutex_unlock(&g_album_delete_mutex);
+
+    if (!finished) {
+        if (snprintf(text, sizeof(text), "正在删除 %d/%d", done, total) >= (int)sizeof(text))
+            return;
+        top_notice_update(text, TOP_NOTICE_TYPE_BLOCKING);
+        return;
+    }
+
+    /* 完成：停止定时器、回收后台线程、在 UI 上下文收尾 */
+    if (timer) {
+        lv_timer_delete(timer);
+        g_album_delete_progress_timer = NULL;
+    }
+    if (g_album_delete_worker_active) {
+        pthread_join(g_album_delete_worker, NULL);
+        g_album_delete_worker_active = false;
+    }
+    album_delete_finalize(data, result);
+}
+
+static int delete_selected_photos(page_album_data_t* data)
+{
     if (!data || !data->selected_flags || data->selected_count <= 0)
         return -1;
 
-    prev_scroll_y = clamp_int(lv_obj_get_scroll_y(data->grid_container), 0, get_max_scroll_y(data));
+    g_album_delete_prev_scroll_y = clamp_int(lv_obj_get_scroll_y(data->grid_container), 0, get_max_scroll_y(data));
 
     data->deleting_in_progress = true;
     data->prev_input_block_mask = key_manager_get_block_non_power();
@@ -372,37 +482,28 @@ static int delete_selected_photos(page_album_data_t* data)
     }
     top_notice_show_for("正在删除，请稍候...", TOP_NOTICE_TYPE_BLOCKING, 60000);
 
-    for (photo_index = data->total_photos - 1; photo_index >= 0; photo_index--) {
-        if (photo_index >= data->selected_capacity)
-            continue;
-        if (!data->selected_flags[photo_index])
-            continue;
-        if (file_manager_delete_photo_by_index(photo_index) == 0)
-            deleted++;
-    }
+    /* 快照本次待删数量到文件级状态，供后台线程与 UI 进度共用 */
+    pthread_mutex_lock(&g_album_delete_mutex);
+    g_album_delete_total = data->selected_count;
+    g_album_delete_done_count = 0;
+    g_album_delete_done = false;
+    g_album_delete_result = -1;
+    pthread_mutex_unlock(&g_album_delete_mutex);
 
-    key_manager_set_block_non_power(data->prev_input_block_mask);
-    if (data->op_block_mask)
-        lv_obj_add_flag(data->op_block_mask, LV_OBJ_FLAG_HIDDEN);
-    data->deleting_in_progress = false;
-
-    if (deleted <= 0) {
+    if (pthread_create(&g_album_delete_worker, NULL, album_delete_photos_worker, data) != 0) {
+        key_manager_set_block_non_power(data->prev_input_block_mask);
+        if (data->op_block_mask)
+            lv_obj_add_flag(data->op_block_mask, LV_OBJ_FLAG_HIDDEN);
+        data->deleting_in_progress = false;
         top_notice_show("删除失败", TOP_NOTICE_TYPE_ERROR);
         return -1;
     }
+    g_album_delete_worker_active = true;
 
-    data->total_photos = get_album_total_count();
-    if (!ensure_selected_buffer(data, data->total_photos))
-        MLOG_WARN("Album selected buffer ensure failed after delete");
-    update_scroll_content_height(data);
-    target_scroll_y = clamp_int(prev_scroll_y, 0, get_max_scroll_y(data));
-    data->first_visible_row = -1;
-    lv_obj_scroll_to_y(data->grid_container, target_scroll_y, LV_ANIM_OFF);
-    exit_selection_mode(data);
-    refresh_visible_items(data, true);
-    sync_fast_scrollbar_from_scroll(data);
-    set_fast_scrollbar_visible(data, true);
-    top_notice_show("删除成功", TOP_NOTICE_TYPE_SUCCESS);
+    /* 删除搬到后台线程，UI 用定时器刷进度、完成后收尾，避免整段同步冻结 UI */
+    if (g_album_delete_progress_timer == NULL)
+        g_album_delete_progress_timer = lv_timer_create(album_delete_progress_cb, 200, data);
+
     return 0;
 }
 
@@ -1387,6 +1488,15 @@ void page_album_destroy(void)
     if (data->deleting_in_progress) {
         key_manager_set_block_non_power(data->prev_input_block_mask);
         data->deleting_in_progress = false;
+    }
+    /* 回收后台删除线程与进度定时器，避免页面 data 释放后被工作线程访问 */
+    if (g_album_delete_progress_timer) {
+        lv_timer_delete(g_album_delete_progress_timer);
+        g_album_delete_progress_timer = NULL;
+    }
+    if (g_album_delete_worker_active) {
+        pthread_join(g_album_delete_worker, NULL);
+        g_album_delete_worker_active = false;
     }
     destroy_item_pool(data);
     free(data->selected_flags);
