@@ -139,8 +139,12 @@ static void ok_key_click_cb(key_id_t key, key_event_type_t event_type, void* use
 {
     page_ai_photo_settings_data_t* data = (page_ai_photo_settings_data_t*)user_data;
 
-    if (key != KEY_ID_OK || event_type != KEY_EVENT_CLICK) return;
-    if (!data || !data->container) return;
+    if (key != KEY_ID_OK || event_type != KEY_EVENT_CLICK)
+        return;
+    if (!data || !data->container)
+        return;
+    if (data->selected_index < 0 || data->selected_index >= data->settings_count)
+        return;
 
     lv_obj_send_event(data->items[data->selected_index].container, LV_EVENT_CLICKED, data);
 }
@@ -196,6 +200,7 @@ void page_ai_photo_settings_create(void)
     /* 指向静态配置 */
     data->configs = settings_config;
     data->settings_count = SETTINGS_COUNT;
+    data->selected_index = 0;
     data->container = NULL;
     data->nav_bar = NULL;
     data->settings_container = NULL;
