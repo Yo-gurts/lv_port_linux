@@ -280,12 +280,15 @@ static void menu_key_cb(key_id_t key, key_event_type_t event_type, void* user_da
     page_manager_navigate("ai_photo_settings");
 }
 
+/* 前向声明：back_btn_cb 定义在其后，供 menu_key_long_press_cb 复用（对齐 page_photo/page_video） */
+static void back_btn_cb(lv_event_t* e);
+
 static void menu_key_long_press_cb(key_id_t key, key_event_type_t event_type, void* user_data)
 {
     (void)key;
     (void)event_type;
     (void)user_data;
-    page_manager_back();
+    back_btn_cb(NULL);
 }
 
 /* VOLUME_UP Click/长按连发：放大变焦（长按时每次连发切一档，实现连续放大） */
