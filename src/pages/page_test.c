@@ -154,6 +154,12 @@ static void loop_captest_item_cb(lv_event_t* e)
     page_manager_navigate("loop_captest");
 }
 
+static void screen_display_item_cb(lv_event_t* e)
+{
+    LV_UNUSED(e);
+    page_manager_navigate("screen_display_test");
+}
+
 // #endregion
 // #############################################################################
 // ! #region 8. 初始化、去初始化、资源管理
@@ -243,6 +249,7 @@ void page_test_create(void)
     data->items[4] = create_menu_item(list, "循环拍照录像测试", loop_ptest_item_cb);
     data->items[5] = create_menu_item(list, "循环录像测试", loop_vtest_item_cb);
     data->items[6] = create_menu_item(list, "循环拍照测试", loop_captest_item_cb);
+    data->items[7] = create_menu_item(list, "屏幕显示测试", screen_display_item_cb);
     data->selected_index = 0;
 
     page_set_private_data(data);

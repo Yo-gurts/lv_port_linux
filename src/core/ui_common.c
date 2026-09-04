@@ -32,6 +32,7 @@
 #include "pages/page_photo_preview.h"
 #include "pages/page_photo_resolution_test.h"
 #include "pages/page_photo_settings.h"
+#include "pages/page_screen_display_test.h"
 #include "pages/page_system_settings.h"
 #include "pages/page_test.h"
 #include "pages/page_touch_test.h"
@@ -371,6 +372,14 @@ static page_interface_t loop_captest_page_interface = {
     .update = page_loop_captest_update,
 };
 
+static page_interface_t screen_display_test_page_interface = {
+    .create = page_screen_display_test_create,
+    .destroy = page_screen_display_test_destroy,
+    .show = page_screen_display_test_show,
+    .hide = page_screen_display_test_hide,
+    .update = page_screen_display_test_update,
+};
+
 int32_t ui_main(void)
 {
     lv_init();
@@ -442,6 +451,7 @@ int32_t ui_main(void)
     page_manager_register("loop_ptest", &loop_ptest_page_interface, NULL);
     page_manager_register("loop_vtest", &loop_vtest_page_interface, NULL);
     page_manager_register("loop_captest", &loop_captest_page_interface, NULL);
+    page_manager_register("screen_display_test", &screen_display_test_page_interface, NULL);
 
     /* Navigate to home page */
     page_manager_navigate("home");

@@ -102,6 +102,7 @@ set(SOURCES
     src/pages/page_loop_ptest.c
     src/pages/page_loop_vtest.c
     src/pages/page_loop_captest.c
+    src/pages/page_screen_display_test.c
     src/pages/page_version_info.c
     src/pages/page_video_settings.c
     src/pages/page_video_album.c
