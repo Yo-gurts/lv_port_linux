@@ -9,9 +9,11 @@
 #include "core/key_manager.h"
 #include "core/page_manager.h"
 #include "core/param_manager.h"
+#include "core/power_manager.h"
 #include "core/style_manager.h"
 #include "core/wifi_manager.h"
 #include "mlog.h"
+#include "ui/brightness_bar.h"
 #include "ui/gesture_back.h"
 #include "ui/top_notice.h"
 #include "ui/volume_bar.h"
@@ -35,6 +37,7 @@ static const setting_config_t settings_config[] = {
     { .icon_path = "A" RES_ICON_PATH "/sys-wifi.png", .title = "WiFi设置", .value = "未连接", .type = SETTING_TYPE_NORMAL },
     { .icon_path = "A" RES_ICON_PATH "/datetime.png", .title = "时间和日期", .value = "2026-02-07 12:00", .type = SETTING_TYPE_NORMAL },
     { .icon_path = "A" RES_ICON_PATH "/sys-volume.png", .title = "音量设置", .value = "xx%", .type = SETTING_TYPE_NORMAL },
+    { .icon_path = "A" RES_ICON_PATH "/sys-brightness.png", .title = "屏幕亮度", .value = "xx%", .type = SETTING_TYPE_NORMAL },
     { .icon_path = "A" RES_ICON_PATH "/switch.png", .title = "自动息屏", .value = "已开启", .type = SETTING_TYPE_TOGGLE },
     { .icon_path = "A" RES_ICON_PATH "/delete.png", .title = "格式化", .value = "请确认", .type = SETTING_TYPE_NORMAL },
     { .icon_path = "A" RES_ICON_PATH "/factory.png", .title = "出厂设置", .value = "请确认", .type = SETTING_TYPE_NORMAL },
@@ -42,10 +45,11 @@ static const setting_config_t settings_config[] = {
 };
 
 #define SETTINGS_COUNT (int)(sizeof(settings_config) / sizeof(settings_config[0]))
-#define SETTINGS_INDEX_AUTO_SLEEP 4
-#define SETTINGS_INDEX_FORMAT 5
-#define SETTINGS_INDEX_FACTORY_RESET 6
+#define SETTINGS_INDEX_AUTO_SLEEP 5
+#define SETTINGS_INDEX_FORMAT 6
+#define SETTINGS_INDEX_FACTORY_RESET 7
 #define SETTINGS_INDEX_VOLUME 3
+#define SETTINGS_INDEX_BRIGHTNESS 4
 #define SETTINGS_INDEX_WIFI 1
 
 typedef enum {
@@ -72,6 +76,21 @@ static void update_volume_setting_value(page_system_settings_data_t* data)
     volume = param_manager_get(PARAM_ID_VOLUME);
     lv_snprintf(text, sizeof(text), "%d%%", volume);
     lv_label_set_text(data->settings[SETTINGS_INDEX_VOLUME].value_label, text);
+}
+
+/* 更新“屏幕亮度”行的右侧文本。亮度为运行期状态，直接读 power_manager 缓存。 */
+static void update_brightness_setting_value(page_system_settings_data_t* data)
+{
+    char text[16];
+    int brightness;
+
+    if (data == NULL || data->settings[SETTINGS_INDEX_BRIGHTNESS].value_label == NULL) {
+        return;
+    }
+
+    brightness = param_manager_get(PARAM_ID_BRIGHTNESS);
+    lv_snprintf(text, sizeof(text), "%d%%", brightness);
+    lv_label_set_text(data->settings[SETTINGS_INDEX_BRIGHTNESS].value_label, text);
 }
 
 static void update_auto_sleep_setting_value(page_system_settings_data_t* data)
@@ -160,6 +179,10 @@ static void system_settings_param_cb(param_id_t id, int value, void* user_data)
 
     if (id == PARAM_ID_VOLUME) {
         update_volume_setting_value(data);
+        return;
+    }
+    if (id == PARAM_ID_BRIGHTNESS) {
+        update_brightness_setting_value(data);
         return;
     }
     if (id == PARAM_ID_AUTO_SLEEP) {
@@ -371,6 +394,8 @@ static void setting_item_cb(lv_event_t* e)
             page_manager_navigate("version_info");
         } else if (index == SETTINGS_INDEX_VOLUME) {
             volume_bar_show();
+        } else if (index == SETTINGS_INDEX_BRIGHTNESS) {
+            brightness_bar_show();
         } else if (index == SETTINGS_INDEX_FORMAT) {
             show_confirm_dialog(data, SYSTEM_ACTION_FORMAT_SDCARD);
         } else if (index == SETTINGS_INDEX_FACTORY_RESET) {
@@ -449,7 +474,7 @@ void page_system_settings_create(void)
     lv_obj_set_flex_flow(data->settings_container, LV_FLEX_FLOW_COLUMN);
     lv_obj_set_flex_align(data->settings_container, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
 
-    /* 创建8个设置项 */
+    /* 创建全部设置项 */
     for (int i = 0; i < SETTINGS_COUNT; i++) {
         system_setting_item_t* item = &data->settings[i];
 
@@ -546,6 +571,7 @@ void page_system_settings_create(void)
     /* 监听参数变化，保持“音量设置”与 param_manager 同步。 */
     param_manager_register_callback(system_settings_param_cb, data);
     update_volume_setting_value(data);
+    update_brightness_setting_value(data);
     update_auto_sleep_setting_value(data);
     update_wifi_setting_value(data);
 }
@@ -587,6 +613,7 @@ void page_system_settings_show(void)
 
     MLOG_INFO("System settings page show");
     update_volume_setting_value(data);
+    update_brightness_setting_value(data);
     update_auto_sleep_setting_value(data);
     update_wifi_setting_value(data);
     update_selection_highlight(data, -1, data->selected_index);

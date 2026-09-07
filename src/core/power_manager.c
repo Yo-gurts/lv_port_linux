@@ -47,6 +47,7 @@ static uint32_t g_disable_auto_sleep_depth = 0;
 static uint8_t g_wait_power_release = 0;
 static uint64_t g_last_battery_poll_ms = 0;
 static shutdown_prepare_entry_t g_shutdown_prepare = { 0 };
+static int g_luma_percent = POWER_MANAGER_LUMA_MAX; /* 当前背光亮度百分比缓存 */
 
 // #endregion
 // #############################################################################
@@ -290,6 +291,10 @@ int power_manager_init(void)
     }
 
     g_inited = 1;
+
+    /* 开机默认满亮度：背光 HAL 已随系统就绪，此处下发一次默认亮度。 */
+    power_manager_set_luma(POWER_MANAGER_LUMA_MAX);
+
     return 0;
 }
 
@@ -416,6 +421,38 @@ void power_manager_unregister_shutdown_prepare_cb(power_manager_shutdown_prepare
     }
 
     memset(&g_shutdown_prepare, 0, sizeof(g_shutdown_prepare));
+}
+
+void power_manager_set_luma(int percent)
+{
+    int32_t ret;
+
+    if (percent < POWER_MANAGER_LUMA_MIN) {
+        percent = POWER_MANAGER_LUMA_MIN;
+    }
+    if (percent > POWER_MANAGER_LUMA_MAX) {
+        percent = POWER_MANAGER_LUMA_MAX;
+    }
+
+    ret = HAL_BACKLIGHT_SetLuma((int32_t)percent);
+    if (ret != 0) {
+        MLOG_WARN("设置背光亮度失败: percent=%d ret=%d", percent, (int)ret);
+        return;
+    }
+
+    g_luma_percent = percent;
+    MLOG_INFO("背光亮度已设为 %d%%", percent);
+}
+
+int power_manager_get_luma(void)
+{
+    int32_t luma = HAL_BACKLIGHT_GetLuma();
+
+    if (luma >= POWER_MANAGER_LUMA_MIN && luma <= POWER_MANAGER_LUMA_MAX) {
+        g_luma_percent = (int)luma;
+    }
+
+    return g_luma_percent;
 }
 
 // #endregion

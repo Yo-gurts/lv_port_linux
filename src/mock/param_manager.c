@@ -37,6 +37,7 @@ static const int default_values[PARAM_ID_BUTT] = {
     [PARAM_ID_FILTER_RESET_ON_MODE_SWITCH] = 0, /* 默认切模式不重置滤镜 */
     [PARAM_ID_ZOOM] = ZOOM_LEVEL_1X, /* 默认1x */
     [PARAM_ID_VOLUME] = 50, /* 默认音量50% */
+    [PARAM_ID_BRIGHTNESS] = 100, /* 默认屏幕亮度100%（开机默认，不持久化） */
     [PARAM_ID_AUTO_SLEEP] = 1, /* 默认开启自动息屏 */
     [PARAM_ID_FOCUS_FRAME_STATE] = FOCUS_FRAME_STATE_HIDDEN, /* 默认隐藏 */
     [PARAM_ID_WIFI_CONNECTED] = 0, /* 默认未连接 */
@@ -62,6 +63,7 @@ static const param_rule_t param_rules[PARAM_ID_BUTT] = {
     [PARAM_ID_FILTER_RESET_ON_MODE_SWITCH] = { .min_value = 0, .max_value = 1, .validate_enabled = 1 },
     [PARAM_ID_ZOOM] = { .min_value = ZOOM_LEVEL_1X, .max_value = ZOOM_LEVEL_16X, .validate_enabled = 1 },
     [PARAM_ID_VOLUME] = { .min_value = 0, .max_value = 100, .validate_enabled = 1 },
+    [PARAM_ID_BRIGHTNESS] = { .min_value = 10, .max_value = 100, .validate_enabled = 1 },
     [PARAM_ID_AUTO_SLEEP] = { .min_value = 0, .max_value = 1, .validate_enabled = 1 },
     [PARAM_ID_FOCUS_FRAME_STATE] = { .min_value = FOCUS_FRAME_STATE_HIDDEN, .max_value = FOCUS_FRAME_STATE_LOCKING, .validate_enabled = 1 },
     [PARAM_ID_WIFI_CONNECTED] = { .min_value = 0, .max_value = 1, .validate_enabled = 1 },

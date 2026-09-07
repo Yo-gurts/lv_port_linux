@@ -8,6 +8,7 @@
 static int g_inited = 0;
 static int g_screen_on = 1;
 static uint8_t g_prev_touch_pressed = 0;
+static int g_luma_percent = POWER_MANAGER_LUMA_MAX; /* mock 背光亮度百分比 */
 
 static int power_manager_wake_if_screen_off(void)
 {
@@ -144,4 +145,22 @@ void power_manager_unregister_shutdown_prepare_cb(power_manager_shutdown_prepare
     (void)cb;
     (void)user_data;
     MLOG_INFO("mock 注销关机前回调");
+}
+
+void power_manager_set_luma(int percent)
+{
+    if (percent < POWER_MANAGER_LUMA_MIN) {
+        percent = POWER_MANAGER_LUMA_MIN;
+    }
+    if (percent > POWER_MANAGER_LUMA_MAX) {
+        percent = POWER_MANAGER_LUMA_MAX;
+    }
+
+    g_luma_percent = percent;
+    MLOG_INFO("mock 背光亮度已设为 %d%%", percent);
+}
+
+int power_manager_get_luma(void)
+{
+    return g_luma_percent;
 }

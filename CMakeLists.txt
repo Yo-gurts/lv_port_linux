@@ -113,6 +113,7 @@ set(SOURCES
     src/ui/gesture_back.c
     src/ui/top_notice.c
     src/ui/volume_bar.c
+    src/ui/brightness_bar.c
     src/ui/zoom_bar.c
     src/ui/status_bar.c
 )
