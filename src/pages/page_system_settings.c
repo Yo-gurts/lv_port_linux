@@ -10,6 +10,7 @@
 #include "core/page_manager.h"
 #include "core/param_manager.h"
 #include "core/power_manager.h"
+#include "core/sound_manager.h"
 #include "core/style_manager.h"
 #include "core/wifi_manager.h"
 #include "mlog.h"
@@ -39,6 +40,7 @@ static const setting_config_t settings_config[] = {
     { .icon_path = "A" RES_ICON_PATH "/sys-volume.png", .title = "音量设置", .value = "xx%", .type = SETTING_TYPE_NORMAL },
     { .icon_path = "A" RES_ICON_PATH "/sys-brightness.png", .title = "屏幕亮度", .value = "xx%", .type = SETTING_TYPE_NORMAL },
     { .icon_path = "A" RES_ICON_PATH "/switch.png", .title = "自动息屏", .value = "已开启", .type = SETTING_TYPE_TOGGLE },
+    { .icon_path = "A" RES_ICON_PATH "/sys-volume.png", .title = "按键音", .value = "已开启", .type = SETTING_TYPE_TOGGLE },
     { .icon_path = "A" RES_ICON_PATH "/delete.png", .title = "格式化", .value = "请确认", .type = SETTING_TYPE_NORMAL },
     { .icon_path = "A" RES_ICON_PATH "/factory.png", .title = "出厂设置", .value = "请确认", .type = SETTING_TYPE_NORMAL },
     { .icon_path = "A" RES_ICON_PATH "/info.png", .title = "版本信息", .value = "V1.0.0", .type = SETTING_TYPE_NORMAL },
@@ -46,8 +48,9 @@ static const setting_config_t settings_config[] = {
 
 #define SETTINGS_COUNT (int)(sizeof(settings_config) / sizeof(settings_config[0]))
 #define SETTINGS_INDEX_AUTO_SLEEP 5
-#define SETTINGS_INDEX_FORMAT 6
-#define SETTINGS_INDEX_FACTORY_RESET 7
+#define SETTINGS_INDEX_KEYTONE 6
+#define SETTINGS_INDEX_FORMAT 7
+#define SETTINGS_INDEX_FACTORY_RESET 8
 #define SETTINGS_INDEX_VOLUME 3
 #define SETTINGS_INDEX_BRIGHTNESS 4
 #define SETTINGS_INDEX_WIFI 1
@@ -109,6 +112,20 @@ static void update_auto_sleep_setting_value(page_system_settings_data_t* data)
     item = &data->settings[SETTINGS_INDEX_AUTO_SLEEP];
     item->current_index = enabled ? 1 : 0;
     lv_label_set_text(item->value_label, enabled ? "已开启" : "已关闭");
+}
+
+/* 同步“按键音”行的显示状态（读底层 MENU 配置，默认开启）。 */
+static void update_keytone_setting_value(page_system_settings_data_t* data)
+{
+    system_setting_item_t* item;
+
+    if (data == NULL || data->settings[SETTINGS_INDEX_KEYTONE].value_label == NULL) {
+        return;
+    }
+
+    item = &data->settings[SETTINGS_INDEX_KEYTONE];
+    item->current_index = sound_manager_keytone_enabled() ? 1 : 0;
+    lv_label_set_text(item->value_label, item->current_index ? "已开启" : "已关闭");
 }
 
 static void update_wifi_setting_value(page_system_settings_data_t* data)
@@ -383,6 +400,17 @@ static void setting_item_cb(lv_event_t* e)
             (void)param_manager_set(PARAM_ID_AUTO_SLEEP, item->current_index ? 1 : 0);
             lv_label_set_text(item->value_label, item->current_index ? "已开启" : "已关闭");
             MLOG_INFO("自动息屏已%s", item->current_index ? "开启" : "关闭");
+        } else if (index == SETTINGS_INDEX_KEYTONE) {
+            /* 按键音开关落到底层 MENU 配置（PARAM_MENU_KEYTONE），
+             * sound_manager_play_keytone() 每次发声前读它决定是否出声。 */
+            item->current_index = !item->current_index;
+            sound_manager_set_keytone_enabled(item->current_index ? true : false);
+            lv_label_set_text(item->value_label, item->current_index ? "已开启" : "已关闭");
+            MLOG_INFO("按键音已%s", item->current_index ? "开启" : "关闭");
+            /* 开启时立刻回一声，给用户明确反馈 */
+            if (item->current_index) {
+                sound_manager_play_keytone();
+            }
         }
     } else {
         /* WiFi设置跳转 */
@@ -573,6 +601,7 @@ void page_system_settings_create(void)
     update_volume_setting_value(data);
     update_brightness_setting_value(data);
     update_auto_sleep_setting_value(data);
+    update_keytone_setting_value(data);
     update_wifi_setting_value(data);
 }
 
@@ -615,6 +644,7 @@ void page_system_settings_show(void)
     update_volume_setting_value(data);
     update_brightness_setting_value(data);
     update_auto_sleep_setting_value(data);
+    update_keytone_setting_value(data);
     update_wifi_setting_value(data);
     update_selection_highlight(data, -1, data->selected_index);
     lv_obj_clear_flag(data->container, LV_OBJ_FLAG_HIDDEN);

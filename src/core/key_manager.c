@@ -1,4 +1,5 @@
 #include "core/key_manager.h"
+#include "core/sound_manager.h"
 #include "lvgl/lvgl.h"
 #include "mlog.h"
 #include "ui/volume_bar.h"
@@ -219,6 +220,13 @@ static void key_manager_dispatch(key_id_t key, key_event_type_t event_type)
     MLOG_INFO("key event: key=%s(%d), event=%s(%d)",
         key_manager_key_to_string(key), key,
         key_manager_event_to_string(event_type), event_type);
+
+    /* 按键音：所有按键的「按下」都出声（含长按首次按下）。
+     * 走独立 AO chn，与视频播放音叠加，不互相打断。
+     * 是否真的出声由「按键音」开关决定，见 sound_manager_play_keytone()。 */
+    if (event_type == KEY_EVENT_PRESS && key != KEY_ID_ANY) {
+        sound_manager_play_keytone();
+    }
 
     key_buckets[0] = key_manager_key_bucket(key);
     key_buckets[1] = KEY_MANAGER_ANY_BUCKET;

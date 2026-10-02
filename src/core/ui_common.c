@@ -12,6 +12,7 @@
 #include "core/param_manager.h"
 #include "core/power_manager.h"
 #include "core/sim_automation.h"
+#include "core/sound_manager.h"
 #include "core/style_manager.h"
 #include "core/wifi_manager.h"
 #include "lvgl/lvgl.h"
@@ -409,6 +410,9 @@ int32_t ui_main(void)
     brightness_bar_init();
     top_notice_init();
     status_bar_init();
+
+    /* Initialize keytone/voice playback (needs AO; lazily ensures it) */
+    (void)sound_manager_init();
 
     /* Initialize key manager */
     key_manager_init();

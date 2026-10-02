@@ -2,6 +2,7 @@
 
 #include "media_init.h"
 #include "mlog.h"
+#include "volmng.h"
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -11,10 +12,16 @@
 #define PLAYER_MANAGER_EINVAL (-1)
 #define PLAYER_MANAGER_ESTATE (-2)
 
+/* 功放是全局 GPIO，按键音也用它。这里改用引用计数，避免视频暂停/停止时
+ * 把关掉的功放状态与按键音互相踩踏（详见 volmng.c 的 amplifer_ref_*）。 */
+#define PLAYER_MANAGER_AMP_ACQUIRE() VOICEPLAY_AmplifierAcquire()
+#define PLAYER_MANAGER_AMP_RELEASE() VOICEPLAY_AmplifierRelease()
+
 typedef struct {
     bool inited;
     bool prepared;
     bool paused;
+    bool amp_held; /* 是否已持有功放引用，保证 acquire/release 配对 */
     int total_sec;
 } player_manager_ctx_t;
 
@@ -22,8 +29,27 @@ static player_manager_ctx_t g_player_ctx = {
     .inited = false,
     .prepared = false,
     .paused = true,
+    .amp_held = false,
     .total_sec = 0,
 };
+
+/* 持有功放（幂等）：按键音同时播放时不会被关掉 */
+static void player_manager_amp_hold(void)
+{
+    if (!g_player_ctx.amp_held) {
+        PLAYER_MANAGER_AMP_ACQUIRE();
+        g_player_ctx.amp_held = true;
+    }
+}
+
+/* 释放功放（幂等）：归零才真正关，按键音在播则继续保留 */
+static void player_manager_amp_drop(void)
+{
+    if (g_player_ctx.amp_held) {
+        PLAYER_MANAGER_AMP_RELEASE();
+        g_player_ctx.amp_held = false;
+    }
+}
 
 static PLAYER_SERVICE_HANDLE_T player_manager_get_handle(void)
 {
@@ -107,7 +133,7 @@ int player_manager_prepare(const char* video_path)
         g_player_ctx.paused = true;
     }
 
-    MAPI_AO_SetAmplifier(media->SysHandle.aohdl, CVI_FALSE);
+    player_manager_amp_drop();
     MAPI_AO_Mute(media->SysHandle.aohdl);
 
 #ifdef SERVICES_PLAYER_SUBVIDEO
@@ -118,7 +144,7 @@ int player_manager_prepare(const char* video_path)
     if (ret != 0) {
         MLOG_ERR("player_manager_prepare set input failed: %s ret=%d", real_path, (int)ret);
         MAPI_AO_Unmute(media->SysHandle.aohdl);
-        MAPI_AO_SetAmplifier(media->SysHandle.aohdl, CVI_TRUE);
+        player_manager_amp_hold();
         g_player_ctx.prepared = false;
         g_player_ctx.paused = true;
         return PLAYER_MANAGER_ESTATE;
@@ -128,7 +154,7 @@ int player_manager_prepare(const char* video_path)
     if (ret != 0) {
         MLOG_ERR("player_manager_prepare play failed: %s ret=%d", real_path, (int)ret);
         MAPI_AO_Unmute(media->SysHandle.aohdl);
-        MAPI_AO_SetAmplifier(media->SysHandle.aohdl, CVI_TRUE);
+        player_manager_amp_hold();
         g_player_ctx.prepared = false;
         g_player_ctx.paused = true;
         return PLAYER_MANAGER_ESTATE;
@@ -168,7 +194,7 @@ int player_manager_play(void)
         g_player_ctx.prepared ? 1 : 0,
         g_player_ctx.paused ? 1 : 0);
     MAPI_AO_Unmute(media->SysHandle.aohdl);
-    MAPI_AO_SetAmplifier(media->SysHandle.aohdl, CVI_TRUE);
+    player_manager_amp_hold();
 
     ret = PLAYER_SERVICE_Play(handle);
     if (ret != 0) {
@@ -225,6 +251,8 @@ int player_manager_stop(void)
     if (handle) {
         (void)PLAYER_SERVICE_Stop(handle);
     }
+
+    player_manager_amp_drop();
 
     g_player_ctx.prepared = false;
     g_player_ctx.paused = true;
