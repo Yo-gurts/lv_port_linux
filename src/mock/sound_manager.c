@@ -40,3 +40,11 @@ int sound_manager_set_system_volume(int percent)
     (void)percent;
     return 0;
 }
+
+void sound_manager_play_photo(void)
+{
+}
+
+void sound_manager_play_record(void)
+{
+}

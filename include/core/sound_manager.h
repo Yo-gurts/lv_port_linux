@@ -27,6 +27,12 @@ void sound_manager_play_keytone(void);
 /* 播放指定音效（不受按键音开关限制，用于拍照/录像等提示音）。 */
 void sound_manager_play(int voice_idx);
 
+/* 拍照/录像专用音效。二者是独立的「动作完成」提示音，与通用按键音不同：
+ * 拍照成功播 photo.wav、开始录像播 rec.wav。不受「按键音」开关控制
+ * （开关只关通用按键音，不关功能提示音）。 */
+void sound_manager_play_photo(void);
+void sound_manager_play_record(void);
+
 /* 读取/设置「按键音」开关（底层 MENU 配置）。
  * 由本模块封装，避免 UI 页面直接依赖 SDK 的 param.h。 */
 bool sound_manager_keytone_enabled(void);

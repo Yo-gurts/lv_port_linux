@@ -223,8 +223,12 @@ static void key_manager_dispatch(key_id_t key, key_event_type_t event_type)
 
     /* 按键音：所有按键的「按下」都出声（含长按首次按下）。
      * 走独立 AO chn，与视频播放音叠加，不互相打断。
-     * 是否真的出声由「按键音」开关决定，见 sound_manager_play_keytone()。 */
-    if (event_type == KEY_EVENT_PRESS && key != KEY_ID_ANY) {
+     * 是否真的出声由「按键音」开关决定，见 sound_manager_play_keytone()。
+     *
+     * 例外：拍照/录像键不出通用按键音——它们有各自的专用音效
+     * （photo.wav / rec.wav，由 message_manager 在动作成功后播放），
+     * 否则两声会叠在一起。 */
+    if (event_type == KEY_EVENT_PRESS && key != KEY_ID_ANY && key != KEY_ID_CAMERA) {
         sound_manager_play_keytone();
     }
 

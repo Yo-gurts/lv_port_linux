@@ -1,8 +1,9 @@
 #define DEBUG
 
 #include "core/message_manager.h"
-#include "core/param_manager.h"
 #include "appcomm.h"
+#include "core/param_manager.h"
+#include "core/sound_manager.h"
 #include "mlog.h"
 #include "photomng.h"
 #include "ui/status_bar.h"
@@ -237,27 +238,44 @@ static int32_t message_manager_dispatch_event(EVENT_S* evt)
     (void)handle_sd_card_event_notice(evt->topic);
 
     switch (evt->topic) {
+    case EVENT_PHOTOMNG_PIV_START:
+        /* 拍照模式的拍照（photo_service 在照片开始写盘时发出）→ 专用拍照音。
+         * 注意 arg1 是 photo service id，不是结果码，故不判 0。 */
+        sound_manager_play_photo();
+        MLOG_DBG("处理 topic=%s(0x%x) result=%d", event_topic_get_name(evt->topic), evt->topic, evt->s32Result);
+        break;
+    case EVENT_MODEMNG_RECODER_STARTPIVSTAUE:
+        /* 录像过程中按快门抓拍（recorder 侧发出，arg1==0 表示成功）→ 同为拍照音 */
+        if (evt->arg1 == 0) {
+            sound_manager_play_photo();
+        }
+        MLOG_DBG("处理 topic=%s(0x%x) result=%d", event_topic_get_name(evt->topic), evt->topic, evt->s32Result);
+        break;
+    case EVENT_MODEMNG_RECODER_STARTSTATU:
+        /* 开始录像成功（arg1==0）→ 专用录像音 */
+        if (evt->arg1 == 0) {
+            sound_manager_play_record();
+        }
+        MLOG_DBG("处理 topic=%s(0x%x) result=%d", event_topic_get_name(evt->topic), evt->topic, evt->s32Result);
+        break;
     case EVENT_MODEMNG_RESET:
     case EVENT_MODEMNG_MODEOPEN:
     case EVENT_MODEMNG_MODECLOSE:
     case EVENT_MODEMNG_MODESWITCH:
     case EVENT_MODEMNG_START_PIV:
     case EVENT_MODEMNG_SETTING:
-    case EVENT_MODEMNG_RECODER_STARTSTATU:
     case EVENT_MODEMNG_RECODER_STOPSTATU:
     case EVENT_MODEMNG_RECODER_SPLITREC:
     case EVENT_MODEMNG_RECODER_STARTEVENTSTAUE:
     case EVENT_MODEMNG_RECODER_STOPEVENTSTAUE:
     case EVENT_MODEMNG_RECODER_STARTEMRSTAUE:
     case EVENT_MODEMNG_RECODER_STOPEMRSTAUE:
-    case EVENT_MODEMNG_RECODER_STARTPIVSTAUE:
     case EVENT_MODEMNG_RECODER_STOPPIVSTAUE:
     case EVENT_MODEMNG_SET_WHITE_BALANCE:
     case EVENT_MODEMNG_SET_ISO:
     case EVENT_MODEMNG_SET_EXPOSURE:
     case EVENT_MODEMNG_PHOTO_INDEXED:
     case EVENT_MODEMNG_PHOTO_INDEX_FAILED:
-    case EVENT_PHOTOMNG_PIV_START:
     case EVENT_PHOTOMNG_PIV_END:
     case EVENT_PHOTOMNG_PIV_ERROR:
         MLOG_DBG("处理 topic=%s(0x%x) result=%d", event_topic_get_name(evt->topic), evt->topic, evt->s32Result);
