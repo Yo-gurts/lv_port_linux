@@ -4,6 +4,7 @@
 #include "ui/volume_bar.h"
 #include "config.h"
 #include "core/param_manager.h"
+#include "core/sound_manager.h"
 #include "core/style_manager.h"
 #include "mlog.h"
 #include <stdlib.h>
@@ -113,11 +114,21 @@ static void volume_bar_slider_cb(lv_event_t* e)
     lv_obj_t* target = lv_event_get_target(e);
     int volume = clamp_volume(lv_slider_get_value(target));
 
+    /* PRESSING 在拖动中会高频触发，值没变就不要再下发硬件 */
+    if (param_manager_get(PARAM_ID_VOLUME) == volume) {
+        volume_bar_reset_timer();
+        return;
+    }
+
     /* 更新音量图标 */
     update_volume_icon(data, volume);
 
-    /* 同步到param_manager */
+    /* 同步到param_manager（UI 内显示用） */
     param_manager_set(PARAM_ID_VOLUME, volume);
+
+    /* 下发到音频硬件：音量落在共享的 DAC 寄存器上，按键音与视频音一起变。
+     * 注意 VALUE_CHANGED 只在松手时触发，故同时挂 PRESSING 保证拖动即时生效。 */
+    (void)sound_manager_set_system_volume(volume);
 
     /* 重置自动隐藏定时器 */
     volume_bar_reset_timer();
@@ -250,6 +261,8 @@ static void volume_bar_create(void)
     lv_obj_add_event_cb(g_volume_bar->slider, volume_bar_slider_cb, LV_EVENT_VALUE_CHANGED, g_volume_bar);
     lv_obj_add_event_cb(g_volume_bar->slider, volume_bar_press_cb, LV_EVENT_PRESSED, g_volume_bar);
     lv_obj_add_event_cb(g_volume_bar->container, volume_bar_press_cb, LV_EVENT_CLICKED, g_volume_bar);
+    /* 拖动过程中即时下发（VALUE_CHANGED 只在松手后触发，拖动时听不到变化） */
+    lv_obj_add_event_cb(g_volume_bar->slider, volume_bar_slider_cb, LV_EVENT_PRESSING, g_volume_bar);
 
     param_manager_register_callback(volume_bar_param_cb, NULL);
     MLOG_INFO("Vertical volume bar created successfully");

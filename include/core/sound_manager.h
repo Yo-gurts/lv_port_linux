@@ -32,6 +32,10 @@ void sound_manager_play(int voice_idx);
 bool sound_manager_keytone_enabled(void);
 void sound_manager_set_keytone_enabled(bool enabled);
 
+/* 设置系统音量（0~100），下发到 DAC。音量按 DAC 声道共享，
+ * 按键音与视频播放音会一起变化。 */
+int sound_manager_set_system_volume(int percent);
+
 #ifdef __cplusplus
 }
 #endif

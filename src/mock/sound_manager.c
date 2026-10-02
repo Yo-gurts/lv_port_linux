@@ -34,3 +34,9 @@ void sound_manager_set_keytone_enabled(bool enabled)
 {
     (void)enabled;
 }
+
+int sound_manager_set_system_volume(int percent)
+{
+    (void)percent;
+    return 0;
+}

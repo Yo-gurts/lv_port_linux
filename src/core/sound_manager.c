@@ -133,3 +133,9 @@ void sound_manager_play_keytone(void)
 
     sound_manager_play(VOICE_IDX_KEYTONE);
 }
+
+int sound_manager_set_system_volume(int percent)
+{
+    /* 音量落在共享的 DAC 寄存器上，走 media 层统一入口；AO 未就绪时那边会按需初始化。 */
+    return MEDIA_AoSetSystemVolume(percent);
+}
