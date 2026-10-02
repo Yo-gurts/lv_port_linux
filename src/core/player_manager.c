@@ -261,6 +261,13 @@ int player_manager_stop(void)
     return PLAYER_MANAGER_OK;
 }
 
+/* 播放服务是否仍然存活（退出回放模式后 PsHdl 会被销毁并置空）。
+ * 供 UI 侧的定时器/回调在动播放器之前先探活，避免拿到已释放的句柄。 */
+bool player_manager_is_active(void)
+{
+    return g_player_ctx.inited && player_manager_get_handle() != NULL;
+}
+
 int player_manager_seek_sec(int sec)
 {
     int32_t ret;

@@ -462,6 +462,10 @@ static void progress_timer_cb(lv_timer_t* timer)
         return;
     if (data->is_paused || data->is_dragging_progress)
         return;
+    /* 播放服务可能已随模式切换被销毁（本页 hide 后计时器仍在跑），
+     * 此时再动播放器会踩到已释放的句柄，必须先探活。 */
+    if (!player_manager_is_active())
+        return;
     previous_sec = data->current_sec;
 
     if (player_manager_get_progress(&current_sec, &total_sec) == 0) {
@@ -887,9 +891,13 @@ void page_video_preview_show(void)
     set_paused_state(data, true);
     lv_obj_clear_flag(data->container, LV_OBJ_FLAG_HIDDEN);
     lv_obj_move_foreground(data->back_btn);
+    /* 与 hide 的 lv_timer_pause 配对：重新可见后恢复进度刷新 */
+    if (data->progress_timer) {
+        lv_timer_resume(data->progress_timer);
+    }
     MLOG_INFO("video preview show ok: total_videos=%d index=%d",
-              data->total_videos,
-              data->current_display_index);
+        data->total_videos,
+        data->current_display_index);
 }
 
 void page_video_preview_hide(void)
@@ -910,6 +918,11 @@ void page_video_preview_hide(void)
         data->is_paused ? 1 : 0);
     set_paused_state(data, true);
     (void)player_manager_stop();
+    /* 页面隐藏后本页不再可见，进度定时器必须停掉：否则它会继续 tick，
+     * 若此时播放服务已随模式切换销毁，就会在回调里踩到已释放的句柄。 */
+    if (data->progress_timer) {
+        lv_timer_pause(data->progress_timer);
+    }
     lv_obj_add_flag(data->container, LV_OBJ_FLAG_HIDDEN);
     (void)restore_work_mode(data);
     data->current_sec = 0;

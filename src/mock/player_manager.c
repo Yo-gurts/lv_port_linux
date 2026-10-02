@@ -90,6 +90,12 @@ void player_manager_deinit(void)
     MLOG_DBG("mock player_manager_deinit ok");
 }
 
+bool player_manager_is_active(void)
+{
+    /* 仿真环境没有真实的播放服务，只要还处于 inited 就视为可用 */
+    return g_player_ctx.inited;
+}
+
 int player_manager_prepare(const char* video_path)
 {
     if (!g_player_ctx.inited || !video_path || video_path[0] == '\0') {
