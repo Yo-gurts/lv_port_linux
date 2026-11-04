@@ -44,6 +44,18 @@ static int file_manager_is_photo_storage_ready(void)
     return FILEMNG_GetStorageStatus() == FILEMNG_STORAGE_STATE_SCAN_COMPLETED;
 }
 
+/*
+ * DTCF 文件列表按文件名升序排列（索引 0 为最旧文件），相册按最新在前展示，
+ * 这里把展示索引换算成 DTCF 索引。
+ */
+static int file_manager_to_dtcf_index(int index, uint32_t count)
+{
+    if (index < 0 || (uint32_t)index >= count) {
+        return -1;
+    }
+    return (int)(count - 1U - (uint32_t)index);
+}
+
 /* 检查照片存储是否就绪（已插入 SD 卡且扫描完成） */
 int file_manager_is_storage_ready(void)
 {
@@ -389,7 +401,8 @@ int file_manager_get_photo_count(void)
 /* 按索引获取照片文件名。 */
 int file_manager_get_photo_name(int index, char* out_name, size_t out_size)
 {
-    char filename[FILEMNG_PATH_MAX_LEN] = {0};
+    char filename[FILEMNG_PATH_MAX_LEN] = { 0 };
+    int dtcf_index;
 
     if (!out_name || out_size == 0 || index < 0)
         return -1;
@@ -397,7 +410,11 @@ int file_manager_get_photo_name(int index, char* out_name, size_t out_size)
     if (!file_manager_is_photo_storage_ready())
         return -1;
 
-    if (FILEMNG_GetFileNameByFileInx(0, FILEMNG_DIR_PHOTO, (uint32_t)index, &filename, 1) != 0)
+    dtcf_index = file_manager_to_dtcf_index(index, (uint32_t)file_manager_get_photo_count());
+    if (dtcf_index < 0)
+        return -1;
+
+    if (FILEMNG_GetFileNameByFileInx(0, FILEMNG_DIR_PHOTO, (uint32_t)dtcf_index, &filename, 1) != 0)
         return -1;
 
     if (snprintf(out_name, out_size, "%s", filename) >= (int)out_size)
@@ -514,13 +531,18 @@ int file_manager_get_video_count(void)
 int file_manager_get_video_name(int index, char* out_name, size_t out_size)
 {
     char filename[FILEMNG_PATH_MAX_LEN] = { 0 };
+    int dtcf_index;
 
     if (!out_name || out_size == 0 || index < 0)
         return -1;
     if (!file_manager_is_photo_storage_ready())
         return -1;
 
-    if (FILEMNG_GetFileNameByFileInx(0, FILEMNG_DIR_NORMAL, (uint32_t)index, &filename, 1) != 0)
+    dtcf_index = file_manager_to_dtcf_index(index, (uint32_t)file_manager_get_video_count());
+    if (dtcf_index < 0)
+        return -1;
+
+    if (FILEMNG_GetFileNameByFileInx(0, FILEMNG_DIR_NORMAL, (uint32_t)dtcf_index, &filename, 1) != 0)
         return -1;
 
     if (snprintf(out_name, out_size, "%s", filename) >= (int)out_size)
